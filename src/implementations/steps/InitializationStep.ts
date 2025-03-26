@@ -10,7 +10,7 @@ export class InitializationStep extends AbstractScraperStep {
   }
 
   async execute(context: ScraperContext): Promise<void> {
-    super.logger.debug('Initializing browser');
+    this.logger.log('Initializing browser'); // Use log instead of debug
 
     // Launch browser with options from context
     const browser = await launchPlaywright({

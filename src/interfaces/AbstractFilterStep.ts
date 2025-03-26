@@ -18,7 +18,7 @@ export abstract class AbstractFilterStep extends AbstractScraperStep {
   abstract applyFilter(context: ScraperContext): Promise<void>;
 
   async execute(context: ScraperContext): Promise<void> {
-    this.logger.debug(`Applying filter: ${this.filterType}`);
+    this.logger.log(`Applying filter: ${this.filterType}`);
     await this.applyFilter(context);
   }
 }

@@ -78,7 +78,7 @@ export class SearchParameterService {
     const query = { ...defaultQuery, ...params };
 
     // Log the built query
-    this.logger.debug('Built query', { query });
+    this.logger.log('Built query', { query });
 
     return query;
   }

@@ -15,7 +15,7 @@ export class PaginationStep extends AbstractScraperStep {
       throw new Error('Page not initialized');
     }
 
-    this.logger.debug('Scrolling to load more content');
+    this.logger.log('Scrolling to load more content');
 
     // Scroll down to trigger loading more results
     await context.state.page.evaluate(() => {
@@ -32,7 +32,7 @@ export class PaginationStep extends AbstractScraperStep {
 
     if (isAtBottom) {
       context.state.hasMoreResults = false;
-      this.logger.debug('Reached bottom of page');
+      this.logger.log('Reached bottom of page');
     }
   }
 }

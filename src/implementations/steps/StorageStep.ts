@@ -27,7 +27,7 @@ export class StorageStep extends AbstractScraperStep {
     const filePath = path.join(outputDir, filename);
     fs.writeFileSync(filePath, JSON.stringify(adsCollected, null, 2));
 
-    this.logger.debug(`Saved ${adsCollected.length} ads to ${filePath}`);
+    this.logger.log(`Saved ${adsCollected.length} ads to ${filePath}`);
     if (!context.options.storage) {
       context.options.storage = {};
     }

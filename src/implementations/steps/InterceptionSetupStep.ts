@@ -53,7 +53,7 @@ export class InterceptionSetupStep extends AbstractScraperStep {
             responseText.includes('ad_library_main') &&
             responseText.includes('search_results_connection')
           ) {
-            this.logger.debug('Intercepted ad data response');
+            this.logger.log('Intercepted ad data response');
 
             try {
               // Parse the response data
@@ -62,14 +62,14 @@ export class InterceptionSetupStep extends AbstractScraperStep {
               if (adData.length > 0) {
                 // Add to the collected ads
                 context.state.adsCollected.push(...adData);
-                this.logger.debug(
+                this.logger.log(
                   `Total ads collected: ${context.state.adsCollected.length}`,
                 );
 
                 // Check if we've reached the maximum
                 const maxAds = context.options.behavior?.maxAdsToCollect || 200;
                 if (context.state.adsCollected.length >= maxAds) {
-                  this.logger.debug(
+                  this.logger.log(
                     `Reached maximum of ${maxAds} ads to collect`,
                   );
                   context.state.hasMoreResults = false;

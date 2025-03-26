@@ -1,0 +1,281 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+//=============================================================================
+// Authentication & Session Models
+//=============================================================================
+model Session {
+  id                     Int           @id @default(autoincrement())
+  email                  String
+  proxy_id               Int?
+  api_config_id          Int?
+  storage_path           String
+  session_data           Json
+  created_at             DateTime      @default(now())
+  expires_at             DateTime
+  last_activity_timestamp DateTime?
+  is_valid               Boolean       @default(true)
+  status                 String
+
+  // Relations
+  emailAccount          Email @relation("has", fields: [email], references: [email_address])
+  proxy                 Proxy?         @relation("used_by", fields: [proxy_id], references: [id])
+  apiConfig             ApiConfiguration? @relation("applies_to", fields: [api_config_id], references: [id])
+  requests              Request[]      @relation("processes")
+
+  @@index([is_valid])
+  @@index([status])
+  @@index([last_activity_timestamp])
+  @@index([email])
+  @@index([proxy_id])
+  @@index([api_config_id])
+}
+
+model Cache {
+  id                    Int           @id @default(autoincrement())
+  request_hash          String
+  response_data         Json
+  created_at            DateTime      @default(now())
+  expires_at            DateTime
+  hit_count            Int
+  last_accessed_at      DateTime?
+  request_id            Int?          @unique
+
+  // Relations
+  request              Request?       @relation("stores_result_of", fields: [request_id], references: [id])
+
+  @@index([request_hash])
+  @@index([expires_at])
+  @@index([last_accessed_at])
+}
+
+model Request {
+  id                    Int           @id @default(autoincrement())
+  external_request_id   String
+  request_type         String
+  parameters           Json
+  created_at           DateTime      @default(now())
+  processed_at         DateTime?
+  status               String
+  session_id           Int
+  response_data        Json?
+  error_details        String?
+  priority             Int
+  retry_count          Int
+  webhook_url          String?
+
+  // Relations
+  session              Session        @relation("processes", fields: [session_id], references: [id])
+  cache                Cache?         @relation("stores_result_of")
+  activities           ActivityLog[]  @relation("generates")
+
+  @@index([status])
+  @@index([processed_at])
+  @@index([session_id])
+}
+
+//=============================================================================
+// Account Management Models
+//=============================================================================
+
+// Модель для хранения аккаунтов TikTok
+model TikTokAccount {
+  id                    Int           @id @default(autoincrement())
+  username              String        @unique
+  password              String
+  email_id               Int
+  status                String
+  last_login_timestamp    DateTime?
+  creation_date          DateTime      @default(now())
+  notes                 String?       @db.Text
+  verification_required  Boolean       @default(false)
+  
+  // Additional useful fields from existing model
+  is_active             Boolean       @default(true)
+  last_auth_success      DateTime?     @default(now())
+  updated_at            DateTime      @updatedAt
+  
+  // Relations
+  email_account         Email         @relation(fields: [email_id], references: [id])
+  activities           ActivityLog[] @relation("tiktok_has_activities")
+  verification_codes  VerificationCode[] @relation("receives")
+
+  @@index([is_active])
+  @@index([username])
+  @@index([email_id])
+}
+
+model Email {
+  id                  Int           @id @default(autoincrement())
+  email_address        String        @unique
+  provider            String
+  connection_details   Json?
+  username            String
+  password            String
+  status              String
+  last_check_timestamp  DateTime?
+  is_associated        Boolean       @default(false)
+  created_at           DateTime      @default(now())
+  updated_at           DateTime      @updatedAt
+
+  // Relations
+  activities         ActivityLog[]   @relation("email_has_activities")
+  tiktok_account      TikTokAccount[]
+  sessions            Session[]     @relation("has")
+  verification_codes  VerificationCode[] @relation("contains")
+
+  @@index([is_associated])
+  @@index([status])
+  @@index([last_check_timestamp])
+}
+
+model VerificationCode {
+  id              Int      @id @default(autoincrement())
+  email_id        Int
+  tiktok_account_id Int
+  code            String
+  received_at     DateTime @default(now())
+  used_at         DateTime?
+  status          String
+  message_id      String
+  email_body      String?  @db.Text
+  sender_email    String
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  // Relations
+  email          Email         @relation("contains", fields: [email_id], references: [id])
+  tiktok_account TikTokAccount @relation("receives", fields: [tiktok_account_id], references: [id])
+
+  @@index([status])
+  @@index([email_id])
+  @@index([tiktok_account_id])
+  @@unique([code, message_id])
+}
+
+//=============================================================================
+// Infrastructure Models
+//=============================================================================
+model ApiConfiguration {
+  id                    Int           @id @default(autoincrement())
+  api_version            String
+  parameters            Json
+  updated_at             DateTime      @updatedAt
+  is_active              Boolean       @default(true)
+  update_frequency       Int
+
+  // Relations
+  sessions             Session[]     @relation("applies_to")
+
+}
+
+model Proxy {
+  id                    Int           @id @default(autoincrement())
+  address               String
+  port                  Int
+  username              String?
+  password              String?
+  proxy_type             String
+  status                String
+  last_check_timestamp    DateTime?
+  success_rate           Float
+  average_response_time   Int
+  country               String
+  provider              String
+  notes                 String?
+  created_at             DateTime      @default(now())
+  updated_at             DateTime      @updatedAt
+
+  // Relations
+  sessions             Session[]     @relation("used_by")
+  activities           ActivityLog[] @relation("proxy_has_activities")
+
+  @@index([status])
+  @@index([last_check_timestamp])
+}
+
+//=============================================================================
+// Request Handling Models
+//=============================================================================
+
+
+//=============================================================================
+// Email Verification Models
+//=============================================================================
+
+
+//=============================================================================
+// Activity Logging Models
+//=============================================================================
+
+model ActivityLog {
+  id                Int        @id @default(autoincrement())
+  timestamp         DateTime   @default(now())
+  entity_type       String
+  entity_id         Int
+  action_type       String
+  details           Json?
+  severity          String
+  related_request_id Int?
+  email_id          Int?      // Foreign key for Email relation
+  tiktok_id         Int?      // Foreign key for TikTokAccount relation
+  request_id        Int?      // Foreign key for Request relation
+  proxy_id          Int?      // Foreign key for Proxy relation
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+
+  // Relations
+  email             Email?          @relation("email_has_activities", fields: [email_id], references: [id])
+  tiktok_account     TikTokAccount?  @relation("tiktok_has_activities", fields: [tiktok_id], references: [id])
+  request           Request?        @relation("generates", fields: [request_id], references: [id])
+  proxy             Proxy?          @relation("proxy_has_activities", fields: [proxy_id], references: [id])
+
+  @@index([entity_type, entity_id])
+  @@index([related_request_id])
+  @@index([email_id])
+  @@index([tiktok_id])
+  @@index([request_id])
+  @@index([proxy_id])
+}
+
+
+//=============================================================================
+// Search Models
+//=============================================================================
+
+model SearchRequest {
+  id        Int        @id @default(autoincrement())
+  query     Json
+  created_at DateTime   @default(now())
+  updated_at DateTime   @updatedAt
+}
+
+//=============================================================================
+// Statistics Models
+//=============================================================================
+
+model Statistics {
+  id                    Int           @id @default(autoincrement())
+  date                  DateTime
+  request_count          Int
+  success_count          Int
+  failure_count          Int
+  average_response_time   Float
+  cache_hit_rate          Float
+  blocked_session_count   Int
+  details               Json
+
+  @@index([date])
+}

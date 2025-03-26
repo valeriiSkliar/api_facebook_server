@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noImplicitReturns": false,
+    "strictNullChecks": false,
+    "noEmitOnError": false,
+    "skipLibCheck": true
+  },
+  "include": ["src/**/*", "test/**/*", "lib/**/*", "env-schema.ts"],
+  "exclude": ["node_modules", "dist"]
+}

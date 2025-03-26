@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/require-await */
 import fs from 'fs';
 import path from 'path';
 import { AbstractScraperStep } from '@src/interfaces/AbstractScraperStep';
@@ -18,7 +19,7 @@ export class StorageStep extends AbstractScraperStep {
 
     // Save to file
     const outputDir =
-      context.options.storage.outputPath || path.join(process.cwd(), 'data');
+      context.options.storage?.outputPath || path.join(process.cwd(), 'data');
     if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir, { recursive: true });
     }
@@ -26,7 +27,10 @@ export class StorageStep extends AbstractScraperStep {
     const filePath = path.join(outputDir, filename);
     fs.writeFileSync(filePath, JSON.stringify(adsCollected, null, 2));
 
-    this.logger.info(`Saved ${adsCollected.length} ads to ${filePath}`);
+    this.logger.debug(`Saved ${adsCollected.length} ads to ${filePath}`);
+    if (!context.options.storage) {
+      context.options.storage = {};
+    }
     context.options.storage.outputPath = filePath;
   }
 }

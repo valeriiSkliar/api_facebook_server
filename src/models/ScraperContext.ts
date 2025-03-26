@@ -1,13 +1,8 @@
 import { Page } from 'playwright';
-import { Browser } from 'puppeteer';
+import { Browser } from 'playwright';
 import { AdData } from './AdData';
 import { AdLibraryQuery } from './AdLibraryQuery';
-
-export interface ScraperOptions {
-  storage?: {
-    outputPath?: string;
-  };
-}
+import { ScraperOptions } from './ScraperOptions';
 
 export interface ScraperContext {
   query: AdLibraryQuery;

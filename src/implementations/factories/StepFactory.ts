@@ -1,12 +1,10 @@
 import { Logger } from '@nestjs/common';
-import { IScraperStep } from '@src/interfaces/IScraperStep';
-import {
-  InitializationStep,
-  InterceptionSetupStep,
-  NavigationStep,
-  PaginationStep,
-  StorageStep,
-} from '../steps/InitializationStep';
+import { IScraperStep } from '../../interfaces/IScraperStep';
+import { InitializationStep } from '../steps/InitializationStep';
+import { InterceptionSetupStep } from '../steps/InterceptionSetupStep';
+import { PaginationStep } from '../steps/PaginationStep';
+import { StorageStep } from '../steps/StorageStep';
+import { NavigationStep } from '../steps/NavigationStep';
 
 export class StepFactory {
   constructor(private readonly logger: Logger) {}

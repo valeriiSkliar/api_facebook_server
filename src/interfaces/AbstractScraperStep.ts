@@ -5,7 +5,7 @@ import { IScraperStep } from './IScraperStep';
 export abstract class AbstractScraperStep implements IScraperStep {
   constructor(
     protected readonly name: string,
-    protected readonly logger: Logger,
+    public readonly logger: Logger,
   ) {}
 
   getName(): string {

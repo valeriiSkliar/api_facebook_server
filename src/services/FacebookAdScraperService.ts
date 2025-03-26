@@ -1,4 +1,9 @@
-// services/FacebookAdScraperService.ts
+import { Injectable, Logger } from '@nestjs/common';
+import { ScraperFactory } from '../implementations/factories/ScraperFactory';
+import { AdLibraryQuery } from '../models/AdLibraryQuery';
+import { ScraperOptions } from '../models/ScraperOptions';
+import { ScraperResult } from '../models/ScraperResult';
+
 @Injectable()
 export class FacebookAdScraperService {
   constructor(
@@ -21,6 +26,10 @@ export class FacebookAdScraperService {
     try {
       // Execute the scraper
       const result = await scraper.execute(context);
+
+      // Add the includeAdsInResponse flag to the result
+      result.includeAdsInResponse = options?.includeAdsInResponse || false;
+
       this.logger.log(
         `Scraping completed. Collected ${result.totalCount} ads.`,
       );

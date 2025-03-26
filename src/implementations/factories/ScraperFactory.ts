@@ -1,11 +1,13 @@
 import { Logger } from '@nestjs/common';
 import { ScraperPipeline } from '@src/models/ScraperPipeline';
 import { ScraperContext } from '@src/models/ScraperContext';
-import { ScraperOptions } from '@src/models/ScraperOptions';
 import { AdLibraryQuery } from '@src/models/AdLibraryQuery';
 import { FilterRegistry } from '../filters/FilterRegistry';
 import { StepFactory } from './StepFactory';
+import { ScraperOptions } from '@src/models/ScraperOptions';
+import { Injectable } from '@nestjs/common';
 
+@Injectable()
 export class ScraperFactory {
   constructor(
     private readonly logger: Logger,
@@ -57,7 +59,23 @@ export class ScraperFactory {
   private mergeWithDefaultOptions(
     options?: Partial<ScraperOptions>,
   ): ScraperOptions {
-    // Implement merging with default options
-    // ...implementation here...
+    const defaultOptions: ScraperOptions = {
+      behavior: {
+        applyFilters: false,
+        maxPages: 10,
+        waitForResults: true,
+        waitTimeout: 30000,
+      },
+      storage: {
+        enabled: true,
+        format: 'json',
+        outputPath: './ads',
+      },
+    };
+
+    return {
+      ...defaultOptions,
+      ...options,
+    };
   }
 }

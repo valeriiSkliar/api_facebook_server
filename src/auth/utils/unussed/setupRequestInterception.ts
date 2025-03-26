@@ -1,6 +1,6 @@
 import { Page } from 'playwright';
 import { Log } from 'crawlee';
-import { RequestCaptureService } from '../../services/RequestCapture';
+import { RequestCaptureService } from '@src/services/RequestCaptureService';
 // import { PrismaClient } from '@prisma/client';
 
 interface SetupRequestInterceptionOptions {

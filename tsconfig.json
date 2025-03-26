@@ -25,6 +25,7 @@
     "noFallthroughCasesInSwitch": false
   },
   "exclude": [
+    "src/auth",
     "base-scrapper_implementation",
     "base-scrapper_implementation/**/*",
     "test"

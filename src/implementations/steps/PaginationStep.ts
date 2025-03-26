@@ -1,8 +1,12 @@
+import { AbstractScraperStep } from '@src/interfaces/AbstractScraperStep';
+import { ScraperContext } from '@src/models/ScraperContext';
+
 export class PaginationStep extends AbstractScraperStep {
   shouldExecute(context: ScraperContext): boolean {
     return (
       context.state.adsCollected.length <
-        context.options.behavior.maxAdsToCollect && context.state.hasMoreResults
+        (context.options.behavior?.maxAdsToCollect || 200) &&
+      context.state.hasMoreResults
     );
   }
 
@@ -11,7 +15,7 @@ export class PaginationStep extends AbstractScraperStep {
       throw new Error('Page not initialized');
     }
 
-    this.logger.info('Scrolling to load more content');
+    this.logger.debug('Scrolling to load more content');
 
     // Scroll down to trigger loading more results
     await context.state.page.evaluate(() => {
@@ -28,7 +32,7 @@ export class PaginationStep extends AbstractScraperStep {
 
     if (isAtBottom) {
       context.state.hasMoreResults = false;
-      this.logger.info('Reached bottom of page');
+      this.logger.debug('Reached bottom of page');
     }
   }
 }

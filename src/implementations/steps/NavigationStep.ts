@@ -14,8 +14,8 @@ export class NavigationStep extends AbstractScraperStep {
 
     try {
       await context.state.page.goto(url, {
-        // waitUntil: 'domcontentloaded',
-        timeout: 2000,
+        // waitUntil: 'networkidle',
+        timeout: 5000,
       });
 
       // Handle cookie consent if present
@@ -54,10 +54,7 @@ export class NavigationStep extends AbstractScraperStep {
   }
 
   private buildAdLibraryUrl(query: AdLibraryQuery): string {
-    // Base URL for Facebook Ad Library
     const baseUrl = 'https://www.facebook.com/ads/library/';
-
-    // Construct query parameters
     const params = new URLSearchParams();
 
     // Add required parameters
@@ -68,23 +65,25 @@ export class NavigationStep extends AbstractScraperStep {
     params.append('media_type', query.mediaType);
     params.append('search_type', query.searchType);
 
-    // Add optional parameters
     if (query.isTargetedCountry) {
       params.append('is_targeted_country', 'true');
     }
 
-    // Add additional filters if present
-    if (query.filters) {
-      // Process filters based on your filter structure
-      // For example:
-      if (query.filters.dateRange) {
-        const { start, end } = query.filters.dateRange;
-        if (start) params.append('start_date', new Date(start).toISOString());
-        if (end) params.append('end_date', new Date(end).toISOString());
+    if (query.filters?.dateRange) {
+      const { start, end } = query.filters.dateRange;
+      if (start) {
+        params.append('start_date[min]', this.formatDate(start));
+      }
+      if (end) {
+        params.append('start_date[max]', this.formatDate(end));
       }
     }
 
-    // Construct the final URL
     return `${baseUrl}?${params.toString()}`;
+  }
+
+  private formatDate(date: Date | string): string {
+    const d = new Date(date);
+    return d.toISOString().split('T')[0];
   }
 }

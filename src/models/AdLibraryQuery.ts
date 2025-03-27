@@ -1,3 +1,10 @@
+export interface AdLibraryFilters {
+  dateRange?: {
+    start?: Date | string;
+    end?: Date | string;
+  };
+}
+
 export interface AdLibraryQuery {
   queryString: string;
   countries: string[];
@@ -6,5 +13,5 @@ export interface AdLibraryQuery {
   isTargetedCountry: boolean;
   mediaType: 'all' | 'image' | 'video';
   searchType: 'keyword_unordered' | 'keyword_exact_phrase';
-  filters?: Record<string, any>; // Extensible filter options
+  filters?: AdLibraryFilters;
 }

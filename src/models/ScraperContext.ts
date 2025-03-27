@@ -14,5 +14,6 @@ export interface ScraperContext {
     hasMoreResults: boolean;
     currentPage: number;
     errors: Error[];
+    forceStop: boolean;
   };
 }

@@ -52,6 +52,7 @@ export class ScraperFactory {
         hasMoreResults: true,
         currentPage: 0,
         errors: [],
+        forceStop: false,
       },
     };
   }

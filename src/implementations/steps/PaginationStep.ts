@@ -8,11 +8,13 @@ export class PaginationStep extends AbstractScraperStep {
       (context.options.behavior?.maxAdsToCollect || 200);
 
     if (maxAdsReached) {
-      context.state.hasMoreResults = false; // Останавливаем пагинацию
+      context.state.forceStop = true;
+      context.state.hasMoreResults = false;
+      this.logger.log('Max ads reached, stopping pagination');
       return false;
     }
 
-    return context.state.hasMoreResults;
+    return !context.state.forceStop && context.state.hasMoreResults;
   }
 
   async execute(context: ScraperContext): Promise<void> {
@@ -27,6 +29,17 @@ export class PaginationStep extends AbstractScraperStep {
     const maxNoNewAdsAttempts = 3;
 
     while (noNewAdsCount < maxNoNewAdsAttempts) {
+      // Check if max ads limit reached
+      if (
+        context.state.adsCollected.length >=
+        (context.options.behavior?.maxAdsToCollect || 200)
+      ) {
+        context.state.forceStop = true;
+        context.state.hasMoreResults = false;
+        this.logger.log('Max ads reached during pagination, stopping');
+        break;
+      }
+
       // Scroll down to trigger loading more results
       await context.state.page.evaluate(() => {
         window.scrollBy(0, 800);

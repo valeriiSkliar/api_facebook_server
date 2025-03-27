@@ -1,5 +1,4 @@
-import { Injectable } from '@nestjs/common';
-import { Log } from 'crawlee';
+import { Injectable, Logger } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 import { Request } from 'playwright';
@@ -10,7 +9,7 @@ export class RequestCaptureService {
   private requestCount = 0;
   private storagePath: string;
 
-  constructor(private readonly logger?: Log) {
+  constructor(private readonly logger?: Logger) {
     // Create storage directory if it doesn't exist
     this.storagePath = path.join(process.cwd(), 'storage', 'requests');
     if (!fs.existsSync(this.storagePath)) {
@@ -60,7 +59,7 @@ export class RequestCaptureService {
       this.capturedRequests.set(requestId, requestData);
 
       // Log the capture
-      this.logger?.debug('Request captured', {
+      this.logger?.log('Request captured', {
         id: requestId,
         url,
         method,
@@ -124,7 +123,7 @@ export class RequestCaptureService {
         JSON.stringify(requestData, null, 2),
       );
 
-      this.logger?.debug('Request saved to file', { filePath });
+      this.logger?.log('Request saved to file', { filePath });
     } catch (error) {
       this.logger?.error('Error saving request to file', {
         error: error instanceof Error ? error.message : String(error),

@@ -4,9 +4,9 @@ export interface AdData {
   pageId: string;
   pageName: string;
   snapshot: {
-    body?: { text?: string };
-    images?: Array<{ url: string }>;
-    videos?: Array<{ url: string }>;
+    body?: { text?: string } | null;
+    images?: Array<{ url?: string }>;
+    videos?: Array<{ url?: string }>;
     [key: string]: any;
   };
   startDate: number;

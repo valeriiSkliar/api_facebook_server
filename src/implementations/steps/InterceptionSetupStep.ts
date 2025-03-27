@@ -2,15 +2,69 @@ import { AbstractScraperStep } from '../../interfaces/AbstractScraperStep';
 import { ScraperContext } from '../../models/ScraperContext';
 import { AdData } from '../../models/AdData';
 import { RequestCaptureService } from '../../services/RequestCaptureService';
-import { Log } from 'crawlee';
+import { Logger } from '@nestjs/common';
+import { z } from 'zod';
+
+const SnapshotSchema = z
+  .object({
+    body: z
+      .object({
+        text: z.string().optional(),
+      })
+      .nullable()
+      .optional(),
+    images: z
+      .array(
+        z.object({
+          url: z.string().optional(),
+        }),
+      )
+      .optional(),
+    videos: z
+      .array(
+        z.object({
+          url: z.string().optional(),
+        }),
+      )
+      .optional(),
+  })
+  .catchall(z.unknown());
+
+const AdNodeSchema = z.object({
+  ad_archive_id: z.string(),
+  ad_id: z.string().nullable(),
+  page_id: z.string(),
+  page_name: z.string(),
+  snapshot: SnapshotSchema,
+  start_date: z.number().nullable(),
+  end_date: z.number().nullable(),
+  is_active: z.boolean(),
+  publisher_platform: z.array(z.string()).default([]),
+});
+
+const EdgeSchema = z.object({
+  node: z.object({
+    collated_results: z.array(AdNodeSchema),
+  }),
+});
+
+const AdResponseSchema = z.object({
+  data: z.object({
+    ad_library_main: z.object({
+      search_results_connection: z.object({
+        edges: z.array(EdgeSchema),
+      }),
+    }),
+  }),
+});
 
 export class InterceptionSetupStep extends AbstractScraperStep {
   private requestCapture: RequestCaptureService;
 
-  constructor(name: string, logger: any) {
+  constructor(name: string, logger: Logger) {
     super(name, logger);
     // Initialize the RequestCaptureService
-    this.requestCapture = new RequestCaptureService(logger as Log);
+    this.requestCapture = new RequestCaptureService(logger);
   }
 
   async execute(context: ScraperContext): Promise<void> {
@@ -19,26 +73,36 @@ export class InterceptionSetupStep extends AbstractScraperStep {
     }
 
     // Handle requests
-    await context.state.page.route('**/api/graphql**', async (route) => {
-      const request = route.request();
+    this.logger.log('Setting up request interception');
+    await context.state.page.route(
+      '**facebook.com/api/graphql**',
+      async (route) => {
+        const request = route.request();
 
-      // Capture and analyze important requests
-      if (
-        request.url().includes('api/graphql/') &&
-        request.method() === 'POST'
-      ) {
-        try {
-          await this.requestCapture.captureRequest(request);
-        } catch (error) {
-          this.logger.error('Error capturing request:', error);
+        // Capture and analyze important requests
+        if (
+          request.url().includes('api/graphql/') &&
+          request.method() === 'POST'
+        ) {
+          try {
+            this.logger.log('Capturing request:', request.url());
+            await this.requestCapture.captureRequest(request);
+            this.logger.log('Request captured');
+          } catch (error) {
+            this.logger.error('Error capturing request:', error);
+          }
         }
-      }
 
-      // Always continue the request
-      await route.continue();
-    });
+        // Always continue the request
+        await route.continue();
+      },
+    );
 
     // Handle responses
+    this.logger.log(
+      'Setting up response interception. page:',
+      context.state.page.url(),
+    );
     context.state.page.on('response', async (response) => {
       const url = response.url();
 
@@ -48,6 +112,7 @@ export class InterceptionSetupStep extends AbstractScraperStep {
         response.request().method() === 'POST'
       ) {
         try {
+          this.logger.log('Processing response:', url);
           const responseText = await response.text();
           const status = response.status();
 
@@ -123,58 +188,33 @@ export class InterceptionSetupStep extends AbstractScraperStep {
 
       if (jsonStart >= 0 && jsonEnd > jsonStart) {
         const potentialJson = responseText.substring(jsonStart, jsonEnd + 1);
-        const responseJson = JSON.parse(potentialJson);
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+        const parsedJson = JSON.parse(potentialJson);
+        const validatedData = AdResponseSchema.parse(parsedJson);
 
         const adNodes: AdData[] = [];
+        const edges =
+          validatedData.data.ad_library_main.search_results_connection.edges;
 
-        // Extract ad nodes from the response
-        if (
-          responseJson.data?.ad_library_main?.search_results_connection
-            ?.edges &&
-          Array.isArray(
-            responseJson.data.ad_library_main.search_results_connection.edges,
-          )
-        ) {
-          const edges =
-            responseJson.data.ad_library_main.search_results_connection.edges;
+        for (const edge of edges) {
+          for (const result of edge.node.collated_results) {
+            const adData: AdData = {
+              adArchiveId: result.ad_archive_id,
+              adId: result.ad_id,
+              pageId: result.page_id,
+              pageName: result.page_name,
+              snapshot: result.snapshot,
+              startDate: result.start_date ?? 0,
+              endDate: result.end_date ?? 0,
+              status: result.is_active ? 'ACTIVE' : 'INACTIVE',
+              publisherPlatform: result.publisher_platform,
+              rawData: result,
+            };
 
-          // Process each edge
-          for (const edge of edges) {
-            if (
-              edge.node?.collated_results &&
-              Array.isArray(edge.node.collated_results)
-            ) {
-              // Extract each ad's data
-              for (const result of edge.node.collated_results) {
-                if (!result) continue;
-
-                try {
-                  const adData: AdData = {
-                    adArchiveId: result.ad_archive_id || '',
-                    adId: result.ad_id || null,
-                    pageId: result.page_id || '',
-                    pageName: result.page_name || '',
-                    snapshot: result.snapshot || {},
-                    startDate: result.start_date || null,
-                    endDate: result.end_date || null,
-                    status: result.is_active ? 'ACTIVE' : 'INACTIVE',
-                    publisherPlatform: Array.isArray(result.publisher_platform)
-                      ? result.publisher_platform
-                      : [],
-                    rawData: result,
-                  };
-
-                  // Only add if we have the minimum required data
-                  if (adData.adArchiveId && adData.pageId) {
-                    adNodes.push(adData);
-                  } else {
-                    this.logger.warn('Skipping ad with missing required data');
-                  }
-                } catch (adError) {
-                  this.logger.error('Error processing individual ad:', adError);
-                  continue;
-                }
-              }
+            if (adData.adArchiveId && adData.pageId) {
+              adNodes.push(adData);
+            } else {
+              this.logger.warn('Skipping ad with missing required data');
             }
           }
         }

@@ -15,7 +15,10 @@ export class InitializationStep extends AbstractScraperStep {
     // Launch browser with options from context
     const browser = await launchPlaywright({
       launchOptions: {
-        headless: context.options.browser?.headless || true,
+        headless:
+          context.options.browser?.headless === undefined
+            ? true
+            : context.options.browser?.headless,
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',

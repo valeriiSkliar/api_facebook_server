@@ -4,6 +4,9 @@ import { AdData } from '../../models/AdData';
 import { RequestCaptureService } from '../../services/RequestCaptureService';
 import { Logger } from '@nestjs/common';
 import { z } from 'zod';
+import { plainToInstance } from 'class-transformer';
+import { validateOrReject } from 'class-validator';
+import { AdDataDto } from '../../dto/AdDataDto';
 
 const SnapshotSchema = z
   .object({
@@ -135,7 +138,7 @@ export class InterceptionSetupStep extends AbstractScraperStep {
 
             try {
               // Parse the response data
-              const adData = this.extractAdData(responseText);
+              const adData = await this.extractAdData(responseText);
 
               if (adData.length > 0) {
                 // Add to the collected ads, ensuring no duplicates
@@ -180,7 +183,7 @@ export class InterceptionSetupStep extends AbstractScraperStep {
     });
   }
 
-  private extractAdData(responseText: string): AdData[] {
+  private async extractAdData(responseText: string): Promise<AdData[]> {
     try {
       // Find the JSON content
       const jsonStart = responseText.indexOf('{');
@@ -211,10 +214,21 @@ export class InterceptionSetupStep extends AbstractScraperStep {
               rawData: result,
             };
 
-            if (adData.adArchiveId && adData.pageId) {
-              adNodes.push(adData);
-            } else {
-              this.logger.warn('Skipping ad with missing required data');
+            // Create and validate the DTO
+            try {
+              const adDataDto = plainToInstance(AdDataDto, adData);
+              await validateOrReject(adDataDto, {
+                skipMissingProperties: true,
+                forbidUnknownValues: false,
+              });
+
+              // If validation passes, add to collection
+              if (adData.adArchiveId && adData.pageId) {
+                adNodes.push(adData);
+              }
+            } catch (validationError) {
+              this.logger.warn('Ad data validation failed', validationError);
+              // Optionally log detailed validation errors if needed
             }
           }
         }
@@ -227,4 +241,51 @@ export class InterceptionSetupStep extends AbstractScraperStep {
 
     return [];
   }
+  // private extractAdData(responseText: string): AdData[] {
+  //   try {
+  //     // Find the JSON content
+  //     const jsonStart = responseText.indexOf('{');
+  //     const jsonEnd = responseText.lastIndexOf('}');
+
+  //     if (jsonStart >= 0 && jsonEnd > jsonStart) {
+  //       const potentialJson = responseText.substring(jsonStart, jsonEnd + 1);
+  //       // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+  //       const parsedJson = JSON.parse(potentialJson);
+  //       const validatedData = AdResponseSchema.parse(parsedJson);
+
+  //       const adNodes: AdData[] = [];
+  //       const edges =
+  //         validatedData.data.ad_library_main.search_results_connection.edges;
+
+  //       for (const edge of edges) {
+  //         for (const result of edge.node.collated_results) {
+  //           const adData: AdData = {
+  //             adArchiveId: result.ad_archive_id,
+  //             adId: result.ad_id,
+  //             pageId: result.page_id,
+  //             pageName: result.page_name,
+  //             snapshot: result.snapshot,
+  //             startDate: result.start_date ?? 0,
+  //             endDate: result.end_date ?? 0,
+  //             status: result.is_active ? 'ACTIVE' : 'INACTIVE',
+  //             publisherPlatform: result.publisher_platform,
+  //             rawData: result,
+  //           };
+
+  //           if (adData.adArchiveId && adData.pageId) {
+  //             adNodes.push(adData);
+  //           } else {
+  //             this.logger.warn('Skipping ad with missing required data');
+  //           }
+  //         }
+  //       }
+
+  //       return adNodes;
+  //     }
+  //   } catch (error) {
+  //     this.logger.error('Error extracting ad data:', error);
+  //   }
+
+  //   return [];
+  // }
 }

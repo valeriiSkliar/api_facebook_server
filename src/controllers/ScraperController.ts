@@ -9,6 +9,8 @@ import {
 import { FacebookAdScraperService } from '../services/FacebookAdScraperService';
 import { SearchParameterService } from '../services/SearchParameterService';
 import { ScraperRequestDto, ScraperResponseDto } from '@src/dto';
+import { AdDataDto } from '@src/dto';
+import { plainToInstance } from 'class-transformer';
 
 @Controller('scraper')
 export class ScraperController {
@@ -49,13 +51,20 @@ export class ScraperController {
     const result = await this.scraperService.scrapeAds(query, dto.options);
 
     // Transform the result to response DTO
-    return {
+    const response: ScraperResponseDto = {
       success: result.success,
       totalAds: result.totalCount,
       executionTime: result.executionTime,
       outputPath: result.outputPath,
       errors: result.errors.map((e) => e.message),
-      ads: result.includeAdsInResponse ? result.ads : undefined,
+      ads: undefined,
     };
+    // Only include ads if requested and available
+    if (result.includeAdsInResponse && result.ads.length > 0) {
+      // Transform and validate ads data through DTO
+      response.ads = plainToInstance(AdDataDto, result.ads);
+    }
+
+    return response;
   }
 }

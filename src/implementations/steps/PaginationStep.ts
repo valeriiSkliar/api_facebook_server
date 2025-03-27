@@ -3,11 +3,16 @@ import { ScraperContext } from '@src/models/ScraperContext';
 
 export class PaginationStep extends AbstractScraperStep {
   shouldExecute(context: ScraperContext): boolean {
-    return (
-      context.state.adsCollected.length <
-        (context.options.behavior?.maxAdsToCollect || 200) &&
-      context.state.hasMoreResults
-    );
+    const maxAdsReached =
+      context.state.adsCollected.length >=
+      (context.options.behavior?.maxAdsToCollect || 200);
+
+    if (maxAdsReached) {
+      context.state.hasMoreResults = false; // Останавливаем пагинацию
+      return false;
+    }
+
+    return context.state.hasMoreResults;
   }
 
   async execute(context: ScraperContext): Promise<void> {

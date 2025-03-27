@@ -3,6 +3,8 @@ import { ScraperFactory } from '../implementations/factories/ScraperFactory';
 import { AdLibraryQuery } from '../models/AdLibraryQuery';
 import { ScraperOptions } from '../models/ScraperOptions';
 import { ScraperResult } from '../models/ScraperResult';
+// import { plainToInstance } from 'class-transformer';
+// import { ScraperResponseDto } from '@src/dto';
 
 @Injectable()
 export class FacebookAdScraperService {
@@ -29,6 +31,24 @@ export class FacebookAdScraperService {
 
       // Add the includeAdsInResponse flag to the result
       result.includeAdsInResponse = options?.includeAdsInResponse || false;
+
+      //TODO: Optional: validate against the DTO for internal checks
+      // try {
+      //   const resultDto = plainToInstance(ScraperResponseDto, {
+      //     success: result.success,
+      //     totalCount: result.totalCount,
+      //     executionTime: result.executionTime,
+      //     outputPath: result.outputPath || '',
+      //     errors: result.errors.map((e) => e.message || String(e)),
+      //     includeAdsInResponse: !!result.includeAdsInResponse,
+      //     ads: result.includeAdsInResponse ? result.ads : undefined,
+      //   });
+
+      //   // Log validation success
+      //   this.logger.debug('Result validated successfully');
+      // } catch (validationError) {
+      //   this.logger.warn('Result validation issues:', validationError);
+      // }
 
       this.logger.log(
         `Scraping completed. Collected ${result.totalCount} ads.`,

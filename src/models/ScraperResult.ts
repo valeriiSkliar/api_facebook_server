@@ -33,7 +33,6 @@ export interface ScraperResult {
 
   /**
    * Whether to include the ads in the response
-   * This is derived from the options
    */
   includeAdsInResponse?: boolean;
 }

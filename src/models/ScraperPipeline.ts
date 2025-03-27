@@ -26,6 +26,7 @@ export class ScraperPipeline {
         }
       }
 
+      // Format the result to match ScraperResult structure
       return {
         success: context.state.errors.length === 0,
         ads: context.state.adsCollected,
@@ -33,6 +34,7 @@ export class ScraperPipeline {
         executionTime: Date.now() - startTime,
         outputPath: context.options?.storage?.outputPath || '',
         errors: context.state.errors,
+        includeAdsInResponse: context.options?.includeAdsInResponse || false,
       };
     } catch (error) {
       this.logger.error(`Pipeline execution failed`, error);
@@ -42,6 +44,7 @@ export class ScraperPipeline {
         totalCount: context.state.adsCollected.length,
         executionTime: Date.now() - startTime,
         errors: [...context.state.errors, error as Error],
+        includeAdsInResponse: context.options?.includeAdsInResponse || false,
       };
     } finally {
       // Clean up all steps

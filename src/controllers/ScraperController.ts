@@ -9,7 +9,6 @@ import {
 import { FacebookAdScraperService } from '../services/FacebookAdScraperService';
 import { SearchParameterService } from '../services/SearchParameterService';
 import { ScraperRequestDto, ScraperResponseDto } from '@src/dto';
-import { AdDataDto } from '@src/dto';
 import { plainToInstance } from 'class-transformer';
 
 @Controller('scraper')
@@ -51,20 +50,31 @@ export class ScraperController {
     const result = await this.scraperService.scrapeAds(query, dto.options);
 
     // Transform the result to response DTO
-    const response: ScraperResponseDto = {
+    // Transform the result to a DTO
+    const resultDto = plainToInstance(ScraperResponseDto, {
       success: result.success,
-      totalAds: result.totalCount,
+      totalCount: result.totalCount,
       executionTime: result.executionTime,
-      outputPath: result.outputPath,
-      errors: result.errors.map((e) => e.message),
-      ads: undefined,
-    };
+      outputPath: result.outputPath || '',
+      errors: result.errors.map((e) => e.message || String(e)),
+      includeAdsInResponse: !!result.includeAdsInResponse,
+      ads: result.includeAdsInResponse ? result.ads : undefined,
+    });
     // Only include ads if requested and available
-    if (result.includeAdsInResponse && result.ads.length > 0) {
-      // Transform and validate ads data through DTO
-      response.ads = plainToInstance(AdDataDto, result.ads);
-    }
+    // if (result.includeAdsInResponse && result.ads.length > 0) {
+    //   // Transform and validate ads data through DTO
+    //   resultDto.ads = plainToInstance(AdDataDto, result.ads);
+    // }
 
-    return response;
+    // Transform to response DTO (if you still need ScraperResponseDto)
+    return {
+      success: resultDto.success,
+      totalCount: resultDto.totalCount,
+      executionTime: resultDto.executionTime,
+      outputPath: resultDto.outputPath,
+      errors: resultDto.errors,
+      includeAdsInResponse: resultDto.includeAdsInResponse,
+      ads: resultDto.ads,
+    };
   }
 }

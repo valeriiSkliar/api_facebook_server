@@ -12,17 +12,45 @@ export class NavigationStep extends AbstractScraperStep {
     const url = this.buildAdLibraryUrl(context.query);
     this.logger.log(`Navigating to: ${url}`);
 
-    await context.state.page.goto(url, {
-      waitUntil: 'networkidle',
-      timeout: context.options.network?.timeout,
-    });
+    try {
+      await context.state.page.goto(url, {
+        // waitUntil: 'domcontentloaded',
+        timeout: 2000,
+      });
 
-    // Wait for main content
-    // await context.state.page.waitForSelector('[role="main"]', {
-    //   timeout: context.options.network?.timeout,
-    // });
+      // Handle cookie consent if present
+      try {
+        const cookieSelector =
+          '[data-testid="cookie-policy-manage-dialog-accept-button"]';
+        await context.state.page.waitForSelector(cookieSelector, {
+          timeout: 5000,
+        });
+        await context.state.page.click(cookieSelector);
+        this.logger.log('Accepted cookies');
+      } catch {
+        this.logger.log('No cookie banner found or already accepted');
+      }
 
-    await context.state.page.waitForTimeout(5000);
+      // Wait for content to load
+      // await context.state.page.waitForSelector('[role="main"]', {
+      //   timeout: 30000,
+      //   state: 'visible',
+      // });
+
+      // Additional wait to ensure dynamic content loads
+      await context.state.page.waitForTimeout(2000);
+
+      // Check for login requirement
+      // const loginButton = await context.state.page.$(
+      //   '[data-testid="royal_login_button"]',
+      // );
+      // if (loginButton) {
+      //   throw new Error('Facebook authentication required');
+      // }
+    } catch (error) {
+      this.logger.error('Navigation failed:', error);
+      throw new Error('Failed to load Facebook Ads Library');
+    }
   }
 
   private buildAdLibraryUrl(query: AdLibraryQuery): string {

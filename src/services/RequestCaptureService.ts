@@ -20,7 +20,7 @@ export class RequestCaptureService {
 
   /**
    * Captures and stores details about a request
-   * @param request The Puppeteer request object
+   * @param request The Playwright request object
    * @param associatedId Optional ID to associate with this request (like tiktokAccountId)
    * @returns A unique ID for the captured request
    */

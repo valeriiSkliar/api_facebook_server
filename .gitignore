@@ -78,3 +78,5 @@ yarn-error.log*
 
 # Rules
 .cursor/rules
+
+data/*

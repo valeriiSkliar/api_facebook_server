@@ -18,6 +18,7 @@ export class InterceptionSetupStep extends AbstractScraperStep {
       throw new Error('Page not initialized');
     }
 
+    // Handle requests
     await context.state.page.route('**/api/graphql**', async (route) => {
       const request = route.request();
 
@@ -37,6 +38,7 @@ export class InterceptionSetupStep extends AbstractScraperStep {
       await route.continue();
     });
 
+    // Handle responses
     context.state.page.on('response', async (response) => {
       const url = response.url();
 
@@ -47,6 +49,17 @@ export class InterceptionSetupStep extends AbstractScraperStep {
       ) {
         try {
           const responseText = await response.text();
+          const status = response.status();
+
+          // Log response details for debugging
+          this.logger.debug(`GraphQL Response Status: ${status}`);
+          this.logger.debug(`GraphQL Response URL: ${url}`);
+
+          // Only process successful responses
+          if (status !== 200) {
+            this.logger.warn(`Skipping response with status ${status}`);
+            return;
+          }
 
           // Check if the response contains ad data
           if (
@@ -60,20 +73,34 @@ export class InterceptionSetupStep extends AbstractScraperStep {
               const adData = this.extractAdData(responseText);
 
               if (adData.length > 0) {
-                // Add to the collected ads
-                context.state.adsCollected.push(...adData);
-                this.logger.log(
-                  `Total ads collected: ${context.state.adsCollected.length}`,
+                // Add to the collected ads, ensuring no duplicates
+                const newAds = adData.filter(
+                  (ad) =>
+                    !context.state.adsCollected.some(
+                      (existing) => existing.adArchiveId === ad.adArchiveId,
+                    ),
                 );
 
-                // Check if we've reached the maximum
-                const maxAds = context.options.behavior?.maxAdsToCollect || 200;
-                if (context.state.adsCollected.length >= maxAds) {
+                if (newAds.length > 0) {
+                  context.state.adsCollected.push(...newAds);
                   this.logger.log(
-                    `Reached maximum of ${maxAds} ads to collect`,
+                    `Added ${newAds.length} new ads. Total collected: ${context.state.adsCollected.length}`,
                   );
-                  context.state.hasMoreResults = false;
+
+                  // Check if we've reached the maximum
+                  const maxAds =
+                    context.options.behavior?.maxAdsToCollect || 200;
+                  if (context.state.adsCollected.length >= maxAds) {
+                    this.logger.log(
+                      `Reached maximum of ${maxAds} ads to collect`,
+                    );
+                    context.state.hasMoreResults = false;
+                  }
+                } else {
+                  this.logger.debug('No new unique ads found in response');
                 }
+              } else {
+                this.logger.debug('No ads found in response');
               }
             } catch (parseError) {
               this.logger.error('Error parsing response JSON:', parseError);
@@ -90,7 +117,7 @@ export class InterceptionSetupStep extends AbstractScraperStep {
 
   private extractAdData(responseText: string): AdData[] {
     try {
-      // Sometimes responses might have non-standard JSON characters
+      // Find the JSON content
       const jsonStart = responseText.indexOf('{');
       const jsonEnd = responseText.lastIndexOf('}');
 
@@ -119,20 +146,34 @@ export class InterceptionSetupStep extends AbstractScraperStep {
             ) {
               // Extract each ad's data
               for (const result of edge.node.collated_results) {
-                const adData: AdData = {
-                  adArchiveId: result.ad_archive_id,
-                  adId: result.ad_id,
-                  pageId: result.page_id,
-                  pageName: result.page_name,
-                  snapshot: result.snapshot || {},
-                  startDate: result.start_date,
-                  endDate: result.end_date,
-                  status: result.is_active ? 'ACTIVE' : 'INACTIVE',
-                  publisherPlatform: result.publisher_platform || [],
-                  rawData: result, // Store the complete raw data
-                };
+                if (!result) continue;
 
-                adNodes.push(adData);
+                try {
+                  const adData: AdData = {
+                    adArchiveId: result.ad_archive_id || '',
+                    adId: result.ad_id || null,
+                    pageId: result.page_id || '',
+                    pageName: result.page_name || '',
+                    snapshot: result.snapshot || {},
+                    startDate: result.start_date || null,
+                    endDate: result.end_date || null,
+                    status: result.is_active ? 'ACTIVE' : 'INACTIVE',
+                    publisherPlatform: Array.isArray(result.publisher_platform)
+                      ? result.publisher_platform
+                      : [],
+                    rawData: result,
+                  };
+
+                  // Only add if we have the minimum required data
+                  if (adData.adArchiveId && adData.pageId) {
+                    adNodes.push(adData);
+                  } else {
+                    this.logger.warn('Skipping ad with missing required data');
+                  }
+                } catch (adError) {
+                  this.logger.error('Error processing individual ad:', adError);
+                  continue;
+                }
               }
             }
           }

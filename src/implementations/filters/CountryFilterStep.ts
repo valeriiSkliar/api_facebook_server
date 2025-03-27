@@ -12,8 +12,13 @@ export class CountryFilterStep extends AbstractFilterStep {
       throw new Error('Page not initialized');
     }
 
-    const countryFilter = context.query.filters?.country;
+    const countryFilter = context.query.filters?.countries;
     if (!countryFilter) return;
+
+    const countryFilterElement = await context.state.page.waitForSelector(
+      'input[name="country"]',
+    );
+    if (!countryFilterElement) return;
 
     // Implementation to apply country filter
     // e.g., clicking dropdown, selecting countries, etc.

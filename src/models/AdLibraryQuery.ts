@@ -3,6 +3,7 @@ export interface AdLibraryFilters {
     start?: Date | string;
     end?: Date | string;
   };
+  countries?: string[];
 }
 
 export interface AdLibraryQuery {

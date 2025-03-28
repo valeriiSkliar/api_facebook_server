@@ -20,7 +20,6 @@ export class AuthMiddleware implements NestMiddleware {
     if (!email || Array.isArray(email)) {
       return res.status(401).json({ message: 'Unauthorized' });
     }
-    console.log('api key is valid');
     // Add user information to request based on API key or JWT
     req.user = { id: userKey, email };
 

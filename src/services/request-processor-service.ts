@@ -9,7 +9,6 @@ import {
 import { BrowserPoolService } from './browser-pool-service';
 import { FacebookAdScraperService } from './FacebookAdScraperService';
 import { AdLibraryQuery } from '@src/models/AdLibraryQuery';
-import { Page } from 'playwright';
 
 @Injectable()
 export class RequestProcessorService {
@@ -79,12 +78,9 @@ export class RequestProcessorService {
     if (request.browserId) {
       return await this.browserPool.executeInBrowser(
         request.browserId,
-        async (page: Page) => {
+        async () => {
           // Prepare the query from request parameters
           const query = this.buildFacebookQuery(request);
-          console.log('query', query);
-          console.log('request', request);
-          console.log('page', page);
           // Execute the Facebook scraper with the page
           return await this.facebookAdScraperService.scrapeAds(
             query,
@@ -104,25 +100,56 @@ export class RequestProcessorService {
   }
 
   private buildFacebookQuery(request: RequestMetadata): AdLibraryQuery {
-    console.log('request', request);
-    // Extract and map parameters to the AdLibraryQuery format
-    throw new Error('Facebook scraper not yet implemented');
-    // return {
-    //   queryString: parameters.queryString || '',
-    //   countries: parameters.countries || ['ALL'],
-    //   activeStatus: parameters.activeStatus || 'active',
-    //   adType: parameters.adType || 'all',
-    //   isTargetedCountry: parameters.isTargetedCountry || false,
-    //   mediaType: parameters.mediaType || 'all',
-    //   searchType: parameters.searchType || 'keyword_unordered',
-    //   filters: parameters.filters || {},
-    // };
+    this.logger.log('Building Facebook query', request);
+
+    // Создаем запрос с данными по умолчанию
+    const defaultQuery: AdLibraryQuery = {
+      queryString: '',
+      countries: ['ALL'],
+      activeStatus: 'active',
+      adType: 'all',
+      isTargetedCountry: false,
+      mediaType: 'all',
+      searchType: 'keyword_unordered',
+      filters: {},
+    };
+
+    // Проверяем наличие параметров запроса
+    if (!request.parameters || !request.parameters.query) {
+      return defaultQuery;
+    }
+
+    // Получаем query из параметров и устанавливаем значения
+    const query = request.parameters.query;
+
+    return {
+      queryString: query.queryString || defaultQuery.queryString,
+      countries: query.countries || defaultQuery.countries,
+      activeStatus:
+        (query.activeStatus as 'active' | 'inactive' | 'all') ||
+        defaultQuery.activeStatus,
+      adType:
+        (query.adType as 'political_and_issue_ads' | 'all') ||
+        defaultQuery.adType,
+      isTargetedCountry:
+        typeof query.isTargetedCountry === 'boolean'
+          ? query.isTargetedCountry
+          : defaultQuery.isTargetedCountry,
+      mediaType:
+        (query.mediaType as 'all' | 'image' | 'video') ||
+        defaultQuery.mediaType,
+      searchType:
+        (query.searchType as 'keyword_unordered' | 'keyword_exact_phrase') ||
+        defaultQuery.searchType,
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      filters: query.filters || defaultQuery.filters,
+    };
   }
 
   private processTikTokScraper(request: RequestMetadata): Promise<any> {
+    this.logger.log('Processing TikTok scraper', request);
     // Similar implementation for Instagram scraping
     // ...
-    console.log('request', request);
-    throw new Error('Instagram scraper not yet implemented');
+    throw new Error('TikTok scraper not yet implemented');
   }
 }

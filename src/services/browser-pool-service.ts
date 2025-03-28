@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { RedisService } from '../redis/redis.service';
 import { v4 as uuidv4 } from 'uuid';
 import { Browser, chromium, Page } from 'playwright';
-import { CreateRequestDto } from '@src/dto/create-request.dto';
+import { ScraperOptionsDto } from '@src/dto/ScraperOptionsDto';
 
 export interface BrowserInstance {
   id: string;
@@ -46,7 +46,7 @@ export class BrowserPoolService {
     requestId: string,
     userId: string,
     userEmail: string,
-    parameters: CreateRequestDto['parameters'],
+    parameters: ScraperOptionsDto,
   ): Promise<BrowserInstance | null> {
     try {
       // Check if we already have too many active browsers
@@ -72,22 +72,26 @@ export class BrowserPoolService {
         expiresAt,
       };
 
-      // TODO: Add browser options
-      console.log(parameters);
-      // Launch a real browser instance
+      // Log browser parameters
+      this.logger.log('Launching browser with parameters:', parameters);
+
       try {
+        // Получаем настройки браузера из параметров запроса
+        const browserOptions = parameters?.browser || {};
+
+        // Запускаем браузер с настройками из параметров
         const browser = await chromium.launch({
-          headless: false,
+          // Используем headless из параметров или по умолчанию false
+          headless: browserOptions?.headless === false ? false : true,
           args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
             '--disable-dev-shm-usage',
           ],
           executablePath: process.env.CHROME_PATH,
-          slowMo: 50,
+          slowMo: 50, // Используем фиксированное значение
         });
 
-        console.log('Browser successfully started');
         // Store the browser instance in memory
         this.activeBrowsers.set(browserId, browser);
         browserInstance.browser = browser;
@@ -272,7 +276,6 @@ export class BrowserPoolService {
   ): Promise<any> {
     try {
       const browserInstance = await this.getBrowser(browserId);
-      console.log('browserInstance', browserInstance);
       if (!browserInstance || !browserInstance.browser) {
         throw new Error(`Browser ${browserId} not found or not initialized`);
       }
@@ -320,14 +323,16 @@ export class BrowserPoolService {
     return this.activeBrowsers.size;
   }
 
-  async createBrowser(parameters?: any): Promise<Browser> {
+  async createBrowser(parameters?: ScraperOptionsDto): Promise<Browser> {
     try {
-      // TODO: Add browser options
       this.logger.log(`Creating new browser with parameters:`, parameters);
 
-      // Launch a real browser instance
+      // Получаем настройки браузера из параметров
+      const browserOptions = parameters?.browser || {};
+
+      // Launch a real browser instance with appropriate parameters
       const browser = await chromium.launch({
-        headless: false,
+        headless: browserOptions?.headless === false ? false : true,
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
@@ -335,11 +340,15 @@ export class BrowserPoolService {
         ],
       });
 
+      // Создаем страницу для использования
+      await browser.newPage();
+
       // Генерируем ID для браузера
       const browserId = uuidv4();
 
       // Сохраняем экземпляр браузера в Map
       this.activeBrowsers.set(browserId, browser);
+      this.logger.log(`Browser added to pool with ID: ${browserId}`);
 
       this.logger.log(`Browser created with ID: ${browserId}`);
 

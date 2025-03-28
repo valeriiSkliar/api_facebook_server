@@ -28,13 +28,6 @@ export class RequestController {
     @Request() req: AuthenticatedRequest,
     @Body() createDto: CreateRequestDto,
   ) {
-    this.logger.debug('Raw request body:', createDto);
-    this.logger.debug('Parameters type:', typeof createDto.parameters);
-    this.logger.debug(
-      'Parameters content:',
-      JSON.stringify(createDto.parameters, null, 2),
-    );
-
     try {
       const userId = req.user.id;
       const userEmail = req.user.email;

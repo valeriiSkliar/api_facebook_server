@@ -6,10 +6,13 @@ import {
   ValidateNested,
   IsNumber,
   Min,
+  IsEnum,
+  IsArray,
 } from 'class-validator';
 
 // import { ScraperOptions } from '@src/models/ScraperOptions';
 import { Type } from 'class-transformer';
+import { AdLibraryQuery } from '@src/models/AdLibraryQuery';
 
 // export class ScraperOptionsDto implements Partial<ScraperOptions> {
 //   @IsObject()
@@ -124,6 +127,39 @@ export class BehaviorOptionsDto {
   cleanUpTimeout?: number;
 }
 
+export class ScraperAdLibraryQueryDto implements Partial<AdLibraryQuery> {
+  @IsString()
+  @IsOptional()
+  queryString?: string;
+
+  @IsArray()
+  @IsOptional()
+  countries?: string[];
+
+  @IsEnum(['active', 'inactive', 'all'])
+  @IsOptional()
+  activeStatus?: 'active' | 'inactive' | 'all';
+
+  @IsEnum(['political_and_issue_ads', 'all'])
+  @IsOptional()
+  adType?: 'political_and_issue_ads' | 'all';
+
+  @IsBoolean()
+  @IsOptional()
+  isTargetedCountry?: boolean;
+
+  @IsEnum(['all', 'image', 'video'])
+  @IsOptional()
+  mediaType?: 'all' | 'image' | 'video';
+
+  @IsEnum(['keyword_unordered', 'keyword_exact_phrase'])
+  @IsOptional()
+  searchType?: 'keyword_unordered' | 'keyword_exact_phrase';
+
+  @IsOptional()
+  filters?: any;
+}
+
 export class ScraperOptionsDto {
   @IsOptional()
   @ValidateNested()
@@ -148,4 +184,9 @@ export class ScraperOptionsDto {
   @ValidateNested()
   @Type(() => BehaviorOptionsDto)
   behavior?: BehaviorOptionsDto;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ScraperAdLibraryQueryDto)
+  query?: ScraperAdLibraryQueryDto;
 }

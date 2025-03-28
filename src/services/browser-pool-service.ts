@@ -137,7 +137,7 @@ export class BrowserPoolService {
       };
 
       // Log browser parameters
-      // this.logger.log('Launching browser with parameters:', parameters);
+      this.logger.log('Launching browser with parameters:', parameters);
 
       try {
         // Получаем настройки браузера из параметров запроса

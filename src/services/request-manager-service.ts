@@ -127,27 +127,25 @@ export class RequestManagerService {
       const existingBrowserId =
         await this.redisService.get<string>(userBrowserKey);
 
-      const browserInstanceq = await this.browserPoolService.getBrowser(
-        existingBrowserId || '',
-      );
-      this.logger.log(`Browser instance:`, {
-        browserInstanceq,
-      });
       if (existingBrowserId) {
         // Use existing browser
         requestMetadata.browserId = existingBrowserId;
         requestMetadata.status = RequestStatus.PROCESSING;
         const browserInstance =
           await this.browserPoolService.getBrowser(existingBrowserId);
-        this.logger.log(`Browser instance:`, {
-          browserInstance,
-        });
-        if (!browserInstance) {
+
+        if (browserInstance) {
+          this.logger.log(`Using existing browser instance:`, {
+            browserInstance,
+          });
+        } else {
           this.logger.warn(
             `Browser ${existingBrowserId} not found in active browsers pool, creating a new one`,
           );
+          // Immediately delete the stale browser reference
+          await this.redisService.del(userBrowserKey);
         }
-        await this.redisService.del(`${this.USER_BROWSER_PREFIX}${userId}`);
+
         const newBrowser = await this.browserPoolService.reserveBrowser(
           requestId,
           userId,
@@ -214,6 +212,13 @@ export class RequestManagerService {
               },
             });
 
+            this.logger.log(`Browser instance created:`, {
+              browserId: browser.id,
+              requestId: requestId,
+              browserMemoryState: browser.browser
+                ? 'initialized'
+                : 'not-initialized',
+            });
             this.logger.log(
               `Browser ${browser.id} reserved for user ${userId}, request ${requestId}`,
             );

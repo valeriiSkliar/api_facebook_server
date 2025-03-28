@@ -32,6 +32,11 @@ export class BrowserPoolService {
         this.logger.error('Error in browser cleanup', err),
       );
     }, 60 * 1000); // Run every minute
+
+    // Synchronize browsers on startup
+    this.synchronizeBrowsers().catch((err) =>
+      this.logger.error('Error synchronizing browsers on startup', err),
+    );
   }
 
   /**
@@ -120,6 +125,10 @@ export class BrowserPoolService {
    */
   async getBrowser(browserId: string): Promise<BrowserInstance | null> {
     try {
+      if (!browserId) {
+        return null;
+      }
+
       // Try to get from Redis
       const redisKey = `${this.BROWSER_PREFIX}${browserId}`;
       const browserData =
@@ -133,14 +142,15 @@ export class BrowserPoolService {
       const browser = this.activeBrowsers.get(browserId);
       if (browser) {
         browserData.browser = browser;
+        return browserData;
       } else {
         this.logger.warn(
           `Browser ${browserId} found in Redis but not in memory`,
         );
+        // Clean up stale Redis entry
+        await this.redisService.del(redisKey);
         return null;
       }
-
-      return browserData;
     } catch (error) {
       this.logger.error(`Error getting browser ${browserId}`, error);
       throw error;
@@ -262,6 +272,7 @@ export class BrowserPoolService {
   ): Promise<any> {
     try {
       const browserInstance = await this.getBrowser(browserId);
+      console.log('browserInstance', browserInstance);
       if (!browserInstance || !browserInstance.browser) {
         throw new Error(`Browser ${browserId} not found or not initialized`);
       }
@@ -351,19 +362,35 @@ export class BrowserPoolService {
    * Synchronize browsers between Redis and memory
    */
   async synchronizeBrowsers() {
-    const browserKeys = await this.redisService.keys(`${this.BROWSER_PREFIX}*`);
+    try {
+      this.logger.log('Starting browser synchronization');
+      const browserKeys = await this.redisService.keys(
+        `${this.BROWSER_PREFIX}*`,
+      );
+      this.logger.log(`Found ${browserKeys.length} browsers in Redis`);
 
-    // Check each browser in Redis
-    for (const key of browserKeys) {
-      const browserId = key.replace(this.BROWSER_PREFIX, '');
-      const browserData = await this.redisService.get<BrowserInstance>(key);
+      let removedCount = 0;
 
-      // If browser exists in Redis but not in memory
-      if (browserData && !this.activeBrowsers.has(browserId)) {
-        // Either remove from Redis or recreate browser
-        await this.redisService.del(key);
-        this.logger.warn(`Removed stale browser reference: ${browserId}`);
+      // Check each browser in Redis
+      for (const key of browserKeys) {
+        const browserId = key.replace(this.BROWSER_PREFIX, '');
+        const browserData = await this.redisService.get<BrowserInstance>(key);
+
+        // If browser exists in Redis but not in memory
+        if (browserData && !this.activeBrowsers.has(browserId)) {
+          // Remove from Redis
+          await this.redisService.del(key);
+          removedCount++;
+          this.logger.warn(`Removed stale browser reference: ${browserId}`);
+        }
       }
+
+      this.logger.log(
+        `Browser synchronization complete. Removed ${removedCount} stale references. Current active browsers: ${this.activeBrowsers.size}`,
+      );
+    } catch (error) {
+      this.logger.error('Error during browser synchronization', error);
+      throw error;
     }
   }
 }

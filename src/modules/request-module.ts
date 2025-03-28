@@ -8,6 +8,14 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { RedisModule } from '../redis/redis.module';
 import { RequestScheduler } from '../schedulers/request-scheduler';
 import { QueueService } from '../services/queue-service';
+import { ScraperRegistry } from '../services/ScraperRegistry';
+import { StepFactory } from '../implementations/factories/StepFactory';
+import { ScraperFactory } from '../implementations/factories/ScraperFactory';
+import { WorkerService } from '../services/worker-service';
+import { RequestProcessorScheduler } from '../schedulers/request-processor-scheduler';
+import { RequestProcessorService } from '../services/request-processor-service';
+import { FacebookAdScraperService } from '../services/FacebookAdScraperService';
+
 @Module({
   imports: [PrismaModule, RedisModule, ScheduleModule.forRoot()],
   controllers: [RequestController],
@@ -17,6 +25,13 @@ import { QueueService } from '../services/queue-service';
     CacheService,
     RequestScheduler,
     QueueService,
+    WorkerService,
+    RequestProcessorService,
+    RequestProcessorScheduler,
+    ScraperRegistry,
+    StepFactory,
+    ScraperFactory,
+    FacebookAdScraperService,
     {
       provide: Logger,
       useValue: new Logger('RequestModule'),

@@ -28,11 +28,18 @@ export class QueueService {
     try {
       // Get the highest priority request (lowest score)
       const result = await this.redisService.zPopMin(this.QUEUE_KEY);
-      if (!result) return null;
+      // Проверяем, что результат существует и является массивом
+      if (!result || !Array.isArray(result) || result.length === 0) {
+        return null;
+      }
 
       const [requestId] = result;
-      this.logger.log(`Request ${requestId} dequeued for processing`);
-      return requestId;
+      // Проверяем, что requestId валидное значение
+      if (requestId) {
+        this.logger.log(`Request ${requestId} dequeued for processing`);
+        return requestId;
+      }
+      return null;
     } catch (error) {
       this.logger.error('Failed to dequeue request', error);
       return null;

@@ -9,6 +9,7 @@ import {
 import { BrowserPoolService } from './browser-pool-service';
 import { FacebookAdScraperService } from './FacebookAdScraperService';
 import { AdLibraryQuery } from '@src/models/AdLibraryQuery';
+import { Page } from 'playwright';
 
 @Injectable()
 export class RequestProcessorService {
@@ -40,9 +41,11 @@ export class RequestProcessorService {
       let result;
       switch (request.requestType) {
         case 'facebook_scraper':
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           result = await this.processFacebookScraper(request);
           break;
         case 'tiktok_scraper':
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           result = await this.processTikTokScraper(request);
           break;
         default:
@@ -57,14 +60,14 @@ export class RequestProcessorService {
       );
 
       return result;
-    } catch (error) {
+    } catch (error: unknown) {
       this.logger.error(`Error processing request ${requestId}`, error);
 
       // Update request status to FAILED
       await this.requestManager.updateRequestStatus(
         requestId,
         RequestStatus.FAILED,
-        { error: error.message },
+        { error: (error as Error).message },
       );
 
       throw error;
@@ -76,10 +79,12 @@ export class RequestProcessorService {
     if (request.browserId) {
       return await this.browserPool.executeInBrowser(
         request.browserId,
-        async (page) => {
+        async (page: Page) => {
           // Prepare the query from request parameters
-          const query = this.buildFacebookQuery(request.parameters);
-
+          const query = this.buildFacebookQuery(request);
+          console.log('query', query);
+          console.log('request', request);
+          console.log('page', page);
           // Execute the Facebook scraper with the page
           return await this.facebookAdScraperService.scrapeAds(
             query,
@@ -90,7 +95,7 @@ export class RequestProcessorService {
     } else {
       // No browser assigned, just use the service directly
       // (it will create its own browser)
-      const query = this.buildFacebookQuery(request.parameters);
+      const query = this.buildFacebookQuery(request);
       return await this.facebookAdScraperService.scrapeAds(
         query,
         request.parameters,
@@ -98,23 +103,26 @@ export class RequestProcessorService {
     }
   }
 
-  private buildFacebookQuery(parameters: any): AdLibraryQuery {
+  private buildFacebookQuery(request: RequestMetadata): AdLibraryQuery {
+    console.log('request', request);
     // Extract and map parameters to the AdLibraryQuery format
-    return {
-      queryString: parameters.queryString || '',
-      countries: parameters.countries || ['ALL'],
-      activeStatus: parameters.activeStatus || 'active',
-      adType: parameters.adType || 'all',
-      isTargetedCountry: parameters.isTargetedCountry || false,
-      mediaType: parameters.mediaType || 'all',
-      searchType: parameters.searchType || 'keyword_unordered',
-      filters: parameters.filters || {},
-    };
+    throw new Error('Facebook scraper not yet implemented');
+    // return {
+    //   queryString: parameters.queryString || '',
+    //   countries: parameters.countries || ['ALL'],
+    //   activeStatus: parameters.activeStatus || 'active',
+    //   adType: parameters.adType || 'all',
+    //   isTargetedCountry: parameters.isTargetedCountry || false,
+    //   mediaType: parameters.mediaType || 'all',
+    //   searchType: parameters.searchType || 'keyword_unordered',
+    //   filters: parameters.filters || {},
+    // };
   }
 
-  private async processTikTokScraper(request: RequestMetadata): Promise<any> {
+  private processTikTokScraper(request: RequestMetadata): Promise<any> {
     // Similar implementation for Instagram scraping
     // ...
+    console.log('request', request);
     throw new Error('Instagram scraper not yet implemented');
   }
 }

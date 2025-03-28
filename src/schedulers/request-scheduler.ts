@@ -68,13 +68,13 @@ export class RequestScheduler {
       const activeBrowsers = await this.browserPool.getActiveBrowsers();
 
       this.logger.log(`System Stats:
-- Active Browsers: ${activeBrowsers.length}/${this.browserPool.getBrowserCount()}
-- Browser Details: ${activeBrowsers
-        .map(
-          (b) =>
-            `${b.id.substring(0, 8)}... (${b.requestId?.substring(0, 8)}...)`,
-        )
-        .join(', ')}`);
+        - Active Browsers: ${activeBrowsers.length}/${this.browserPool.getBrowserCount()}
+        - Browser Details: ${activeBrowsers
+          .map(
+            (b) =>
+              `${b.id.substring(0, 8)}... (${b.requestId?.substring(0, 8)}...)`,
+          )
+          .join(', ')}`);
     } catch (error) {
       this.logger.error('Error logging system stats', error);
     }

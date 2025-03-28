@@ -8,6 +8,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { BrowserPoolService } from './browser-pool-service';
 import { CreateRequestDto } from '@src/dto/create-request.dto';
 import { Prisma } from '@prisma/client';
+import { QueueService } from './queue-service';
 
 export interface RequestMetadata {
   id: string;
@@ -49,6 +50,7 @@ export class RequestManagerService {
     private readonly redisService: RedisService,
     private readonly prismaService: PrismaService,
     private readonly browserPoolService: BrowserPoolService,
+    private readonly queueService: QueueService,
   ) {}
 
   /**
@@ -144,9 +146,30 @@ export class RequestManagerService {
           },
         });
 
-        this.logger.log(
-          `Using existing browser ${existingBrowserId} for user ${userId}, request ${requestId}`,
-        );
+        // this.logger.log(
+        //   `Using existing browser ${existingBrowserId} for user ${userId}, request ${requestId}`,
+        // );
+
+        // const existingBrowser =
+        //   this.browserPoolService.activeBrowsers.get(existingBrowserId);
+
+        // if (!existingBrowser) {
+        //   this.logger.warn(
+        //     `Browser ${existingBrowserId} not found in active browsers pool, creating a new one`,
+        //   );
+
+        //   // Удаляем невалидный ID из Redis
+        //   await this.redisService.del(`${this.USER_BROWSER_PREFIX}${userId}`);
+
+        //   // Создаем новый браузер
+        //   return await this.createNewBrowserForUser(userId, requestId);
+        // }
+
+        // this.logger.log(`Browser instance found`, {
+        //   browser: existingBrowser,
+        // });
+
+        await this.queueService.enqueueRequest(requestId, priority);
       } else {
         // Try to reserve a browser
         try {
@@ -186,6 +209,13 @@ export class RequestManagerService {
               `Browser ${browser.id} reserved for user ${userId}, request ${requestId}`,
             );
           }
+          if (browser) {
+            // Enqueue for processing
+            await this.queueService.enqueueRequest(requestId, priority);
+            this.logger.log(`Request ${requestId} enqueued for processing`);
+          }
+
+          return requestMetadata;
         } catch (error) {
           this.logger.error(
             `Failed to reserve browser for request ${requestId}`,
@@ -538,6 +568,63 @@ export class RequestManagerService {
       return count;
     } catch (error) {
       this.logger.error('Error cleaning up expired requests', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create a new browser instance for a user
+   */
+  private async createNewBrowserForUser(
+    userId: string,
+    requestId: string,
+  ): Promise<any> {
+    try {
+      // Get user email from Redis or database
+      const userEmail = await this.redisService.get<string>(
+        `${this.USER_PREFIX}${userId}`,
+      );
+
+      if (!userEmail) {
+        this.logger.error(`User email not found for userId ${userId}`);
+        throw new Error(`User email not found for userId ${userId}`);
+      }
+
+      // Get request parameters
+      const request = await this.getRequest(requestId);
+      if (!request) {
+        this.logger.error(`Request not found: ${requestId}`);
+        throw new Error(`Request not found: ${requestId}`);
+      }
+
+      // Reserve a new browser
+      const browser = await this.browserPoolService.reserveBrowser(
+        requestId,
+        userId,
+        userEmail,
+        request.parameters,
+      );
+
+      if (!browser) {
+        this.logger.warn(`Failed to create new browser for user ${userId}`);
+        return null;
+      }
+
+      // Store browser id for user
+      const userBrowserKey = `${this.USER_BROWSER_PREFIX}${userId}`;
+      await this.redisService.set(
+        userBrowserKey,
+        browser.id,
+        this.BROWSER_EXPIRY,
+      );
+
+      this.logger.log(
+        `New browser ${browser.id} created for user ${userId}, request ${requestId}`,
+      );
+
+      return browser;
+    } catch (error) {
+      this.logger.error(`Error creating browser for user ${userId}`, error);
       throw error;
     }
   }

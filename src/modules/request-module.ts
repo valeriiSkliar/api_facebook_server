@@ -7,7 +7,7 @@ import { CacheService } from '../services/cache-service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { RedisModule } from '../redis/redis.module';
 import { RequestScheduler } from '../schedulers/request-scheduler';
-
+import { QueueService } from '../services/queue-service';
 @Module({
   imports: [PrismaModule, RedisModule, ScheduleModule.forRoot()],
   controllers: [RequestController],
@@ -16,6 +16,7 @@ import { RequestScheduler } from '../schedulers/request-scheduler';
     BrowserPoolService,
     CacheService,
     RequestScheduler,
+    QueueService,
     {
       provide: Logger,
       useValue: new Logger('RequestModule'),

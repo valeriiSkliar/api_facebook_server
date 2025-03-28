@@ -107,6 +107,16 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     return await this.defaultConnection.lrange(key, start, stop);
   }
 
+  async zAdd(key: string, score: number, member: string): Promise<number> {
+    this.logger.debug(`CMD: ZADD ${key} ${score} ${member}`);
+    return await this.defaultConnection.zadd(key, score, member);
+  }
+
+  async zPopMin(key: string): Promise<string[] | null> {
+    this.logger.debug(`CMD: ZPOPMIN ${key}`);
+    return await this.defaultConnection.zpopmin(key);
+  }
+
   public async expire(key: string, seconds: number): Promise<number> {
     this.logger.debug(`CMD: EXPIRE ${key} ${seconds}`);
     return await this.defaultConnection.expire(key, seconds);

@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { RedisService } from '../redis/redis.service';
 import { v4 as uuidv4 } from 'uuid';
-import { Browser, chromium } from 'playwright';
+import { Browser, chromium, Page } from 'playwright';
 import { CreateRequestDto } from '@src/dto/create-request.dto';
 
 export interface BrowserInstance {
@@ -70,33 +70,42 @@ export class BrowserPoolService {
       // TODO: Add browser options
       console.log(parameters);
       // Launch a real browser instance
-      const browser = await chromium.launch({
-        headless: false,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-gpu',
-        ],
-      });
+      try {
+        const browser = await chromium.launch({
+          headless: false,
+          args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+          ],
+          executablePath: process.env.CHROME_PATH,
+          slowMo: 50,
+        });
 
-      // Store the browser instance in memory
-      this.activeBrowsers.set(browserId, browser);
-      browserInstance.browser = browser;
+        console.log('Browser successfully started');
+        // Store the browser instance in memory
+        this.activeBrowsers.set(browserId, browser);
+        browserInstance.browser = browser;
 
-      // Store in Redis
-      const redisKey = `${this.BROWSER_PREFIX}${browserId}`;
-      const redisBrowserData = { ...browserInstance };
-      delete redisBrowserData.browser; // Can't serialize the browser object
+        // Store in Redis
+        const redisKey = `${this.BROWSER_PREFIX}${browserId}`;
+        const redisBrowserData = { ...browserInstance };
+        delete redisBrowserData.browser; // Can't serialize the browser object
 
-      await this.redisService.set(
-        redisKey,
-        redisBrowserData,
-        this.BROWSER_EXPIRY,
-      );
+        await this.redisService.set(
+          redisKey,
+          redisBrowserData,
+          this.BROWSER_EXPIRY,
+        );
 
-      this.logger.log(`Created browser ${browserId} for request ${requestId}`);
-      return browserInstance;
+        this.logger.log(
+          `Created browser ${browserId} for request ${requestId}`,
+        );
+        return browserInstance;
+      } catch (error) {
+        console.error('Error starting browser:', error);
+        throw error;
+      }
     } catch (error) {
       this.logger.error(
         `Error reserving browser for request ${requestId}`,
@@ -243,7 +252,31 @@ export class BrowserPoolService {
       throw error;
     }
   }
+  async executeInBrowser(
+    browserId: string,
+    callback: (page: Page) => Promise<any>,
+  ): Promise<any> {
+    try {
+      const browserInstance = await this.getBrowser(browserId);
+      if (!browserInstance || !browserInstance.browser) {
+        throw new Error(`Browser ${browserId} not found or not initialized`);
+      }
 
+      // Create a new page in the browser
+      const page = await browserInstance.browser.newPage();
+
+      try {
+        // Execute the callback with the page
+        return await callback(page);
+      } finally {
+        // Close the page when done
+        await page.close();
+      }
+    } catch (error) {
+      this.logger.error(`Error executing in browser ${browserId}`, error);
+      throw error;
+    }
+  }
   /**
    * Get all active browsers
    */
@@ -269,5 +302,43 @@ export class BrowserPoolService {
    */
   getBrowserCount(): number {
     return this.activeBrowsers.size;
+  }
+
+  async createBrowser(parameters?: any): Promise<Browser> {
+    try {
+      // TODO: Add browser options
+      this.logger.log(`Creating new browser with parameters:`, parameters);
+
+      // Launch a real browser instance
+      const browser = await chromium.launch({
+        headless: false,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+        ],
+      });
+
+      // Генерируем ID для браузера
+      const browserId = uuidv4();
+
+      // Сохраняем экземпляр браузера в Map
+      this.activeBrowsers.set(browserId, browser);
+
+      this.logger.log(`Browser created with ID: ${browserId}`);
+
+      // Обработка закрытия браузера для автоматической очистки
+      browser.on('disconnected', () => {
+        this.logger.log(
+          `Browser ${browserId} disconnected, removing from pool`,
+        );
+        this.activeBrowsers.delete(browserId);
+      });
+
+      return browser;
+    } catch (error) {
+      this.logger.error(`Error creating browser:`, error);
+      throw error;
+    }
   }
 }

@@ -127,11 +127,43 @@ export class RequestManagerService {
       const existingBrowserId =
         await this.redisService.get<string>(userBrowserKey);
 
+      const browserInstanceq = await this.browserPoolService.getBrowser(
+        existingBrowserId || '',
+      );
+      this.logger.log(`Browser instance:`, {
+        browserInstanceq,
+      });
       if (existingBrowserId) {
         // Use existing browser
         requestMetadata.browserId = existingBrowserId;
         requestMetadata.status = RequestStatus.PROCESSING;
-
+        const browserInstance =
+          await this.browserPoolService.getBrowser(existingBrowserId);
+        this.logger.log(`Browser instance:`, {
+          browserInstance,
+        });
+        if (!browserInstance) {
+          this.logger.warn(
+            `Browser ${existingBrowserId} not found in active browsers pool, creating a new one`,
+          );
+        }
+        await this.redisService.del(`${this.USER_BROWSER_PREFIX}${userId}`);
+        const newBrowser = await this.browserPoolService.reserveBrowser(
+          requestId,
+          userId,
+          userEmail,
+          parameters,
+        );
+        if (newBrowser) {
+          // Update with new browser info
+          requestMetadata.browserId = newBrowser.id;
+          // Store new browser ID
+          await this.redisService.set(
+            userBrowserKey,
+            newBrowser.id,
+            this.BROWSER_EXPIRY,
+          );
+        }
         // Update Redis and database
         await this.redisService.set(
           requestRedisKey,
@@ -145,29 +177,6 @@ export class RequestManagerService {
             status: RequestStatus.PROCESSING.toString(),
           },
         });
-
-        // this.logger.log(
-        //   `Using existing browser ${existingBrowserId} for user ${userId}, request ${requestId}`,
-        // );
-
-        // const existingBrowser =
-        //   this.browserPoolService.activeBrowsers.get(existingBrowserId);
-
-        // if (!existingBrowser) {
-        //   this.logger.warn(
-        //     `Browser ${existingBrowserId} not found in active browsers pool, creating a new one`,
-        //   );
-
-        //   // Удаляем невалидный ID из Redis
-        //   await this.redisService.del(`${this.USER_BROWSER_PREFIX}${userId}`);
-
-        //   // Создаем новый браузер
-        //   return await this.createNewBrowserForUser(userId, requestId);
-        // }
-
-        // this.logger.log(`Browser instance found`, {
-        //   browser: existingBrowser,
-        // });
 
         await this.queueService.enqueueRequest(requestId, priority);
       } else {

@@ -252,6 +252,10 @@ export class BrowserPoolService {
       throw error;
     }
   }
+
+  /**
+   * Execute a callback in a browser
+   */
   async executeInBrowser(
     browserId: string,
     callback: (page: Page) => Promise<any>,
@@ -277,6 +281,7 @@ export class BrowserPoolService {
       throw error;
     }
   }
+
   /**
    * Get all active browsers
    */
@@ -339,6 +344,26 @@ export class BrowserPoolService {
     } catch (error) {
       this.logger.error(`Error creating browser:`, error);
       throw error;
+    }
+  }
+
+  /**
+   * Synchronize browsers between Redis and memory
+   */
+  async synchronizeBrowsers() {
+    const browserKeys = await this.redisService.keys(`${this.BROWSER_PREFIX}*`);
+
+    // Check each browser in Redis
+    for (const key of browserKeys) {
+      const browserId = key.replace(this.BROWSER_PREFIX, '');
+      const browserData = await this.redisService.get<BrowserInstance>(key);
+
+      // If browser exists in Redis but not in memory
+      if (browserData && !this.activeBrowsers.has(browserId)) {
+        // Either remove from Redis or recreate browser
+        await this.redisService.del(key);
+        this.logger.warn(`Removed stale browser reference: ${browserId}`);
+      }
     }
   }
 }

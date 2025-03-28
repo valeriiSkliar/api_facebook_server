@@ -71,7 +71,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   public async get<T>(key: string): Promise<T | null> {
     this.logger.debug(`CMD: Get ${key}`);
     const value = await this.defaultConnection.get(key);
-    return value ? JSON.parse(value as string) : null;
+    return value ? JSON.parse(value) : null;
   }
 
   public async del(key: string): Promise<void> {
@@ -120,5 +120,26 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   public async expire(key: string, seconds: number): Promise<number> {
     this.logger.debug(`CMD: EXPIRE ${key} ${seconds}`);
     return await this.defaultConnection.expire(key, seconds);
+  }
+
+  /**
+   * Get all keys matching a pattern
+   * @param pattern Pattern to match keys
+   * @returns Promise resolving to array of matching keys
+   */
+  public async keys(pattern: string): Promise<string[]> {
+    this.logger.debug(`CMD: KEYS ${pattern}`);
+    try {
+      return await this.defaultConnection.keys(pattern);
+    } catch (error) {
+      this.logger.error(
+        `Error executing KEYS command with pattern ${pattern}`,
+        error,
+      );
+      throw new HttpException(
+        'Redis operation failed.',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 }

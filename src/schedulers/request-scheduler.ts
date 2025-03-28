@@ -62,20 +62,65 @@ export class RequestScheduler {
   /**
    * Log system stats every 10 minutes
    */
-  @Cron(CronExpression.EVERY_10_MINUTES)
+  @Cron(CronExpression.EVERY_10_SECONDS)
   async logSystemStats() {
     try {
       const activeBrowsers = await this.browserPool.getActiveBrowsers();
+      const pendingRequests =
+        await this.requestManager.getPendingRequestsCount();
+
+      // Подсчет и группировка браузеров по requestId
+      const browserUsage = new Map<string, number>();
+      const requestMap = new Map<string, string[]>();
+
+      activeBrowsers.forEach((browser) => {
+        if (browser.requestId) {
+          // Подсчитываем количество браузеров для каждого requestId
+          browserUsage.set(
+            browser.requestId,
+            (browserUsage.get(browser.requestId) || 0) + 1,
+          );
+
+          // Группируем браузеры по requestId
+          const browsersForRequest = requestMap.get(browser.requestId) || [];
+          browsersForRequest.push(browser.id);
+          requestMap.set(browser.requestId, browsersForRequest);
+        }
+      });
+
+      // Определяем, есть ли повторное использование браузеров
+      const reusedBrowserCount = [...browserUsage.values()].filter(
+        (count) => count > 1,
+      ).length;
+
+      // Форматируем информацию о браузерах
+      let browserDetails = '';
+      if (activeBrowsers.length > 0) {
+        browserDetails = activeBrowsers
+          .map((b) => {
+            const shortId = b.id.substring(0, 8);
+            const shortRequestId = b.requestId?.substring(0, 8) || 'unassigned';
+            const requestBrowserCount = b.requestId
+              ? browserUsage.get(b.requestId) || 0
+              : 0;
+            return `${shortId}... (${shortRequestId}...${requestBrowserCount > 1 ? ', shared: ' + requestBrowserCount : ''})`;
+          })
+          .join(', ');
+      } else {
+        browserDetails = 'No active browsers';
+      }
+
+      // Формируем вывод статистики с информацией о переиспользовании
+      const reuseSummary =
+        reusedBrowserCount > 0
+          ? `\n        - Browsers Reuse: ${reusedBrowserCount} requests share browsers`
+          : '';
 
       this.logger.log(`System Stats:
         - Active Browsers: ${activeBrowsers.length}/${this.browserPool.getBrowserCount()}
-        - Browser Details: ${activeBrowsers
-          .map(
-            (b) =>
-              `${b.id.substring(0, 8)}... (${b.requestId?.substring(0, 8)}...)`,
-          )
-          .join(', ')}`);
-    } catch (error) {
+        - Pending Requests: ${pendingRequests}${reuseSummary}
+        - Browser Details: ${browserDetails}`);
+    } catch (error: any) {
       this.logger.error('Error logging system stats', error);
     }
   }

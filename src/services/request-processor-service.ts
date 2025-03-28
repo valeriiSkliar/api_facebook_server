@@ -100,7 +100,7 @@ export class RequestProcessorService {
   }
 
   private buildFacebookQuery(request: RequestMetadata): AdLibraryQuery {
-    this.logger.log('Building Facebook query', request);
+    // this.logger.log('Building Facebook query', request);
 
     // Создаем запрос с данными по умолчанию
     const defaultQuery: AdLibraryQuery = {

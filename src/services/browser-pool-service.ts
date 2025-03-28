@@ -21,6 +21,7 @@ export class BrowserPoolService {
   private readonly BROWSER_EXPIRY = 15 * 60; // 15 minutes in seconds
   private readonly activeBrowsers: Map<string, Browser> = new Map();
   private readonly maxBrowsers: number = 10; // Default limit
+  private readonly browserAssignments: Map<string, string> = new Map(); // browserId -> requestId
 
   constructor(private readonly redisService: RedisService) {
     // Initialize max browsers from environment or use default
@@ -40,6 +41,31 @@ export class BrowserPoolService {
   }
 
   /**
+   * Find an available browser that is not currently assigned to a request
+   */
+  async getAvailableBrowser(): Promise<BrowserInstance | null> {
+    try {
+      // Получаем все активные браузеры
+      const activeBrowsers = await this.getActiveBrowsers();
+
+      // Ищем свободный браузер (без requestId)
+      const availableBrowser = activeBrowsers.find(
+        (browser) => !browser.requestId || browser.requestId === '',
+      );
+
+      if (availableBrowser) {
+        this.logger.log(`Found available browser: ${availableBrowser.id}`);
+        return availableBrowser;
+      }
+
+      return null;
+    } catch (error) {
+      this.logger.error('Error finding available browser', error);
+      return null;
+    }
+  }
+
+  /**
    * Reserve a browser for a specific request
    */
   async reserveBrowser(
@@ -49,6 +75,44 @@ export class BrowserPoolService {
     parameters: ScraperOptionsDto,
   ): Promise<BrowserInstance | null> {
     try {
+      // Проверяем, есть ли свободный браузер для повторного использования
+      const availableBrowser = await this.getAvailableBrowser();
+
+      if (availableBrowser && availableBrowser.browser) {
+        // Если найден свободный браузер, используем его
+        this.logger.log(
+          `Reusing existing browser ${availableBrowser.id} for request ${requestId}`,
+        );
+
+        // Обновляем данные браузера
+        const now = new Date();
+        const expiresAt = new Date(now.getTime() + this.BROWSER_EXPIRY * 1000);
+
+        const updatedBrowser: BrowserInstance = {
+          ...availableBrowser,
+          requestId,
+          userId,
+          lastUsedAt: now,
+          expiresAt,
+        };
+
+        // Сохраняем обновленные данные в Redis
+        const redisKey = `${this.BROWSER_PREFIX}${availableBrowser.id}`;
+        const redisBrowserData = { ...updatedBrowser };
+        delete redisBrowserData.browser; // Can't serialize the browser object
+
+        await this.redisService.set(
+          redisKey,
+          redisBrowserData,
+          this.BROWSER_EXPIRY,
+        );
+
+        // Обновляем отслеживание назначений
+        this.browserAssignments.set(availableBrowser.id, requestId);
+
+        return updatedBrowser;
+      }
+
       // Check if we already have too many active browsers
       const activeBrowserCount = this.activeBrowsers.size;
       if (activeBrowserCount >= this.maxBrowsers) {
@@ -73,7 +137,7 @@ export class BrowserPoolService {
       };
 
       // Log browser parameters
-      this.logger.log('Launching browser with parameters:', parameters);
+      // this.logger.log('Launching browser with parameters:', parameters);
 
       try {
         // Получаем настройки браузера из параметров запроса
@@ -95,6 +159,9 @@ export class BrowserPoolService {
         // Store the browser instance in memory
         this.activeBrowsers.set(browserId, browser);
         browserInstance.browser = browser;
+
+        // Отслеживаем назначение
+        this.browserAssignments.set(browserId, requestId);
 
         // Store in Redis
         const redisKey = `${this.BROWSER_PREFIX}${browserId}`;
@@ -121,6 +188,87 @@ export class BrowserPoolService {
         error,
       );
       throw error;
+    }
+  }
+
+  /**
+   * Release a browser but keep it active for reuse
+   */
+  async makeAvailable(browserId: string): Promise<boolean> {
+    try {
+      // Получаем текущие данные браузера
+      const browserInstance = await this.getBrowser(browserId);
+
+      if (!browserInstance) {
+        this.logger.warn(`Browser ${browserId} not found`);
+        return false;
+      }
+
+      // Обновляем данные, удаляя requestId
+      const now = new Date();
+      browserInstance.requestId = undefined;
+      browserInstance.lastUsedAt = now;
+      browserInstance.expiresAt = new Date(
+        now.getTime() + this.BROWSER_EXPIRY * 1000,
+      );
+
+      // Сохраняем обновленные данные в Redis
+      const redisKey = `${this.BROWSER_PREFIX}${browserId}`;
+      const redisBrowserData = { ...browserInstance };
+      delete redisBrowserData.browser; // Can't serialize the browser object
+
+      await this.redisService.set(
+        redisKey,
+        redisBrowserData,
+        this.BROWSER_EXPIRY,
+      );
+
+      // Удаляем из отслеживания назначений
+      this.browserAssignments.delete(browserId);
+
+      this.logger.log(`Browser ${browserId} marked as available for reuse`);
+      return true;
+    } catch (error) {
+      this.logger.error(`Error making browser ${browserId} available`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Release a browser and close it
+   */
+  async releaseBrowser(browserId: string): Promise<boolean> {
+    try {
+      // Get the browser instance
+      const browser = this.activeBrowsers.get(browserId);
+
+      // По умолчанию вместо закрытия помечаем как доступный
+      if (browser) {
+        // Попытка сделать браузер доступным для повторного использования
+        const madeAvailable = await this.makeAvailable(browserId);
+
+        // Если успешно сделали доступным, не закрываем
+        if (madeAvailable) {
+          return true;
+        }
+
+        // Если не удалось сделать доступным, закрываем
+        await browser.close();
+        this.activeBrowsers.delete(browserId);
+      }
+
+      // Remove from Redis
+      const redisKey = `${this.BROWSER_PREFIX}${browserId}`;
+      await this.redisService.del(redisKey);
+
+      // Удаляем из отслеживания назначений
+      this.browserAssignments.delete(browserId);
+
+      this.logger.log(`Released browser ${browserId}`);
+      return true;
+    } catch (error) {
+      this.logger.error(`Error releasing browser ${browserId}`, error);
+      return false;
     }
   }
 
@@ -196,33 +344,6 @@ export class BrowserPoolService {
         `Error extending reservation for browser ${browserId}`,
         error,
       );
-      return false;
-    }
-  }
-
-  /**
-   * Release a browser and close it
-   */
-  async releaseBrowser(browserId: string): Promise<boolean> {
-    try {
-      // Get the browser instance
-      const browser = this.activeBrowsers.get(browserId);
-
-      if (browser) {
-        // Close the browser
-        await browser.close();
-        // Remove from active browsers
-        this.activeBrowsers.delete(browserId);
-      }
-
-      // Remove from Redis
-      const redisKey = `${this.BROWSER_PREFIX}${browserId}`;
-      await this.redisService.del(redisKey);
-
-      this.logger.log(`Released browser ${browserId}`);
-      return true;
-    } catch (error) {
-      this.logger.error(`Error releasing browser ${browserId}`, error);
       return false;
     }
   }

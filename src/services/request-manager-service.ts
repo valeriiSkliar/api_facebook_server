@@ -122,6 +122,55 @@ export class RequestManagerService {
         },
       });
 
+      // Сначала проверяем наличие свободного браузера в пуле
+      const availableBrowser =
+        await this.browserPoolService.getAvailableBrowser();
+      if (availableBrowser) {
+        this.logger.log(
+          `Using available browser from pool: ${availableBrowser.id} for request ${requestId}`,
+        );
+
+        // Используем доступный браузер
+        const updatedBrowser = await this.browserPoolService.reserveBrowser(
+          requestId,
+          userId,
+          userEmail,
+          parameters,
+        );
+
+        if (updatedBrowser) {
+          // Обновляем данные запроса
+          requestMetadata.browserId = updatedBrowser.id;
+          requestMetadata.status = RequestStatus.PROCESSING;
+
+          // Сохраняем информацию о браузере для пользователя
+          const userBrowserKey = `${this.USER_BROWSER_PREFIX}${userId}`;
+          await this.redisService.set(
+            userBrowserKey,
+            updatedBrowser.id,
+            this.BROWSER_EXPIRY,
+          );
+
+          // Обновляем в Redis и базе данных
+          await this.redisService.set(
+            requestRedisKey,
+            requestMetadata,
+            this.REQUEST_EXPIRY,
+          );
+
+          await this.prismaService.request.updateMany({
+            where: { external_request_id: requestId },
+            data: {
+              status: RequestStatus.PROCESSING.toString(),
+            },
+          });
+
+          await this.queueService.enqueueRequest(requestId, priority);
+
+          return requestMetadata;
+        }
+      }
+
       // Check if user already has a browser assigned
       const userBrowserKey = `${this.USER_BROWSER_PREFIX}${userId}`;
       const existingBrowserId =
@@ -136,7 +185,8 @@ export class RequestManagerService {
 
         if (browserInstance) {
           this.logger.log(`Using existing browser instance:`, {
-            browserInstance,
+            browserId: browserInstance.id,
+            requestId: browserInstance.requestId,
           });
         } else {
           this.logger.warn(
@@ -337,39 +387,69 @@ export class RequestManagerService {
         return null;
       }
 
+      // Update request status
       const now = new Date();
       request.status = status;
       request.lastActivityAt = now;
 
+      // If request is completed or failed, set processedAt
       if (
         status === RequestStatus.COMPLETED ||
-        status === RequestStatus.FAILED
+        status === RequestStatus.FAILED ||
+        status === RequestStatus.CANCELLED ||
+        status === RequestStatus.EXPIRED
       ) {
         request.processedAt = now;
       }
 
-      const redisKey = `${this.REQUEST_PREFIX}${requestId}`;
-      await this.redisService.set(redisKey, request, this.REQUEST_EXPIRY);
-
-      // Update database
-      await this.prismaService.request.updateMany({
-        where: { external_request_id: requestId },
-        data: {
-          status: status.toString(),
-          processed_at:
-            status === RequestStatus.COMPLETED ||
-            status === RequestStatus.FAILED
-              ? now
-              : undefined,
-          response_data: result ? result : undefined,
+      // Get DB entity
+      const dbRequest = await this.prismaService.request.findFirst({
+        where: {
+          external_request_id: requestId,
         },
       });
 
-      // Get request ID from database
-      const dbRequest = await this.prismaService.request.findFirst({
-        where: { external_request_id: requestId },
-        select: { id: true },
-      });
+      // Store result in database result field if provided
+      if (dbRequest && result) {
+        // Сохраняем результат в поле ответа запроса
+        await this.prismaService.request.update({
+          where: {
+            id: dbRequest.id,
+          },
+          data: {
+            response_data: result,
+            updated_at: now,
+          },
+        });
+      }
+
+      // Update database record
+      if (dbRequest) {
+        await this.prismaService.request.update({
+          where: {
+            id: dbRequest.id,
+          },
+          data: {
+            status: status.toString(),
+            processed_at:
+              status === RequestStatus.COMPLETED ||
+              status === RequestStatus.FAILED ||
+              status === RequestStatus.CANCELLED ||
+              status === RequestStatus.EXPIRED
+                ? now
+                : undefined,
+            updated_at: now,
+          },
+        });
+      }
+
+      // Store updated request in Redis
+      const requestRedisKey = `${this.REQUEST_PREFIX}${requestId}`;
+      await this.redisService.set(
+        requestRedisKey,
+        request,
+        this.REQUEST_EXPIRY,
+      );
 
       // If request is completed or failed, check if there are other active requests for this user
       if (
@@ -399,9 +479,14 @@ export class RequestManagerService {
           }
         }
 
-        // If no other active requests, release the browser
+        // Если нет других активных запросов, освобождаем браузер для повторного использования
         if (!hasActiveRequests) {
-          await this.browserPoolService.releaseBrowser(request.browserId);
+          this.logger.log(
+            `No active requests left for user ${request.user_id}, making browser ${request.browserId} available for reuse`,
+          );
+
+          // Вместо закрытия браузера, помечаем его как доступный для повторного использования
+          await this.browserPoolService.makeAvailable(request.browserId);
 
           // Remove browser from user
           const userBrowserKey = `${this.USER_BROWSER_PREFIX}${request.user_id}`;
@@ -583,6 +668,29 @@ export class RequestManagerService {
     } catch (error) {
       this.logger.error('Error cleaning up expired requests', error);
       throw error;
+    }
+  }
+
+  /**
+   * Get count of pending and processing requests
+   */
+  async getPendingRequestsCount(): Promise<number> {
+    try {
+      const count = await this.prismaService.request.count({
+        where: {
+          status: {
+            in: [
+              RequestStatus.PENDING.toString(),
+              RequestStatus.PROCESSING.toString(),
+            ],
+          },
+        },
+      });
+
+      return count;
+    } catch (error) {
+      this.logger.error('Error getting pending requests count', error);
+      return 0;
     }
   }
 

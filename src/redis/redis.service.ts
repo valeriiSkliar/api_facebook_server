@@ -89,4 +89,26 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     this.logger.debug(`CMD: TTL ${key}`);
     return await this.defaultConnection.ttl(key);
   }
+
+  public async lpush(key: string, value: string | string[]): Promise<number> {
+    this.logger.debug(`CMD: LPUSH ${key}`);
+    if (Array.isArray(value)) {
+      return await this.defaultConnection.lpush(key, ...value);
+    }
+    return await this.defaultConnection.lpush(key, value);
+  }
+
+  public async lrange(
+    key: string,
+    start: number,
+    stop: number,
+  ): Promise<string[]> {
+    this.logger.debug(`CMD: LRANGE ${key} ${start} ${stop}`);
+    return await this.defaultConnection.lrange(key, start, stop);
+  }
+
+  public async expire(key: string, seconds: number): Promise<number> {
+    this.logger.debug(`CMD: EXPIRE ${key} ${seconds}`);
+    return await this.defaultConnection.expire(key, seconds);
+  }
 }

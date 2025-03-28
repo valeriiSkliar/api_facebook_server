@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { Injectable, Logger } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
 import { RedisService } from '../redis/redis.service';
@@ -37,7 +40,10 @@ export class RequestManagerService {
   private readonly logger = new Logger(RequestManagerService.name);
   private readonly REQUEST_PREFIX = 'request:';
   private readonly USER_PREFIX = 'user:';
+  private readonly USER_REQUESTS_PREFIX = 'user-requests:';
+  private readonly USER_BROWSER_PREFIX = 'user-browser:';
   private readonly REQUEST_EXPIRY = 60 * 60 * 24; // 24 hours in seconds
+  private readonly BROWSER_EXPIRY = 60 * 60; // 1 hour in seconds
 
   constructor(
     private readonly redisService: RedisService,
@@ -78,16 +84,22 @@ export class RequestManagerService {
         webhookUrl,
       };
 
+      // Store user data in Redis
       const userRedisKey = `${this.USER_PREFIX}${userId}`;
       await this.redisService.set(userRedisKey, userEmail, this.REQUEST_EXPIRY);
 
-      // Store in Redis
-      const redisKey = `${this.REQUEST_PREFIX}${requestType}:${requestId}`;
+      // Store request in Redis
+      const requestRedisKey = `${this.REQUEST_PREFIX}${requestId}`;
       await this.redisService.set(
-        redisKey,
+        requestRedisKey,
         requestMetadata,
         this.REQUEST_EXPIRY,
       );
+
+      // Add request to user's requests list
+      const userRequestsKey = `${this.USER_REQUESTS_PREFIX}${userId}`;
+      await this.redisService.lpush(userRequestsKey, requestId);
+      await this.redisService.expire(userRequestsKey, this.REQUEST_EXPIRY);
 
       // Create record in database
       await this.prismaService.request.create({
@@ -108,40 +120,79 @@ export class RequestManagerService {
         },
       });
 
-      // Try to reserve a browser
-      try {
-        const browser = await this.browserPoolService.reserveBrowser(
-          requestId,
-          userId,
-          parameters,
+      // Check if user already has a browser assigned
+      const userBrowserKey = `${this.USER_BROWSER_PREFIX}${userId}`;
+      const existingBrowserId =
+        await this.redisService.get<string>(userBrowserKey);
+
+      if (existingBrowserId) {
+        // Use existing browser
+        requestMetadata.browserId = existingBrowserId;
+        requestMetadata.status = RequestStatus.PROCESSING;
+
+        // Update Redis and database
+        await this.redisService.set(
+          requestRedisKey,
+          requestMetadata,
+          this.REQUEST_EXPIRY,
         );
-        if (browser) {
-          requestMetadata.browserId = browser.id;
-          requestMetadata.status = RequestStatus.PROCESSING;
 
-          // Update Redis and database
-          await this.redisService.set(
-            redisKey,
-            requestMetadata,
-            this.REQUEST_EXPIRY,
-          );
-          await this.prismaService.request.updateMany({
-            where: { external_request_id: requestId },
-            data: {
-              status: RequestStatus.PROCESSING.toString(),
-            },
-          });
+        await this.prismaService.request.updateMany({
+          where: { external_request_id: requestId },
+          data: {
+            status: RequestStatus.PROCESSING.toString(),
+          },
+        });
 
-          this.logger.log(
-            `Browser ${browser.id} reserved for request ${requestId}`,
+        this.logger.log(
+          `Using existing browser ${existingBrowserId} for user ${userId}, request ${requestId}`,
+        );
+      } else {
+        // Try to reserve a browser
+        try {
+          const browser = await this.browserPoolService.reserveBrowser(
+            requestId,
+            userId,
+            userEmail,
+            parameters,
           );
+
+          if (browser) {
+            requestMetadata.browserId = browser.id;
+            requestMetadata.status = RequestStatus.PROCESSING;
+
+            // Store browser id for user
+            await this.redisService.set(
+              userBrowserKey,
+              browser.id,
+              this.BROWSER_EXPIRY,
+            );
+
+            // Update Redis and database
+            await this.redisService.set(
+              requestRedisKey,
+              requestMetadata,
+              this.REQUEST_EXPIRY,
+            );
+
+            await this.prismaService.request.updateMany({
+              where: { external_request_id: requestId },
+              data: {
+                status: RequestStatus.PROCESSING.toString(),
+              },
+            });
+
+            this.logger.log(
+              `Browser ${browser.id} reserved for user ${userId}, request ${requestId}`,
+            );
+          }
+        } catch (error) {
+          this.logger.error(
+            `Failed to reserve browser for request ${requestId}`,
+            error,
+          );
+          // Continue without browser - it will be assigned later when available
         }
-      } catch (error) {
-        this.logger.error(
-          `Failed to reserve browser for request ${requestId}`,
-          error,
-        );
-        // Continue without browser - it will be assigned later when available
       }
 
       return requestMetadata;
@@ -205,6 +256,30 @@ export class RequestManagerService {
   }
 
   /**
+   * Get all requests for a user
+   */
+  async getUserRequests(userId: string): Promise<RequestMetadata[]> {
+    try {
+      const userRequestsKey = `${this.USER_REQUESTS_PREFIX}${userId}`;
+      const requestIds =
+        (await this.redisService.lrange(userRequestsKey, 0, -1)) || [];
+
+      const requests: RequestMetadata[] = [];
+      for (const requestId of requestIds) {
+        const request = await this.getRequest(requestId);
+        if (request) {
+          requests.push(request);
+        }
+      }
+
+      return requests;
+    } catch (error) {
+      this.logger.error(`Error getting requests for user ${userId}`, error);
+      throw error;
+    }
+  }
+
+  /**
    * Update a request's status and record activity
    */
   async updateRequestStatus(
@@ -252,7 +327,7 @@ export class RequestManagerService {
         select: { id: true },
       });
 
-      // If request is completed or failed, release the browser
+      // If request is completed or failed, check if there are other active requests for this user
       if (
         (status === RequestStatus.COMPLETED ||
           status === RequestStatus.FAILED ||
@@ -260,7 +335,34 @@ export class RequestManagerService {
           status === RequestStatus.EXPIRED) &&
         request.browserId
       ) {
-        await this.browserPoolService.releaseBrowser(request.browserId);
+        // Check if there are other active requests for this user
+        const userRequestsKey = `${this.USER_REQUESTS_PREFIX}${request.user_id}`;
+        const requestIds =
+          (await this.redisService.lrange(userRequestsKey, 0, -1)) || [];
+
+        let hasActiveRequests = false;
+        for (const id of requestIds) {
+          if (id !== requestId) {
+            const otherRequest = await this.getRequest(id);
+            if (
+              otherRequest &&
+              (otherRequest.status === RequestStatus.PENDING ||
+                otherRequest.status === RequestStatus.PROCESSING)
+            ) {
+              hasActiveRequests = true;
+              break;
+            }
+          }
+        }
+
+        // If no other active requests, release the browser
+        if (!hasActiveRequests) {
+          await this.browserPoolService.releaseBrowser(request.browserId);
+
+          // Remove browser from user
+          const userBrowserKey = `${this.USER_BROWSER_PREFIX}${request.user_id}`;
+          await this.redisService.del(userBrowserKey);
+        }
       }
 
       // Log activity
@@ -305,6 +407,10 @@ export class RequestManagerService {
       // If we have a browser ID, extend its reservation
       if (request.browserId) {
         await this.browserPoolService.extendReservation(request.browserId);
+
+        // Also extend the user-browser association
+        const userBrowserKey = `${this.USER_BROWSER_PREFIX}${request.user_id}`;
+        await this.redisService.expire(userBrowserKey, this.BROWSER_EXPIRY);
       }
 
       // Update database
@@ -340,21 +446,24 @@ export class RequestManagerService {
    */
   async listUserRequests(userId: string): Promise<RequestMetadata[]> {
     try {
+      // First try to get from Redis
+      const userRequests = await this.getUserRequests(userId);
+      if (userRequests.length > 0) {
+        return userRequests;
+      }
+
+      // If not in Redis, get from database
       const dbRequests = await this.prismaService.request.findMany({
         where: {
-          // session: {
-          //   email: {
-          //     equals: userId, // Assuming userId is an email address
-          //   },
-          // },
+          user_id: userId,
         },
         orderBy: {
           created_at: 'desc',
         },
       });
 
-      // Convert to RequestMetadata format
-      return dbRequests.map((dbRequest) => ({
+      // Convert to RequestMetadata format and cache in Redis
+      const requests = dbRequests.map((dbRequest) => ({
         id: dbRequest.external_request_id,
         user_id: dbRequest.user_id,
         user_email: dbRequest.user_email,
@@ -369,6 +478,23 @@ export class RequestManagerService {
         retryCount: dbRequest.retry_count,
         webhookUrl: dbRequest.webhook_url || undefined,
       }));
+
+      // Cache each request in Redis
+      for (const request of requests) {
+        const requestRedisKey = `${this.REQUEST_PREFIX}${request.id}`;
+        await this.redisService.set(
+          requestRedisKey,
+          request,
+          this.REQUEST_EXPIRY,
+        );
+
+        // Add to user's requests list
+        const userRequestsKey = `${this.USER_REQUESTS_PREFIX}${userId}`;
+        await this.redisService.lpush(userRequestsKey, request.id);
+        await this.redisService.expire(userRequestsKey, this.REQUEST_EXPIRY);
+      }
+
+      return requests;
     } catch (error) {
       this.logger.error(`Error listing requests for user ${userId}`, error);
       throw error;

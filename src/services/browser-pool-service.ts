@@ -41,6 +41,7 @@ export class BrowserPoolService {
   async reserveBrowser(
     requestId: string,
     userId: string,
+    userEmail: string,
     parameters: CreateRequestDto['parameters'],
   ): Promise<BrowserInstance | null> {
     try {

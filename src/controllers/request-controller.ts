@@ -193,7 +193,8 @@ export class RequestController {
 
       // Filter by status if provided
       const filteredRequests = status
-        ? requests.filter((r) => r.status === status)
+        ? // eslint-disable-next-line @typescript-eslint/no-unsafe-enum-comparison
+          requests.filter((r) => r.status === status)
         : requests;
 
       return {

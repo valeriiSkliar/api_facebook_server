@@ -117,6 +117,11 @@ export class BehaviorOptionsDto {
   @IsNumber()
   @Min(1000)
   waitTimeout?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(1000)
+  cleanUpTimeout?: number;
 }
 
 export class ScraperOptionsDto {

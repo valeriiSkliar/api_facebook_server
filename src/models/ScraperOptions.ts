@@ -39,5 +39,6 @@ export interface ScraperOptions {
     maxPages?: number;
     waitForResults?: boolean;
     waitTimeout?: number;
+    cleanUpTimeout?: number;
   };
 }

@@ -19,8 +19,8 @@ export class ScraperFactory {
 
     // Add core steps
     pipeline.addStep(this.stepFactory.createInitializationStep());
-    pipeline.addStep(this.stepFactory.createNavigationStep());
-    pipeline.addStep(this.stepFactory.createInterceptionSetupStep());
+    // pipeline.addStep(this.stepFactory.createNavigationStep());
+    // pipeline.addStep(this.stepFactory.createInterceptionSetupStep());
 
     // Add filter steps if options include filters
     if (options?.behavior?.applyFilters) {
@@ -34,8 +34,8 @@ export class ScraperFactory {
     }
 
     // Add pagination and storage steps
-    pipeline.addStep(this.stepFactory.createPaginationStep());
-    pipeline.addStep(this.stepFactory.createStorageStep());
+    // pipeline.addStep(this.stepFactory.createPaginationStep());
+    // pipeline.addStep(this.stepFactory.createStorageStep());
 
     return pipeline;
   }

@@ -39,6 +39,15 @@ export class InitializationStep extends AbstractScraperStep {
 
   async cleanup(context: ScraperContext): Promise<void> {
     if (context.state.browser) {
+      if (context.options.behavior?.cleanUpTimeout) {
+        this.logger.log(
+          `Waiting for ${context.options.behavior.cleanUpTimeout}ms before closing browser`,
+        );
+        await new Promise((resolve) =>
+          setTimeout(resolve, context.options.behavior!.cleanUpTimeout),
+        );
+        this.logger.log('Closing browser');
+      }
       await context.state.browser.close();
     }
   }

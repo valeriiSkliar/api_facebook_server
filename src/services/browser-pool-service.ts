@@ -2,7 +2,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { RedisService } from '../redis/redis.service';
 import { v4 as uuidv4 } from 'uuid';
 import { Browser, chromium } from 'playwright';
-import { Env } from '@lib/Env';
 import { CreateRequestDto } from '@src/dto/create-request.dto';
 
 export interface BrowserInstance {
@@ -72,7 +71,7 @@ export class BrowserPoolService {
       console.log(parameters);
       // Launch a real browser instance
       const browser = await chromium.launch({
-        headless: Env.HEADLESS,
+        headless: false,
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',

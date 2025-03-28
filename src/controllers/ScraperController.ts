@@ -50,7 +50,6 @@ export class ScraperController {
     const result = await this.scraperService.scrapeAds(query, dto.options);
 
     // Transform the result to response DTO
-    // Transform the result to a DTO
     const resultDto = plainToInstance(ScraperResponseDto, {
       success: result.success,
       totalCount: result.totalCount,

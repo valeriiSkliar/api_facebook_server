@@ -5,6 +5,8 @@ import { ScraperModule } from './modules/scraper.module';
 import { RedisModule } from './redis/redis.module';
 import { RedisService } from './redis/redis.service';
 import { AuthMiddleware } from './middleware/auth.middleware';
+import { RequestModule } from './modules/request-module';
+import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
   imports: [
@@ -12,8 +14,10 @@ import { AuthMiddleware } from './middleware/auth.middleware';
       isGlobal: true,
       envFilePath: '.env',
     }),
-    ScraperModule,
+    PrismaModule,
     RedisModule,
+    ScraperModule,
+    RequestModule, // Add the new Request module
   ],
   controllers: [],
   providers: [AppService, RedisService],

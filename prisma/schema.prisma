@@ -33,7 +33,7 @@ model Session {
   emailAccount          Email @relation("has", fields: [email], references: [email_address])
   proxy                 Proxy?         @relation("used_by", fields: [proxy_id], references: [id])
   apiConfig             ApiConfiguration? @relation("applies_to", fields: [api_config_id], references: [id])
-  requests              Request[]      @relation("processes")
+  // requests              Request[]      @relation("processes")
 
   @@index([is_valid])
   @@index([status])
@@ -64,6 +64,8 @@ model Cache {
 model Request {
   id                    Int           @id @default(autoincrement())
   external_request_id   String
+  user_id              String
+  user_email           String
   request_type         String
   parameters           Json
   created_at           DateTime      @default(now())
@@ -75,15 +77,18 @@ model Request {
   priority             Int
   retry_count          Int
   webhook_url          String?
+  updated_at           DateTime      @updatedAt
 
   // Relations
-  session              Session        @relation("processes", fields: [session_id], references: [id])
+  // session              Session        @relation("processes", fields: [session_id], references: [id])
   cache                Cache?         @relation("stores_result_of")
   activities           ActivityLog[]  @relation("generates")
 
   @@index([status])
   @@index([processed_at])
   @@index([session_id])
+  @@index([user_id])
+  @@index([user_email])
 }
 
 //=============================================================================

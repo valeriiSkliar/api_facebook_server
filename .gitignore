@@ -55,6 +55,8 @@ pids
 .vscode
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+.github
+.github/*
 
 .windsurfrules
 
@@ -80,3 +82,10 @@ yarn-error.log*
 .cursor/rules
 
 data/*
+
+# Playwright
+node_modules/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/

@@ -1,8 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { RedisService } from '../redis/redis.service';
 import { v4 as uuidv4 } from 'uuid';
-import { Browser, chromium, Page } from 'playwright';
+import { Browser, chromium, Page, devices } from 'playwright';
 import { ScraperOptionsDto } from '@src/dto/ScraperOptionsDto';
+import { launchPlaywright } from 'crawlee';
 
 export interface BrowserInstance {
   id: string;
@@ -146,7 +147,8 @@ export class BrowserPoolService {
         // Запускаем браузер с настройками из параметров
         const browser = await chromium.launch({
           // Используем headless из параметров или по умолчанию false
-          headless: browserOptions?.headless === false ? false : true,
+          // headless: browserOptions?.headless === false ? false : true,
+          headless: false,
           args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
@@ -393,7 +395,7 @@ export class BrowserPoolService {
    */
   async executeInBrowser(
     browserId: string,
-    callback: (page: Page) => Promise<any>,
+    callback: (browser: Browser, page: Page) => Promise<any>,
   ): Promise<any> {
     try {
       const browserInstance = await this.getBrowser(browserId);
@@ -401,12 +403,19 @@ export class BrowserPoolService {
         throw new Error(`Browser ${browserId} not found or not initialized`);
       }
 
+      const context = await browserInstance.browser.newContext(
+        devices['iPhone 11'],
+      );
+      const page = await context.newPage();
+      await context.route('**.jpg', (route) => route.abort());
+      await page.goto('https://www.google.com');
+      await page.waitForTimeout(10000);
       // Create a new page in the browser
-      const page = await browserInstance.browser.newPage();
+      // const page = await browserInstance.browser.newPage();
 
       try {
         // Execute the callback with the page
-        return await callback(page);
+        return await callback(browserInstance.browser, page);
       } finally {
         // Close the page when done
         await page.close();
@@ -450,10 +459,20 @@ export class BrowserPoolService {
 
       // Получаем настройки браузера из параметров
       const browserOptions = parameters?.browser || {};
-
+      const browserTest = await launchPlaywright({
+        launchOptions: {
+          headless: false,
+          args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+          ],
+        },
+      });
       // Launch a real browser instance with appropriate parameters
       const browser = await chromium.launch({
-        headless: browserOptions?.headless === false ? false : true,
+        // headless: browserOptions?.headless === false ? false : true,
+        headless: false,
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',

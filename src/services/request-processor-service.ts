@@ -9,6 +9,8 @@ import {
 import { BrowserPoolService } from './browser-pool-service';
 import { FacebookAdScraperService } from './FacebookAdScraperService';
 import { AdLibraryQuery } from '@src/models/AdLibraryQuery';
+import { Page } from 'playwright';
+import { Browser } from 'playwright';
 
 @Injectable()
 export class RequestProcessorService {
@@ -78,10 +80,14 @@ export class RequestProcessorService {
     if (request.browserId) {
       return await this.browserPool.executeInBrowser(
         request.browserId,
-        async () => {
+        async (browser: Browser, page: Page) => {
           // Prepare the query from request parameters
           const query = this.buildFacebookQuery(request);
           // Execute the Facebook scraper with the page
+          // const testPage = await browser.newPage();
+          // await testPage.goto('https://www.google.com');
+          // await testPage.waitForTimeout(10000);
+          // await testPage.close();
           return await this.facebookAdScraperService.scrapeAds(
             query,
             request.parameters,

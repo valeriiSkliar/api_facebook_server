@@ -1,8 +1,14 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/require-await */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
 import { Injectable, Logger } from '@nestjs/common';
 import { ScraperFactory } from '../implementations/factories/ScraperFactory';
 import { AdLibraryQuery } from '../models/AdLibraryQuery';
 import { ScraperOptions } from '../models/ScraperOptions';
 import { ScraperResult } from '../models/ScraperResult';
+import { BrowserPoolService } from './browser-pool-service';
+import { Page } from 'playwright';
+import { Browser } from 'playwright';
 // import { plainToInstance } from 'class-transformer';
 // import { ScraperResponseDto } from '@src/dto';
 
@@ -11,9 +17,41 @@ export class FacebookAdScraperService {
   constructor(
     private readonly scraperFactory: ScraperFactory,
     private readonly logger: Logger,
+    private readonly browserPoolService: BrowserPoolService, // Inject BrowserPoolService
   ) {}
 
-  async scrapeAds(
+  /**
+   * Scrape ads using a specific browser ID from the pool
+   */
+  async scrapeAdsWithBrowser(
+    query: AdLibraryQuery,
+    options?: Partial<ScraperOptions>,
+    browserId?: string,
+  ): Promise<ScraperResult> {
+    this.logger.log(
+      `Starting Facebook Ad Library scraper for query: ${query.queryString} ${browserId ? 'with browser: ' + browserId : ''}`,
+    );
+
+    // If a browserId is provided, use the browser from the pool
+    if (browserId) {
+      this.logger.log(
+        '[FacebookAdScraperService.scrapeAdsWithBrowser] Browser assigned, execute in browser',
+        browserId,
+      );
+      return this.browserPoolService.executeInBrowser(
+        browserId,
+        async (browser: Browser) => {
+          return this.executeScraperWithBrowser(query, options, browser);
+        },
+      );
+    }
+
+    // No browserId provided, create a temporary browser
+    this.logger.log('No browser assigned, just use the service directly');
+    return this.scrapeAds(query, options);
+  }
+
+  private async scrapeAds(
     query: AdLibraryQuery,
     options?: Partial<ScraperOptions>,
   ): Promise<ScraperResult> {
@@ -56,6 +94,45 @@ export class FacebookAdScraperService {
       return result;
     } catch (error) {
       this.logger.error(`Scraping failed`, error);
+      throw error;
+    }
+  }
+  /**
+   * Private method to execute scraper with provided browser and page
+   * This ensures the entire pipeline runs regardless of browser source
+   */
+  private async executeScraperWithBrowser(
+    query: AdLibraryQuery,
+    options?: Partial<ScraperOptions>,
+    browser?: Browser,
+    page?: Page,
+  ): Promise<ScraperResult> {
+    // Create the scraper pipeline with all required steps
+    const scraper = this.scraperFactory.createScraper(options);
+
+    // Create context with external browser info
+    const context = this.scraperFactory.createContext(query, options);
+    this.logger.log(
+      '[FacebookAdScraperService.executeScraperWithBrowser] Context created',
+    );
+    // Store the browser and page in the context state
+    // The InitializationStep will detect and use these
+    if (browser && page) {
+      context.state.browser = browser;
+      context.state.page = page;
+      context.state.externalBrowser = true; // Flag to indicate we're using an external browser
+
+      this.logger.log('Using external browser in scraper pipeline');
+    }
+
+    try {
+      // Execute the entire pipeline - all steps will be run
+      // Each step will check context.state to determine what to do
+      const result = await scraper.execute(context);
+      result.includeAdsInResponse = options?.includeAdsInResponse || false;
+      return result;
+    } catch (error) {
+      this.logger.error(`Scraping with provided browser failed`, error);
       throw error;
     }
   }

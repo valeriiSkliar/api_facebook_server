@@ -15,16 +15,37 @@ export class ScraperPipeline {
 
   async execute(context: ScraperContext): Promise<ScraperResult> {
     const startTime = Date.now();
+    const executedSteps: string[] = [];
 
     try {
       for (const step of this.steps) {
+        const stepName = step.getName();
         if (step.shouldExecute(context)) {
-          this.logger.log(`Executing step: ${step.getName()}`);
+          this.logger.log(`Executing step: ${stepName}`);
+          // If using external browser, log additional info for debugging
+          if (
+            context.state.externalBrowser &&
+            stepName === 'InitializationStep'
+          ) {
+            this.logger.log(
+              `Using external browser (ID: ${context.state.browserId || 'unknown'})`,
+            );
+          }
           await step.execute(context);
+          executedSteps.push(step.getName());
         } else {
-          this.logger.log(`Skipping step: ${step.getName()}`);
+          this.logger.log(`Skipping step: ${stepName}`);
+          if (context.state.forceStop) {
+            this.logger.log(
+              `Force stop requested, halting pipeline after step: ${stepName}`,
+            );
+            break;
+          }
         }
       }
+      this.logger.log(
+        `Pipeline executed ${executedSteps.length} steps: ${executedSteps.join(', ')}`,
+      );
 
       // Format the result to match ScraperResult structure
       return {

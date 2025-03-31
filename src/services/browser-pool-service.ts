@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { RedisService } from '../redis/redis.service';
 import { v4 as uuidv4 } from 'uuid';
-import { Browser, chromium, Page, devices } from 'playwright';
+import { Browser, chromium, devices, Page } from 'playwright';
 import { ScraperOptionsDto } from '@src/dto/ScraperOptionsDto';
 import { launchPlaywright } from 'crawlee';
 
@@ -395,7 +395,7 @@ export class BrowserPoolService {
    */
   async executeInBrowser(
     browserId: string,
-    callback: (browser: Browser, page: Page) => Promise<any>,
+    callback: (browser: Browser) => Promise<any>,
   ): Promise<any> {
     try {
       const browserInstance = await this.getBrowser(browserId);
@@ -403,23 +403,27 @@ export class BrowserPoolService {
         throw new Error(`Browser ${browserId} not found or not initialized`);
       }
 
-      const context = await browserInstance.browser.newContext(
-        devices['iPhone 11'],
-      );
-      const page = await context.newPage();
-      await context.route('**.jpg', (route) => route.abort());
-      await page.goto('https://www.google.com');
-      await page.waitForTimeout(10000);
+      // const context = await browserInstance.browser.newContext(
+      //   devices['iPhone 11'],
+      // );
+      // const page = await context.newPage();
+      // await context.route('**.jpg', (route) => route.abort());
+      // await page.goto('https://www.google.com');
+      // await page.waitForTimeout(10000);
       // Create a new page in the browser
       // const page = await browserInstance.browser.newPage();
 
       try {
-        // Execute the callback with the page
-        return await callback(browserInstance.browser, page);
-      } finally {
-        // Close the page when done
-        await page.close();
+        //   // Execute the callback with the page
+        return await callback(browserInstance.browser);
+      } catch (error) {
+        this.logger.error(`Error executing in browser ${browserId}`, error);
+        throw error;
       }
+      // } finally {
+      //   // Close the page when done
+      //   await page.close();
+      // }
     } catch (error) {
       this.logger.error(`Error executing in browser ${browserId}`, error);
       throw error;

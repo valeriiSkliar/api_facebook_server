@@ -47,7 +47,10 @@ export class ScraperController {
     }
 
     // Run the scraper
-    const result = await this.scraperService.scrapeAds(query, dto.options);
+    const result = await this.scraperService.scrapeAdsWithBrowser(
+      query,
+      dto.options,
+    );
 
     // Transform the result to response DTO
     const resultDto = plainToInstance(ScraperResponseDto, {

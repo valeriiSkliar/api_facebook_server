@@ -1,0 +1,28 @@
+flowchart TD
+    Start[Start Scraping] --> Check{External Browser?}
+    
+    Check -->|Yes| ExternalPath[Use Browser from Pool]
+    Check -->|No| InternalPath[Create New Browser]
+    
+    ExternalPath --> Pipeline[Execute Full Pipeline]
+    InternalPath --> Pipeline
+    
+    Pipeline --> Init[InitializationStep]
+    Init --> Nav[NavigationStep]
+    Nav --> Intercept[InterceptionSetupStep]
+    Intercept --> Filters[Filter Steps]
+    Filters --> Pagination[PaginationStep]
+    Pagination --> Storage[StorageStep]
+    
+    subgraph InitStepDetails [InitializationStep Behavior]
+        InitCheck{External Browser?}
+        InitCheck -->|Yes| ConfigurePage[Configure Existing Page]
+        InitCheck -->|No| LaunchBrowser[Launch New Browser]
+    end
+    
+    Storage --> Cleanup{Is External Browser?}
+    Cleanup -->|Yes| LeaveOpen[Leave Browser Open]
+    Cleanup -->|No| CloseBrowser[Close Browser]
+    
+    LeaveOpen --> End[Return Results]
+    CloseBrowser --> End

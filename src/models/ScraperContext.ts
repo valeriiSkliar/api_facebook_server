@@ -15,5 +15,7 @@ export interface ScraperContext {
     currentPage: number;
     errors: Error[];
     forceStop: boolean;
+    externalBrowser?: boolean;
+    browserId?: string;
   };
 }

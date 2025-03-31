@@ -80,7 +80,7 @@ export class RequestProcessorService {
     if (request.browserId) {
       return await this.browserPool.executeInBrowser(
         request.browserId,
-        async (browser: Browser, page: Page) => {
+        async (browser: Browser) => {
           // Prepare the query from request parameters
           const query = this.buildFacebookQuery(request);
           // Execute the Facebook scraper with the page
@@ -88,7 +88,7 @@ export class RequestProcessorService {
           // await testPage.goto('https://www.google.com');
           // await testPage.waitForTimeout(10000);
           // await testPage.close();
-          return await this.facebookAdScraperService.scrapeAds(
+          return await this.facebookAdScraperService.scrapeAdsWithBrowser(
             query,
             request.parameters,
           );
@@ -98,7 +98,7 @@ export class RequestProcessorService {
       // No browser assigned, just use the service directly
       // (it will create its own browser)
       const query = this.buildFacebookQuery(request);
-      return await this.facebookAdScraperService.scrapeAds(
+      return await this.facebookAdScraperService.scrapeAdsWithBrowser(
         query,
         request.parameters,
       );

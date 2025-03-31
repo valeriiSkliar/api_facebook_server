@@ -40,7 +40,13 @@ export class FacebookAdScraperService {
       );
       return this.browserPoolService.executeInBrowser(
         browserId,
-        async (browser: Browser) => {
+        async ({
+          browserId,
+          browser,
+        }: {
+          browserId: string;
+          browser: Browser;
+        }) => {
           return this.executeScraperWithBrowser(query, options, browser);
         },
       );
@@ -101,11 +107,11 @@ export class FacebookAdScraperService {
    * Private method to execute scraper with provided browser and page
    * This ensures the entire pipeline runs regardless of browser source
    */
-  private async executeScraperWithBrowser(
+  public async executeScraperWithBrowser(
     query: AdLibraryQuery,
     options?: Partial<ScraperOptions>,
     browser?: Browser,
-    page?: Page,
+    browserId?: string,
   ): Promise<ScraperResult> {
     // Create the scraper pipeline with all required steps
     const scraper = this.scraperFactory.createScraper(options);
@@ -117,9 +123,9 @@ export class FacebookAdScraperService {
     );
     // Store the browser and page in the context state
     // The InitializationStep will detect and use these
-    if (browser && page) {
+    if (browser) {
       context.state.browser = browser;
-      context.state.page = page;
+      context.state.browserId = browserId;
       context.state.externalBrowser = true; // Flag to indicate we're using an external browser
 
       this.logger.log('Using external browser in scraper pipeline');

@@ -12,7 +12,7 @@ export class InitializationStep extends AbstractScraperStep {
   async execute(context: ScraperContext): Promise<void> {
     // Check if we already have a browser and page in the context
     // This would be set when using a browser from the pool
-    if (context.state.browser) {
+    if (context.state.browser && !context.state.page) {
       // && context.state.page) {
       this.logger.log(
         '[InitializationStep.execute] Using provided browser and page from pool',
@@ -44,10 +44,7 @@ export class InitializationStep extends AbstractScraperStep {
     );
     const browser = await launchPlaywright({
       launchOptions: {
-        headless:
-          context.options.browser?.headless === undefined
-            ? true
-            : context.options.browser?.headless,
+        headless: context.options.browser?.headless ?? true,
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
@@ -78,7 +75,7 @@ export class InitializationStep extends AbstractScraperStep {
         );
         this.logger.log('Closing browser');
       }
-      await context.state.browser.close();
+      await context.state.page?.close();
     }
     // if (context.state.browser) {
     //   if (context.options.behavior?.cleanUpTimeout) {

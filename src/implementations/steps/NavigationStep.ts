@@ -49,6 +49,7 @@ export class NavigationStep extends AbstractScraperStep {
       // }
     } catch (error) {
       this.logger.error('Navigation failed:', error);
+      await this.cleanup(context);
       throw new Error('Failed to load Facebook Ads Library');
     }
   }
@@ -85,5 +86,10 @@ export class NavigationStep extends AbstractScraperStep {
   private formatDate(date: Date | string): string {
     const d = new Date(date);
     return d.toISOString().split('T')[0];
+  }
+
+  async cleanup(context: ScraperContext): Promise<void> {
+    await super.cleanup(context);
+    await context.state.page?.close();
   }
 }

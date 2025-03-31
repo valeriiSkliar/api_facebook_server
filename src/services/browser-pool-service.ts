@@ -147,12 +147,12 @@ export class BrowserPoolService {
         // Запускаем браузер с настройками из параметров
         const browser = await chromium.launch({
           // Используем headless из параметров или по умолчанию false
-          // headless: browserOptions?.headless === false ? false : true,
-          headless: false,
+          headless: browserOptions?.headless ?? true,
           args: [
             '--no-sandbox',
             '--disable-setuid-sandbox',
             '--disable-dev-shm-usage',
+            '--remote-debugging-max-buffer-size-megabytes=100',
           ],
           executablePath: process.env.CHROME_PATH,
           slowMo: 50, // Используем фиксированное значение
@@ -395,7 +395,13 @@ export class BrowserPoolService {
    */
   async executeInBrowser(
     browserId: string,
-    callback: (browser: Browser) => Promise<any>,
+    callback: ({
+      browserId,
+      browser,
+    }: {
+      browserId: string;
+      browser: Browser;
+    }) => Promise<any>,
   ): Promise<any> {
     try {
       const browserInstance = await this.getBrowser(browserId);
@@ -415,7 +421,10 @@ export class BrowserPoolService {
 
       try {
         //   // Execute the callback with the page
-        return await callback(browserInstance.browser);
+        return await callback({
+          browserId,
+          browser: browserInstance.browser,
+        });
       } catch (error) {
         this.logger.error(`Error executing in browser ${browserId}`, error);
         throw error;
@@ -470,17 +479,18 @@ export class BrowserPoolService {
             '--no-sandbox',
             '--disable-setuid-sandbox',
             '--disable-dev-shm-usage',
+            '--remote-debugging-max-buffer-size-megabytes=100',
           ],
         },
       });
       // Launch a real browser instance with appropriate parameters
       const browser = await chromium.launch({
-        // headless: browserOptions?.headless === false ? false : true,
-        headless: false,
+        headless: browserOptions?.headless ?? true,
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
           '--disable-dev-shm-usage',
+          '--remote-debugging-max-buffer-size-megabytes=100',
         ],
       });
 

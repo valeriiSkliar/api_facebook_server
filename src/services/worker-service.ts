@@ -10,7 +10,7 @@ import { RequestStatus } from './request-manager-service';
 import { ScraperFactory } from '@src/implementations/factories/ScraperFactory';
 import { ScraperRegistry } from './ScraperRegistry';
 import { AdLibraryQuery } from '@src/models/AdLibraryQuery';
-import { BrowserPoolService } from './browser-pool-service';
+import { BrowserPoolService } from './browser-pool/browser-pool-service';
 
 @Injectable()
 export class WorkerService implements OnModuleInit {

@@ -6,10 +6,9 @@ import {
   RequestMetadata,
   RequestStatus,
 } from './request-manager-service';
-import { BrowserPoolService } from './browser-pool-service';
+import { BrowserPoolService } from './browser-pool/browser-pool-service';
 import { FacebookAdScraperService } from './FacebookAdScraperService';
 import { AdLibraryQuery } from '@src/models/AdLibraryQuery';
-import { Page } from 'playwright';
 import { Browser } from 'playwright';
 
 @Injectable()
@@ -23,6 +22,9 @@ export class RequestProcessorService {
     // Include other scrapers as needed
   ) {}
 
+  /**
+   * Process a request by ID
+   */
   async processRequest(requestId: string): Promise<any> {
     try {
       // Get request details

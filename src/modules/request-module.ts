@@ -2,7 +2,6 @@ import { Module, Logger } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { RequestController } from '../controllers/request-controller';
 import { RequestManagerService } from '../services/request-manager-service';
-import { BrowserPoolService } from '../services/browser-pool-service';
 import { CacheService } from '../services/cache-service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { RedisModule } from '../redis/redis.module';
@@ -15,13 +14,18 @@ import { WorkerService } from '../services/worker-service';
 import { RequestProcessorScheduler } from '../schedulers/request-processor-scheduler';
 import { RequestProcessorService } from '../services/request-processor-service';
 import { FacebookAdScraperService } from '../services/FacebookAdScraperService';
+import { BrowserPoolModule } from '../services/browser-pool/browser-pool.module';
 
 @Module({
-  imports: [PrismaModule, RedisModule, ScheduleModule.forRoot()],
+  imports: [
+    PrismaModule,
+    RedisModule,
+    ScheduleModule.forRoot(),
+    BrowserPoolModule,
+  ],
   controllers: [RequestController],
   providers: [
     RequestManagerService,
-    BrowserPoolService,
     CacheService,
     RequestScheduler,
     QueueService,
@@ -37,6 +41,6 @@ import { FacebookAdScraperService } from '../services/FacebookAdScraperService';
       useValue: new Logger('RequestModule'),
     },
   ],
-  exports: [RequestManagerService, BrowserPoolService, CacheService],
+  exports: [RequestManagerService, CacheService],
 })
 export class RequestModule {}

@@ -5,7 +5,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
 import { RedisService } from '../redis/redis.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { BrowserPoolService } from './browser-pool-service';
+import { BrowserPoolService } from './browser-pool/browser-pool-service';
 import { CreateRequestDto } from '@src/dto/create-request.dto';
 import { Prisma } from '@prisma/client';
 import { QueueService } from './queue-service';
@@ -122,15 +122,16 @@ export class RequestManagerService {
         },
       });
 
-      // Сначала проверяем наличие свободного браузера в пуле
+      // Try to get an available browser
       const availableBrowser =
         await this.browserPoolService.getAvailableBrowser();
+
       if (availableBrowser) {
         this.logger.log(
           `Using available browser from pool: ${availableBrowser.id} for request ${requestId}`,
         );
 
-        // Используем доступный браузер
+        // Reserve the browser
         const updatedBrowser = await this.browserPoolService.reserveBrowser(
           requestId,
           userId,
@@ -139,25 +140,18 @@ export class RequestManagerService {
         );
 
         if (updatedBrowser) {
-          // Обновляем данные запроса
+          // Update request data
           requestMetadata.browserId = updatedBrowser.id;
           requestMetadata.status = RequestStatus.PROCESSING;
 
-          // Сохраняем информацию о браузере для пользователя
-          const userBrowserKey = `${this.USER_BROWSER_PREFIX}${userId}`;
-          await this.redisService.set(
-            userBrowserKey,
-            updatedBrowser.id,
-            this.BROWSER_EXPIRY,
-          );
-
-          // Обновляем в Redis и базе данных
+          // Update in Redis
           await this.redisService.set(
             requestRedisKey,
             requestMetadata,
             this.REQUEST_EXPIRY,
           );
 
+          // Update in database
           await this.prismaService.request.updateMany({
             where: { external_request_id: requestId },
             data: {
@@ -165,127 +159,48 @@ export class RequestManagerService {
             },
           });
 
+          // Enqueue for processing
           await this.queueService.enqueueRequest(requestId, priority);
-
-          return requestMetadata;
         }
-      }
-
-      // Check if user already has a browser assigned
-      const userBrowserKey = `${this.USER_BROWSER_PREFIX}${userId}`;
-      const existingBrowserId =
-        await this.redisService.get<string>(userBrowserKey);
-
-      if (existingBrowserId) {
-        // Use existing browser
-        requestMetadata.browserId = existingBrowserId;
-        requestMetadata.status = RequestStatus.PROCESSING;
-        const browserInstance =
-          await this.browserPoolService.getBrowser(existingBrowserId);
-
-        if (browserInstance) {
-          this.logger.log(`Using existing browser instance:`, {
-            browserId: browserInstance.id,
-            requestId: browserInstance.requestId,
-          });
-        } else {
-          this.logger.warn(
-            `Browser ${existingBrowserId} not found in active browsers pool, creating a new one`,
-          );
-          // Immediately delete the stale browser reference
-          await this.redisService.del(userBrowserKey);
-        }
-
+      } else {
+        // No available browser, try to create a new one
         const newBrowser = await this.browserPoolService.reserveBrowser(
           requestId,
           userId,
           userEmail,
           parameters,
         );
+
         if (newBrowser) {
-          // Update with new browser info
+          // Update request data
           requestMetadata.browserId = newBrowser.id;
-          // Store new browser ID
+          requestMetadata.status = RequestStatus.PROCESSING;
+
+          // Update in Redis
           await this.redisService.set(
-            userBrowserKey,
-            newBrowser.id,
-            this.BROWSER_EXPIRY,
-          );
-        }
-        // Update Redis and database
-        await this.redisService.set(
-          requestRedisKey,
-          requestMetadata,
-          this.REQUEST_EXPIRY,
-        );
-
-        await this.prismaService.request.updateMany({
-          where: { external_request_id: requestId },
-          data: {
-            status: RequestStatus.PROCESSING.toString(),
-          },
-        });
-
-        await this.queueService.enqueueRequest(requestId, priority);
-      } else {
-        // Try to reserve a browser
-        try {
-          const browser = await this.browserPoolService.reserveBrowser(
-            requestId,
-            userId,
-            userEmail,
-            parameters,
+            requestRedisKey,
+            requestMetadata,
+            this.REQUEST_EXPIRY,
           );
 
-          if (browser) {
-            requestMetadata.browserId = browser.id;
-            requestMetadata.status = RequestStatus.PROCESSING;
+          // Update in database
+          await this.prismaService.request.updateMany({
+            where: { external_request_id: requestId },
+            data: {
+              status: RequestStatus.PROCESSING.toString(),
+            },
+          });
 
-            // Store browser id for user
-            await this.redisService.set(
-              userBrowserKey,
-              browser.id,
-              this.BROWSER_EXPIRY,
-            );
+          // Enqueue for processing
+          await this.queueService.enqueueRequest(requestId, priority);
 
-            // Update Redis and database
-            await this.redisService.set(
-              requestRedisKey,
-              requestMetadata,
-              this.REQUEST_EXPIRY,
-            );
-
-            await this.prismaService.request.updateMany({
-              where: { external_request_id: requestId },
-              data: {
-                status: RequestStatus.PROCESSING.toString(),
-              },
-            });
-
-            this.logger.log(`Browser instance created:`, {
-              browserId: browser.id,
-              requestId: requestId,
-              browserMemoryState: browser.browser
-                ? 'initialized'
-                : 'not-initialized',
-            });
-            this.logger.log(
-              `Browser ${browser.id} reserved for user ${userId}, request ${requestId}`,
-            );
-          }
-          if (browser) {
-            // Enqueue for processing
-            await this.queueService.enqueueRequest(requestId, priority);
-            this.logger.log(`Request ${requestId} enqueued for processing`);
-          }
-
-          return requestMetadata;
-        } catch (error) {
-          this.logger.error(
-            `Failed to reserve browser for request ${requestId}`,
-            error,
+          this.logger.log(
+            `Created new browser ${newBrowser.id} for request ${requestId}`,
           );
-          // Continue without browser - it will be assigned later when available
+        } else {
+          this.logger.warn(
+            `Could not reserve a browser for request ${requestId} - will retry later`,
+          );
         }
       }
 
@@ -411,7 +326,6 @@ export class RequestManagerService {
 
       // Store result in database result field if provided
       if (dbRequest && result) {
-        // Сохраняем результат в поле ответа запроса
         await this.prismaService.request.update({
           where: {
             id: dbRequest.id,
@@ -479,18 +393,14 @@ export class RequestManagerService {
           }
         }
 
-        // Если нет других активных запросов, освобождаем браузер для повторного использования
+        // If no other active requests, make the browser available
         if (!hasActiveRequests) {
           this.logger.log(
             `No active requests left for user ${request.user_id}, making browser ${request.browserId} available for reuse`,
           );
 
-          // Вместо закрытия браузера, помечаем его как доступный для повторного использования
+          // Make browser available for reuse
           await this.browserPoolService.makeAvailable(request.browserId);
-
-          // Remove browser from user
-          const userBrowserKey = `${this.USER_BROWSER_PREFIX}${request.user_id}`;
-          await this.redisService.del(userBrowserKey);
         }
       }
 
@@ -536,10 +446,6 @@ export class RequestManagerService {
       // If we have a browser ID, extend its reservation
       if (request.browserId) {
         await this.browserPoolService.extendReservation(request.browserId);
-
-        // Also extend the user-browser association
-        const userBrowserKey = `${this.USER_BROWSER_PREFIX}${request.user_id}`;
-        await this.redisService.expire(userBrowserKey, this.BROWSER_EXPIRY);
       }
 
       // Update database

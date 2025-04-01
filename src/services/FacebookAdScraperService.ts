@@ -6,8 +6,7 @@ import { ScraperFactory } from '../implementations/factories/ScraperFactory';
 import { AdLibraryQuery } from '../models/AdLibraryQuery';
 import { ScraperOptions } from '../models/ScraperOptions';
 import { ScraperResult } from '../models/ScraperResult';
-import { BrowserPoolService } from './browser-pool-service';
-import { Page } from 'playwright';
+import { BrowserPoolService } from './browser-pool/browser-pool-service';
 import { Browser } from 'playwright';
 // import { plainToInstance } from 'class-transformer';
 // import { ScraperResponseDto } from '@src/dto';
@@ -17,7 +16,7 @@ export class FacebookAdScraperService {
   constructor(
     private readonly scraperFactory: ScraperFactory,
     private readonly logger: Logger,
-    private readonly browserPoolService: BrowserPoolService, // Inject BrowserPoolService
+    private readonly browserPoolService: BrowserPoolService,
   ) {}
 
   /**
@@ -47,7 +46,12 @@ export class FacebookAdScraperService {
           browserId: string;
           browser: Browser;
         }) => {
-          return this.executeScraperWithBrowser(query, options, browser);
+          return this.executeScraperWithBrowser(
+            query,
+            options,
+            browser,
+            browserId,
+          );
         },
       );
     }

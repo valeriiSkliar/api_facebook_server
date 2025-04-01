@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { RequestManagerService } from '../services/request-manager-service';
-import { BrowserPoolService } from '../services/browser-pool-service';
+import { BrowserPoolService } from '../services/browser-pool/browser-pool-service';
 import { CacheService } from '../services/cache-service';
 
 @Injectable()

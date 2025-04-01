@@ -1,24 +1,21 @@
-// src/services/browser-pool/browser-pool-service.ts
-
 import {
   Injectable,
   Logger,
   OnModuleInit,
   OnModuleDestroy,
 } from '@nestjs/common';
-// import { Browser } from 'playwright';
-// import { v4 as uuidv4 } from 'uuid';
+import { Page } from 'playwright';
 import { ScraperOptionsDto } from '../../dto/ScraperOptionsDto';
 import {
   BrowserState,
   BrowserInstance,
   BrowserPoolConfig,
   BrowserCallback,
-  //   BrowserOperationResult,
 } from './types';
 import { BrowserLifecycleManager } from './browser-lifecycle-manager';
 import { BrowserStorageService } from './browser-storage-service';
 import { BrowserMetricsService } from './browser-metrics-service';
+import { TabManager, BrowserTab } from './tab-manager';
 
 @Injectable()
 export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
@@ -39,12 +36,15 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
     private readonly lifecycleManager: BrowserLifecycleManager,
     private readonly storageService: BrowserStorageService,
     private readonly metricsService: BrowserMetricsService,
+    private readonly tabManager: TabManager,
   ) {
     // Initialize configuration with defaults and environment variables
     this.config = {
       minPoolSize: parseInt(process.env.MIN_BROWSER_INSTANCES || '2', 10),
       maxPoolSize: parseInt(process.env.MAX_BROWSER_INSTANCES || '10', 10),
+      maxTabsPerBrowser: parseInt(process.env.MAX_TABS_PER_BROWSER || '10', 10),
       browserTTL: parseInt(process.env.BROWSER_TTL || '900', 10), // 15 minutes
+      tabTTL: parseInt(process.env.TAB_TTL || '600', 10), // 10 minutes
       healthCheckInterval: parseInt(
         process.env.HEALTH_CHECK_INTERVAL || '60000',
         10,
@@ -57,6 +57,10 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
     this.logger.log(
       `Initialized browser pool with config: ${JSON.stringify(this.config)}`,
     );
+  }
+
+  getMaxTabsPerBrowser(): number {
+    return this.config.maxTabsPerBrowser || 10;
   }
 
   /**
@@ -91,173 +95,147 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Find an available browser that is not currently assigned to a request
+   * Find a browser with available capacity for a new tab
    */
-  async getAvailableBrowser(): Promise<BrowserInstance | null> {
+  async getBrowserWithCapacity(): Promise<BrowserInstance | null> {
     try {
-      // Get all browsers that are in the AVAILABLE state
+      // Get all browsers that are not in CLOSING state and have capacity
       const availableBrowsers = Array.from(this.activeBrowsers.values()).filter(
-        (browser) => browser.state === BrowserState.AVAILABLE,
+        (browser) =>
+          browser.state !== BrowserState.CLOSING &&
+          browser.openTabs < this.config.maxTabsPerBrowser!,
       );
 
       if (availableBrowsers.length === 0) {
         return null;
       }
 
-      // Sort by last used time (oldest first) for better distribution
-      availableBrowsers.sort(
-        (a, b) => a.lastUsedAt.getTime() - b.lastUsedAt.getTime(),
-      );
+      // Sort by open tabs (browsers with fewer tabs first) for better distribution
+      availableBrowsers.sort((a, b) => a.openTabs - b.openTabs);
 
       const browser = availableBrowsers[0];
-      this.logger.log(`Found available browser: ${browser.id}`);
+      this.logger.log(
+        `Found browser with capacity: ${browser.id} (${browser.openTabs}/${this.config.maxTabsPerBrowser} tabs)`,
+      );
 
       return new Promise((resolve) => {
         resolve(browser);
       });
     } catch (error) {
-      this.logger.error('Error finding available browser:', error);
+      this.logger.error('Error finding browser with capacity:', error);
       return null;
     }
   }
 
   /**
-   * Reserve a browser for a specific request
+   * Create a tab for a specific request
    */
-  async reserveBrowser(
+  async createTabForRequest(
     requestId: string,
     userId: string,
     userEmail: string,
-    options: ScraperOptionsDto,
-  ): Promise<BrowserInstance | null> {
+    options?: ScraperOptionsDto,
+  ): Promise<{ browserId: string; tabId: string; page?: Page } | null> {
     try {
-      // First try to reuse an available browser
-      const availableBrowser = await this.getAvailableBrowser();
+      // First try to find a browser with capacity
+      let browser = await this.getBrowserWithCapacity();
 
-      if (availableBrowser) {
-        // Update browser state and metadata
-        availableBrowser.requestId = requestId;
-        availableBrowser.userId = userId;
-        availableBrowser.userEmail = userEmail;
-        availableBrowser.state = BrowserState.RESERVED;
+      // If no browser with capacity, create a new one
+      if (!browser) {
+        if (this.activeBrowsers.size >= this.config.maxPoolSize!) {
+          this.logger.warn(
+            `Cannot create browser: max limit of ${this.config.maxPoolSize} reached`,
+          );
+          return null;
+        }
 
-        // Update timestamps
-        const now = new Date();
-        availableBrowser.lastUsedAt = now;
-        availableBrowser.expiresAt = new Date(
-          now.getTime() + this.config.browserTTL! * 1000,
+        // Create a new browser
+        const result = await this.lifecycleManager.createBrowser({
+          headless: options?.browser?.headless
+            ? options?.browser?.headless
+            : false,
+          slowMo: 50,
+        });
+
+        if (!result.success || !result.data) {
+          this.logger.error('Failed to create browser:', result.error);
+          return null;
+        }
+
+        browser = result.data;
+        this.activeBrowsers.set(browser.id, browser);
+
+        // Record metrics
+        this.metricsService.recordBrowserCreation(
+          browser.metrics?.creationTime || 0,
         );
 
-        // Save updated browser metadata to Redis
-        await this.storageService.saveBrowser(
-          availableBrowser,
-          this.config.browserTTL,
-        );
-
-        // Record metric for browser reuse
-        this.metricsService.recordBrowserReuse();
-
-        this.logger.log(
-          `Reusing browser ${availableBrowser.id} for request ${requestId}`,
-        );
-        return availableBrowser;
+        // Store in Redis
+        await this.storageService.saveBrowser(browser, this.config.browserTTL);
       }
 
-      // If we're at capacity, return null
-      if (this.activeBrowsers.size >= this.config.maxPoolSize!) {
-        this.logger.warn(
-          `Cannot create browser: max limit of ${this.config.maxPoolSize} reached`,
-        );
+      // Create a tab in the browser
+      const tabResult = await this.lifecycleManager.createTab(
+        browser,
+        requestId,
+        userId,
+        userEmail,
+      );
+
+      if (!tabResult) {
+        this.logger.error(`Failed to create tab in browser ${browser.id}`);
         return null;
       }
 
-      // Create a new browser
-      const result = await this.lifecycleManager.createBrowser({
-        headless: options?.browser?.headless ?? true,
-        slowMo: 50,
-      });
+      const { tab, page } = tabResult;
 
-      if (!result.success || !result.data) {
-        this.logger.error('Failed to create browser:', result.error);
-        return null;
-      }
-
-      // Set up the new browser instance
-      const browserInstance = result.data;
-      browserInstance.requestId = requestId;
-      browserInstance.userId = userId;
-      browserInstance.userEmail = userEmail;
-      browserInstance.state = BrowserState.RESERVED;
-
-      // Record metrics
-      this.metricsService.recordBrowserCreation(
-        browserInstance.metrics?.creationTime || 0,
-      );
-
-      // Store the browser in memory
-      this.activeBrowsers.set(browserInstance.id, browserInstance);
-
-      // Store in Redis
-      await this.storageService.saveBrowser(
-        browserInstance,
-        this.config.browserTTL,
-      );
+      // Update browser in Redis
+      await this.storageService.saveBrowser(browser, this.config.browserTTL);
 
       this.logger.log(
-        `Created browser ${browserInstance.id} for request ${requestId}`,
+        `Created tab ${tab.id} in browser ${browser.id} for request ${requestId}`,
       );
-      return browserInstance;
+
+      return {
+        browserId: browser.id,
+        tabId: tab.id,
+        page,
+      };
     } catch (error) {
-      this.logger.error(
-        `Error reserving browser for request ${requestId}:`,
-        error,
-      );
+      this.logger.error(`Error creating tab for request ${requestId}:`, error);
       this.metricsService.recordError();
       return null;
     }
   }
 
   /**
-   * Make a browser available for reuse
+   * Close a tab
    */
-  async makeAvailable(browserId: string): Promise<boolean> {
+  async closeTab(browserId: string, tabId: string): Promise<boolean> {
     try {
-      const browserInstance = this.activeBrowsers.get(browserId);
+      const browser = this.activeBrowsers.get(browserId);
 
-      if (!browserInstance) {
-        this.logger.warn(`Browser ${browserId} not found`);
+      if (!browser) {
+        this.logger.warn(
+          `Browser ${browserId} not found when closing tab ${tabId}`,
+        );
         return false;
       }
 
-      // Update browser state
-      browserInstance.requestId = undefined;
-      browserInstance.state = BrowserState.AVAILABLE;
+      // Use lifecycle manager to close the tab
+      const success = await this.lifecycleManager.closeTab(browser, tabId);
 
-      // Update timestamps
-      const now = new Date();
-      browserInstance.lastUsedAt = now;
-      browserInstance.expiresAt = new Date(
-        now.getTime() + this.config.browserTTL! * 1000,
-      );
-
-      // Save to Redis
-      await this.storageService.saveBrowser(
-        browserInstance,
-        this.config.browserTTL,
-      );
-
-      // If there was a user associated, remove the association
-      if (browserInstance.userId) {
-        await this.storageService.removeUserBrowser(browserInstance.userId);
-        browserInstance.userId = undefined;
-        browserInstance.userEmail = undefined;
+      if (success) {
+        // Update browser in Redis
+        await this.storageService.saveBrowser(browser, this.config.browserTTL);
       }
 
-      this.logger.log(`Browser ${browserId} marked as available for reuse`);
-      return true;
+      return success;
     } catch (error) {
-      this.logger.error(`Error making browser ${browserId} available:`, error);
-      this.metricsService.recordError();
+      this.logger.error(
+        `Error closing tab ${tabId} in browser ${browserId}:`,
+        error,
+      );
       return false;
     }
   }
@@ -267,37 +245,32 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
    */
   async releaseBrowser(browserId: string): Promise<boolean> {
     try {
-      const browserInstance = this.activeBrowsers.get(browserId);
+      const browser = this.activeBrowsers.get(browserId);
 
-      if (!browserInstance) {
+      if (!browser) {
         this.logger.warn(
           `Browser ${browserId} not found when trying to release`,
         );
         return false;
       }
 
-      // Try to make the browser available for reuse instead of closing
-      const madeAvailable = await this.makeAvailable(browserId);
-      if (madeAvailable) {
+      // If browser still has tabs, just mark it as available but don't close
+      if (browser.openTabs > 0) {
+        this.logger.log(
+          `Browser ${browserId} still has ${browser.openTabs} open tabs, not closing`,
+        );
         return true;
       }
 
-      // If making available failed, close the browser
-      browserInstance.state = BrowserState.CLOSING;
-
       // Close the browser
-      await this.lifecycleManager.closeBrowser(browserInstance);
+      browser.state = BrowserState.CLOSING;
+      await this.lifecycleManager.closeBrowser(browser);
 
       // Remove from memory
       this.activeBrowsers.delete(browserId);
 
       // Remove from Redis
       await this.storageService.deleteBrowser(browserId);
-
-      // If there was a user associated, remove the association
-      if (browserInstance.userId) {
-        await this.storageService.removeUserBrowser(browserInstance.userId);
-      }
 
       // Record metrics
       this.metricsService.recordBrowserClosure();
@@ -317,10 +290,10 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
   async getBrowser(browserId: string): Promise<BrowserInstance | null> {
     try {
       // First check in-memory map
-      const browserInstance = this.activeBrowsers.get(browserId);
+      const browser = this.activeBrowsers.get(browserId);
 
-      if (browserInstance) {
-        return browserInstance;
+      if (browser) {
+        return browser;
       }
 
       // Not found in memory, try Redis
@@ -345,36 +318,53 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Extend the reservation time for a browser
+   * Execute a callback in a specific tab of a browser
    */
-  async extendReservation(browserId: string): Promise<boolean> {
+  async executeInTab<T>(
+    browserId: string,
+    tabId: string,
+    callback: BrowserCallback<T>,
+  ): Promise<T> {
     try {
-      const browserInstance = this.activeBrowsers.get(browserId);
+      const browser = this.activeBrowsers.get(browserId);
 
-      if (!browserInstance) {
-        return false;
+      if (!browser || !browser.browser) {
+        throw new Error(`Browser ${browserId} not found or not initialized`);
       }
 
-      // Use lifecycle manager to extend the session
-      this.lifecycleManager.extendBrowserSession(
-        browserInstance,
-        this.config.browserTTL,
-      );
+      // Get tab info
+      const tab = await this.tabManager.getTab(tabId);
+      if (!tab) {
+        throw new Error(`Tab ${tabId} not found`);
+      }
 
-      // Update Redis
-      await this.storageService.saveBrowser(
-        browserInstance,
-        this.config.browserTTL,
-      );
+      // Get page object (this needs to be implemented with context)
+      const context = await browser.browser.newContext();
+      const page = await context.newPage();
 
-      this.logger.debug(`Extended reservation for browser ${browserId}`);
-      return true;
+      try {
+        // Update tab activity
+        await this.tabManager.updateTabActivity(tabId);
+
+        // Record request
+        this.metricsService.recordRequestServed();
+
+        // Execute the callback with the browser and page
+        return await callback({
+          browserId,
+          browser: browser.browser,
+          tabId,
+          page,
+        });
+      } finally {
+        // Close the context after use
+        await page.close();
+        await context.close();
+      }
     } catch (error) {
-      this.logger.error(
-        `Error extending reservation for browser ${browserId}:`,
-        error,
-      );
-      return false;
+      this.logger.error(`Error executing in tab ${tabId}:`, error);
+      this.metricsService.recordError();
+      throw error;
     }
   }
 
@@ -386,45 +376,27 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
     callback: BrowserCallback<T>,
   ): Promise<T> {
     try {
-      const browserInstance = this.activeBrowsers.get(browserId);
+      const browser = this.activeBrowsers.get(browserId);
 
-      if (!browserInstance || !browserInstance.browser) {
+      if (!browser || !browser.browser) {
         throw new Error(`Browser ${browserId} not found or not initialized`);
       }
 
-      // Update state
-      const previousState = browserInstance.state;
-      browserInstance.state = BrowserState.IN_USE;
-
-      // Extend the reservation
-      await this.extendReservation(browserId);
-
       try {
-        // Execute the callback with the browser
-        const result = await callback({
-          browserId,
-          browser: browserInstance.browser,
-        });
-
         // Record successful request
         this.metricsService.recordRequestServed();
 
-        return result;
+        // Execute the callback with just the browser
+        return await callback({
+          browserId,
+          browser: browser.browser,
+        });
       } catch (error) {
         // Record error
         this.metricsService.recordError();
 
         this.logger.error(`Error executing in browser ${browserId}:`, error);
         throw error;
-      } finally {
-        // Restore previous state if still active
-        if (this.activeBrowsers.has(browserId)) {
-          browserInstance.state = previousState;
-          await this.storageService.saveBrowser(
-            browserInstance,
-            this.config.browserTTL,
-          );
-        }
       }
     } catch (error) {
       this.logger.error(`Error executing in browser ${browserId}:`, error);
@@ -450,16 +422,10 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Get browser pool metrics
+   * Get tab info for a request
    */
-  getPoolMetrics() {
-    // Update state distribution
-    this.metricsService.updateStateDistribution(
-      Array.from(this.activeBrowsers.values()),
-    );
-
-    // Get current metrics
-    return this.metricsService.getMetrics();
+  async getTabForRequest(requestId: string): Promise<BrowserTab | null> {
+    return this.tabManager.getTabByRequest(requestId);
   }
 
   /**
@@ -501,6 +467,12 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
         }
       }
 
+      // Also clean up expired tabs
+      const expiredTabsCount = await this.tabManager.cleanupExpiredTabs();
+      if (expiredTabsCount > 0) {
+        this.logger.log(`Cleaned up ${expiredTabsCount} expired tabs`);
+      }
+
       if (cleanedCount > 0) {
         this.logger.log(`Cleaned up ${cleanedCount} expired browsers`);
       }
@@ -535,6 +507,11 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
           this.logger.warn(
             `Browser ${browser.id} failed health check, closing`,
           );
+
+          // Close all tabs first
+          for (const tabId of browser.tabIds) {
+            await this.closeTab(browser.id, tabId);
+          }
 
           // Close unhealthy browser
           await this.releaseBrowser(browser.id);
@@ -731,5 +708,40 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
 
     // Clear the active browsers map
     this.activeBrowsers.clear();
+  }
+  async makeAvailable(browserId: string): Promise<boolean> {
+    try {
+      const browserInstance = this.activeBrowsers.get(browserId);
+
+      if (!browserInstance) {
+        this.logger.warn(`Browser ${browserId} not found`);
+        return false;
+      }
+
+      // If the browser doesn't have any tabs open, set it to AVAILABLE
+      if (browserInstance.openTabs === 0) {
+        browserInstance.state = BrowserState.AVAILABLE;
+      }
+
+      // Update timestamps
+      const now = new Date();
+      browserInstance.lastUsedAt = now;
+      browserInstance.expiresAt = new Date(
+        now.getTime() + this.config.browserTTL! * 1000,
+      );
+
+      // Save to Redis
+      await this.storageService.saveBrowser(
+        browserInstance,
+        this.config.browserTTL,
+      );
+
+      this.logger.log(`Browser ${browserId} state updated`);
+      return true;
+    } catch (error) {
+      this.logger.error(`Error updating browser ${browserId} state:`, error);
+      this.metricsService.recordError();
+      return false;
+    }
   }
 }

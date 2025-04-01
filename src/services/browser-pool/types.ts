@@ -6,10 +6,10 @@ import { Browser } from 'playwright';
  * Defines the possible states of a browser instance in the pool
  */
 export enum BrowserState {
-  AVAILABLE = 'AVAILABLE', // Browser is ready for use
-  RESERVED = 'RESERVED', // Browser is reserved but not yet in use
-  IN_USE = 'IN_USE', // Browser is actively being used
+  AVAILABLE = 'AVAILABLE', // Browser has capacity for more tabs
+  IN_USE = 'IN_USE', // Browser has tabs open and is being used
   CLOSING = 'CLOSING', // Browser is in the process of being closed
+  FULL = 'FULL', // Browser has no capacity for more tabs
 }
 
 /**
@@ -17,14 +17,13 @@ export enum BrowserState {
  */
 export interface BrowserInstance {
   id: string; // Unique identifier for the browser
-  requestId?: string; // ID of the request currently using this browser
-  userId?: string; // ID of the user who owns this browser session
-  userEmail?: string; // Email of the user who owns this browser session
   createdAt: Date; // When the browser was created
   lastUsedAt: Date; // When the browser was last used
-  expiresAt: Date; // When the browser reservation expires
+  expiresAt: Date; // When the browser expires
   state: BrowserState; // Current state of the browser
   browser?: Browser; // The actual browser instance (not stored in Redis)
+  openTabs: number; // Number of open tabs in this browser
+  tabIds: string[]; // IDs of all tabs open in this browser
   healthCheck?: Date; // Last time a health check was performed
   healthStatus?: boolean; // Result of the last health check
   metrics?: BrowserMetrics; // Performance metrics for this browser
@@ -59,13 +58,14 @@ export interface BrowserCreationOptions {
 export interface BrowserPoolConfig {
   minPoolSize?: number; // Minimum number of browsers to keep ready
   maxPoolSize?: number; // Maximum number of browsers allowed
+  maxTabsPerBrowser?: number; // Maximum number of tabs per browser
   browserTTL?: number; // Time-to-live for browser in seconds
+  tabTTL?: number; // Time-to-live for tab in seconds
   healthCheckInterval?: number; // How often to check browser health in ms
   cleanupInterval?: number; // How often to run cleanup in ms
   preWarmingEnabled?: boolean; // Whether to pre-warm browsers during low load
   preWarmThreshold?: number; // Percentage of pool below which to pre-warm
 }
-
 /**
  * Result of a browser operation
  */
@@ -82,7 +82,11 @@ export interface BrowserOperationResult<T = unknown> {
 export type BrowserCallback<T> = ({
   browserId,
   browser,
+  tabId,
+  page,
 }: {
   browserId: string;
   browser: Browser;
+  tabId?: string;
+  page?: any;
 }) => Promise<T>;

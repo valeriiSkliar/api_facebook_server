@@ -1,6 +1,6 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+// src/services/request-manager-service.ts
+
 import { Injectable, Logger } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
 import { RedisService } from '../redis/redis.service';
@@ -9,6 +9,7 @@ import { BrowserPoolService } from './browser-pool/browser-pool-service';
 import { CreateRequestDto } from '@src/dto/create-request.dto';
 import { Prisma } from '@prisma/client';
 import { QueueService } from './queue-service';
+import { TabManager } from './browser-pool/tab-manager';
 
 export interface RequestMetadata {
   id: string;
@@ -21,6 +22,7 @@ export interface RequestMetadata {
   processedAt?: Date;
   expiresAt: Date;
   browserId?: string;
+  tabId?: string; // Added to track the tab ID
   lastActivityAt: Date;
   priorityLevel: number;
   retryCount: number;
@@ -42,19 +44,18 @@ export class RequestManagerService {
   private readonly REQUEST_PREFIX = 'request:';
   private readonly USER_PREFIX = 'user:';
   private readonly USER_REQUESTS_PREFIX = 'user-requests:';
-  private readonly USER_BROWSER_PREFIX = 'user-browser:';
   private readonly REQUEST_EXPIRY = 60 * 60 * 24; // 24 hours in seconds
-  private readonly BROWSER_EXPIRY = 60 * 60; // 1 hour in seconds
 
   constructor(
     private readonly redisService: RedisService,
     private readonly prismaService: PrismaService,
     private readonly browserPoolService: BrowserPoolService,
     private readonly queueService: QueueService,
+    private readonly tabManager: TabManager,
   ) {}
 
   /**
-   * Create a new request and reserve a browser instance
+   * Create a new request and reserve a tab in a browser
    */
   async createRequest(
     userId: string,
@@ -122,86 +123,45 @@ export class RequestManagerService {
         },
       });
 
-      // Try to get an available browser
-      const availableBrowser =
-        await this.browserPoolService.getAvailableBrowser();
+      // Create a tab for this request in an available browser
+      const tabCreation = await this.browserPoolService.createTabForRequest(
+        requestId,
+        userId,
+        userEmail,
+        parameters,
+      );
 
-      if (availableBrowser) {
+      if (tabCreation) {
+        // Update request metadata with browser and tab IDs
+        requestMetadata.browserId = tabCreation.browserId;
+        requestMetadata.tabId = tabCreation.tabId;
+        requestMetadata.status = RequestStatus.PROCESSING;
+
+        // Update in Redis
+        await this.redisService.set(
+          requestRedisKey,
+          requestMetadata,
+          this.REQUEST_EXPIRY,
+        );
+
+        // Update in database
+        await this.prismaService.request.updateMany({
+          where: { external_request_id: requestId },
+          data: {
+            status: RequestStatus.PROCESSING.toString(),
+          },
+        });
+
+        // Enqueue for processing
+        await this.queueService.enqueueRequest(requestId, priority);
+
         this.logger.log(
-          `Using available browser from pool: ${availableBrowser.id} for request ${requestId}`,
+          `Created tab ${tabCreation.tabId} in browser ${tabCreation.browserId} for request ${requestId}`,
         );
-
-        // Reserve the browser
-        const updatedBrowser = await this.browserPoolService.reserveBrowser(
-          requestId,
-          userId,
-          userEmail,
-          parameters,
-        );
-
-        if (updatedBrowser) {
-          // Update request data
-          requestMetadata.browserId = updatedBrowser.id;
-          requestMetadata.status = RequestStatus.PROCESSING;
-
-          // Update in Redis
-          await this.redisService.set(
-            requestRedisKey,
-            requestMetadata,
-            this.REQUEST_EXPIRY,
-          );
-
-          // Update in database
-          await this.prismaService.request.updateMany({
-            where: { external_request_id: requestId },
-            data: {
-              status: RequestStatus.PROCESSING.toString(),
-            },
-          });
-
-          // Enqueue for processing
-          await this.queueService.enqueueRequest(requestId, priority);
-        }
       } else {
-        // No available browser, try to create a new one
-        const newBrowser = await this.browserPoolService.reserveBrowser(
-          requestId,
-          userId,
-          userEmail,
-          parameters,
+        this.logger.warn(
+          `Could not create tab for request ${requestId} - will retry later`,
         );
-
-        if (newBrowser) {
-          // Update request data
-          requestMetadata.browserId = newBrowser.id;
-          requestMetadata.status = RequestStatus.PROCESSING;
-
-          // Update in Redis
-          await this.redisService.set(
-            requestRedisKey,
-            requestMetadata,
-            this.REQUEST_EXPIRY,
-          );
-
-          // Update in database
-          await this.prismaService.request.updateMany({
-            where: { external_request_id: requestId },
-            data: {
-              status: RequestStatus.PROCESSING.toString(),
-            },
-          });
-
-          // Enqueue for processing
-          await this.queueService.enqueueRequest(requestId, priority);
-
-          this.logger.log(
-            `Created new browser ${newBrowser.id} for request ${requestId}`,
-          );
-        } else {
-          this.logger.warn(
-            `Could not reserve a browser for request ${requestId} - will retry later`,
-          );
-        }
       }
 
       return requestMetadata;
@@ -249,6 +209,13 @@ export class RequestManagerService {
         retryCount: dbRequest.retry_count,
         webhookUrl: dbRequest.webhook_url || undefined,
       };
+
+      // Try to get tab info if available
+      const tab = await this.tabManager.getTabByRequest(requestId);
+      if (tab) {
+        requestMetadata.tabId = tab.id;
+        requestMetadata.browserId = tab.browserId;
+      }
 
       // Cache in Redis for future lookups
       await this.redisService.set(
@@ -315,6 +282,17 @@ export class RequestManagerService {
         status === RequestStatus.EXPIRED
       ) {
         request.processedAt = now;
+
+        // Close the tab if it exists
+        if (request.tabId && request.browserId) {
+          await this.browserPoolService.closeTab(
+            request.browserId,
+            request.tabId,
+          );
+          this.logger.log(
+            `Closed tab ${request.tabId} for completed request ${requestId}`,
+          );
+        }
       }
 
       // Get DB entity
@@ -365,45 +343,6 @@ export class RequestManagerService {
         this.REQUEST_EXPIRY,
       );
 
-      // If request is completed or failed, check if there are other active requests for this user
-      if (
-        (status === RequestStatus.COMPLETED ||
-          status === RequestStatus.FAILED ||
-          status === RequestStatus.CANCELLED ||
-          status === RequestStatus.EXPIRED) &&
-        request.browserId
-      ) {
-        // Check if there are other active requests for this user
-        const userRequestsKey = `${this.USER_REQUESTS_PREFIX}${request.user_id}`;
-        const requestIds =
-          (await this.redisService.lrange(userRequestsKey, 0, -1)) || [];
-
-        let hasActiveRequests = false;
-        for (const id of requestIds) {
-          if (id !== requestId) {
-            const otherRequest = await this.getRequest(id);
-            if (
-              otherRequest &&
-              (otherRequest.status === RequestStatus.PENDING ||
-                otherRequest.status === RequestStatus.PROCESSING)
-            ) {
-              hasActiveRequests = true;
-              break;
-            }
-          }
-        }
-
-        // If no other active requests, make the browser available
-        if (!hasActiveRequests) {
-          this.logger.log(
-            `No active requests left for user ${request.user_id}, making browser ${request.browserId} available for reuse`,
-          );
-
-          // Make browser available for reuse
-          await this.browserPoolService.makeAvailable(request.browserId);
-        }
-      }
-
       // Log activity
       await this.prismaService.activityLog.create({
         data: {
@@ -443,9 +382,9 @@ export class RequestManagerService {
       const redisKey = `${this.REQUEST_PREFIX}${requestId}`;
       await this.redisService.set(redisKey, request, this.REQUEST_EXPIRY);
 
-      // If we have a browser ID, extend its reservation
-      if (request.browserId) {
-        await this.browserPoolService.extendReservation(request.browserId);
+      // If we have a tab ID, update its activity
+      if (request.tabId) {
+        await this.tabManager.updateTabActivity(request.tabId);
       }
 
       // Update database
@@ -498,21 +437,32 @@ export class RequestManagerService {
       });
 
       // Convert to RequestMetadata format and cache in Redis
-      const requests = dbRequests.map((dbRequest) => ({
-        id: dbRequest.external_request_id,
-        user_id: dbRequest.user_id,
-        user_email: dbRequest.user_email,
-        requestType: dbRequest.request_type,
-        parameters: dbRequest.parameters as Record<string, any>,
-        status: dbRequest.status as RequestStatus,
-        createdAt: dbRequest.created_at,
-        processedAt: dbRequest.processed_at || undefined,
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // Set expiry to 24h from now
-        lastActivityAt: dbRequest.processed_at || dbRequest.created_at,
-        priorityLevel: dbRequest.priority,
-        retryCount: dbRequest.retry_count,
-        webhookUrl: dbRequest.webhook_url || undefined,
-      }));
+      const requests = await Promise.all(
+        dbRequests.map(async (dbRequest) => {
+          // Try to get tab info if available
+          const tab = await this.tabManager.getTabByRequest(
+            dbRequest.external_request_id,
+          );
+
+          return {
+            id: dbRequest.external_request_id,
+            user_id: dbRequest.user_id,
+            user_email: dbRequest.user_email,
+            requestType: dbRequest.request_type,
+            parameters: dbRequest.parameters as Record<string, any>,
+            status: dbRequest.status as RequestStatus,
+            createdAt: dbRequest.created_at,
+            processedAt: dbRequest.processed_at || undefined,
+            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // Set expiry to 24h from now
+            lastActivityAt: dbRequest.processed_at || dbRequest.created_at,
+            priorityLevel: dbRequest.priority,
+            retryCount: dbRequest.retry_count,
+            webhookUrl: dbRequest.webhook_url || undefined,
+            browserId: tab?.browserId,
+            tabId: tab?.id,
+          };
+        }),
+      );
 
       // Cache each request in Redis
       for (const request of requests) {
@@ -561,12 +511,30 @@ export class RequestManagerService {
 
       let count = 0;
 
-      // Mark each as expired and release browsers
+      // Mark each as expired and close tabs
       for (const request of expiredRequests) {
+        // Get request metadata to find tab ID
+        const requestMetadata = await this.getRequest(
+          request.external_request_id,
+        );
+
+        // Close the tab if it exists
+        if (requestMetadata?.tabId && requestMetadata?.browserId) {
+          await this.browserPoolService.closeTab(
+            requestMetadata.browserId,
+            requestMetadata.tabId,
+          );
+          this.logger.log(
+            `Closed tab ${requestMetadata.tabId} for expired request ${request.external_request_id}`,
+          );
+        }
+
+        // Update request status to expired
         await this.updateRequestStatus(
           request.external_request_id,
           RequestStatus.EXPIRED,
         );
+
         count++;
       }
 
@@ -597,63 +565,6 @@ export class RequestManagerService {
     } catch (error) {
       this.logger.error('Error getting pending requests count', error);
       return 0;
-    }
-  }
-
-  /**
-   * Create a new browser instance for a user
-   */
-  private async createNewBrowserForUser(
-    userId: string,
-    requestId: string,
-  ): Promise<any> {
-    try {
-      // Get user email from Redis or database
-      const userEmail = await this.redisService.get<string>(
-        `${this.USER_PREFIX}${userId}`,
-      );
-
-      if (!userEmail) {
-        this.logger.error(`User email not found for userId ${userId}`);
-        throw new Error(`User email not found for userId ${userId}`);
-      }
-
-      // Get request parameters
-      const request = await this.getRequest(requestId);
-      if (!request) {
-        this.logger.error(`Request not found: ${requestId}`);
-        throw new Error(`Request not found: ${requestId}`);
-      }
-
-      // Reserve a new browser
-      const browser = await this.browserPoolService.reserveBrowser(
-        requestId,
-        userId,
-        userEmail,
-        request.parameters,
-      );
-
-      if (!browser) {
-        this.logger.warn(`Failed to create new browser for user ${userId}`);
-        return null;
-      }
-
-      // Store browser id for user
-      const userBrowserKey = `${this.USER_BROWSER_PREFIX}${userId}`;
-      await this.redisService.set(
-        userBrowserKey,
-        browser.id,
-        this.BROWSER_EXPIRY,
-      );
-
-      this.logger.log(
-        `New browser ${browser.id} created for user ${userId}, request ${requestId}`,
-      );
-
-      return browser;
-    } catch (error) {
-      this.logger.error(`Error creating browser for user ${userId}`, error);
-      throw error;
     }
   }
 }

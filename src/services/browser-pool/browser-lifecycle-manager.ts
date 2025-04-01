@@ -1,7 +1,5 @@
-// src/services/browser-pool/browser-lifecycle-manager.ts
-
 import { Injectable, Logger } from '@nestjs/common';
-import { chromium } from 'playwright';
+import { chromium, Page } from 'playwright';
 import { v4 as uuidv4 } from 'uuid';
 import {
   BrowserState,
@@ -9,10 +7,14 @@ import {
   BrowserCreationOptions,
   BrowserOperationResult,
 } from './types';
+import { TabManager, BrowserTab } from './tab-manager';
 
 @Injectable()
 export class BrowserLifecycleManager {
   private readonly logger = new Logger(BrowserLifecycleManager.name);
+  private readonly MAX_TABS_PER_BROWSER = 10;
+
+  constructor(private readonly tabManager: TabManager) {}
 
   /**
    * Create a new browser instance
@@ -29,7 +31,7 @@ export class BrowserLifecycleManager {
 
       // Launch playwright browser with appropriate options
       const browser = await chromium.launch({
-        headless: options?.headless ?? true,
+        headless: options?.headless ? options?.headless : false,
         slowMo: options?.slowMo ?? 50,
         args: [
           '--no-sandbox',
@@ -51,6 +53,8 @@ export class BrowserLifecycleManager {
         expiresAt: new Date(now.getTime() + expiryTime),
         state: BrowserState.AVAILABLE,
         browser,
+        openTabs: 0,
+        tabIds: [],
         metrics: {
           creationTime: Date.now() - startTime,
           requestsServed: 0,
@@ -103,6 +107,11 @@ export class BrowserLifecycleManager {
       instance.state = BrowserState.CLOSING;
 
       this.logger.log(`Closing browser ${instance.id}`);
+
+      // Close all tabs for this browser
+      await this.tabManager.closeAllTabsForBrowser(instance.id);
+
+      // Close the browser
       await instance.browser.close();
 
       this.logger.log(`Browser ${instance.id} closed successfully`);
@@ -118,6 +127,104 @@ export class BrowserLifecycleManager {
         browserId: instance.id,
         error: error as Error,
       };
+    }
+  }
+
+  /**
+   * Create a new tab in a browser
+   * @param instance - Browser instance
+   * @param requestId - Request ID
+   * @param userId - User ID
+   * @param userEmail - User email
+   */
+  async createTab(
+    instance: BrowserInstance,
+    requestId: string,
+    userId: string,
+    userEmail?: string,
+  ): Promise<{ tab: BrowserTab; page: Page } | null> {
+    if (!instance || !instance.browser) {
+      this.logger.error(`Invalid browser instance when creating tab`);
+      return null;
+    }
+
+    try {
+      // Check if browser has capacity
+      if (instance.openTabs >= this.MAX_TABS_PER_BROWSER) {
+        this.logger.warn(
+          `Browser ${instance.id} has reached maximum tab capacity`,
+        );
+        return null;
+      }
+
+      // Create a new page in the browser
+      const page = await instance.browser.newPage();
+
+      // Create the tab in TabManager
+      const tab = await this.tabManager.createTab(
+        instance.id,
+        requestId,
+        userId,
+        userEmail,
+        page,
+      );
+
+      // Update browser instance
+      instance.openTabs++;
+      instance.tabIds.push(tab.id);
+      instance.lastUsedAt = new Date();
+
+      // Update browser state if this is the first tab
+      if (instance.openTabs === 1) {
+        instance.state = BrowserState.IN_USE;
+      }
+
+      this.logger.log(
+        `Created tab ${tab.id} in browser ${instance.id} for request ${requestId}`,
+      );
+
+      return { tab, page };
+    } catch (error) {
+      this.logger.error(`Error creating tab in browser ${instance.id}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Close a tab in a browser
+   * @param instance - Browser instance
+   * @param tabId - Tab ID
+   */
+  async closeTab(instance: BrowserInstance, tabId: string): Promise<boolean> {
+    if (!instance) {
+      this.logger.error(`Invalid browser instance when closing tab ${tabId}`);
+      return false;
+    }
+
+    try {
+      // Close the tab using TabManager
+      const success = await this.tabManager.closeTab(tabId);
+
+      if (success) {
+        // Update browser instance
+        instance.openTabs = Math.max(0, instance.openTabs - 1);
+        instance.tabIds = instance.tabIds.filter((id) => id !== tabId);
+
+        // Update browser state if no tabs are open
+        if (instance.openTabs === 0) {
+          instance.state = BrowserState.AVAILABLE;
+        }
+
+        this.logger.log(`Closed tab ${tabId} in browser ${instance.id}`);
+      }
+
+      return success;
+    } catch (error) {
+      this.logger.error(
+        `Error closing tab ${tabId} in browser ${instance.id}:`,
+        error,
+      );
+      return false;
     }
   }
 
@@ -171,5 +278,13 @@ export class BrowserLifecycleManager {
     this.logger.debug(
       `Extended session for browser ${instance.id} by ${durationSeconds} seconds`,
     );
+  }
+
+  /**
+   * Check if a browser has available capacity for more tabs
+   * @param instance - The browser instance to check
+   */
+  hasBrowserCapacity(instance: BrowserInstance): boolean {
+    return instance && instance.openTabs < this.MAX_TABS_PER_BROWSER;
   }
 }

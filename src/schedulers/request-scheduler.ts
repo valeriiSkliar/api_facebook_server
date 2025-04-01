@@ -3,6 +3,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { RequestManagerService } from '../services/request-manager-service';
 import { BrowserPoolService } from '../services/browser-pool/browser-pool-service';
 import { CacheService } from '../services/cache-service';
+import { TabManager } from '../services/browser-pool/tab-manager';
 
 @Injectable()
 export class RequestScheduler {
@@ -11,6 +12,7 @@ export class RequestScheduler {
   constructor(
     private readonly requestManager: RequestManagerService,
     private readonly browserPool: BrowserPoolService,
+    private readonly tabManager: TabManager,
     private readonly cacheService: CacheService,
   ) {}
 
@@ -69,57 +71,57 @@ export class RequestScheduler {
       const pendingRequests =
         await this.requestManager.getPendingRequestsCount();
 
-      // Подсчет и группировка браузеров по requestId
-      const browserUsage = new Map<string, number>();
-      const requestMap = new Map<string, string[]>();
+      // Group tabs by browser
+      const tabsByBrowser = new Map<string, number>();
+      const requestTabs = new Map<string, string[]>();
 
-      activeBrowsers.forEach((browser) => {
-        if (browser.requestId) {
-          // Подсчитываем количество браузеров для каждого requestId
-          browserUsage.set(
-            browser.requestId,
-            (browserUsage.get(browser.requestId) || 0) + 1,
-          );
+      // Count tabs in each browser
+      for (const browser of activeBrowsers) {
+        tabsByBrowser.set(browser.id, browser.openTabs);
+      }
 
-          // Группируем браузеры по requestId
-          const browsersForRequest = requestMap.get(browser.requestId) || [];
-          browsersForRequest.push(browser.id);
-          requestMap.set(browser.requestId, browsersForRequest);
+      // Get all tabs to see which tabs belong to which requests
+      for (const browser of activeBrowsers) {
+        for (const tabId of browser.tabIds) {
+          const tab = await this.tabManager.getTab(tabId);
+          if (tab && tab.requestId) {
+            // Group by request ID
+            const tabsForRequest = requestTabs.get(tab.requestId) || [];
+            tabsForRequest.push(tabId);
+            requestTabs.set(tab.requestId, tabsForRequest);
+          }
         }
-      });
+      }
 
-      // Определяем, есть ли повторное использование браузеров
-      const reusedBrowserCount = [...browserUsage.values()].filter(
-        (count) => count > 1,
+      // Count shared browsers (browsers with multiple tabs for different requests)
+      const sharedBrowsersCount = activeBrowsers.filter(
+        (b) => b.openTabs > 1,
       ).length;
 
-      // Форматируем информацию о браузерах
+      // Format browser details
       let browserDetails = '';
       if (activeBrowsers.length > 0) {
         browserDetails = activeBrowsers
           .map((b) => {
             const shortId = b.id.substring(0, 8);
-            const shortRequestId = b.requestId?.substring(0, 8) || 'unassigned';
-            const requestBrowserCount = b.requestId
-              ? browserUsage.get(b.requestId) || 0
-              : 0;
-            return `${shortId}... (${shortRequestId}...${requestBrowserCount > 1 ? ', shared: ' + requestBrowserCount : ''})`;
+            return `${shortId}... (tabs: ${b.openTabs}/${this.browserPool.getMaxTabsPerBrowser()})`;
           })
           .join(', ');
       } else {
         browserDetails = 'No active browsers';
       }
 
-      // Формируем вывод статистики с информацией о переиспользовании
-      const reuseSummary =
-        reusedBrowserCount > 0
-          ? `\n        - Browsers Reuse: ${reusedBrowserCount} requests share browsers`
+      // Format sharing summary
+      const sharingSummary =
+        sharedBrowsersCount > 0
+          ? `\n        - Shared Browsers: ${sharedBrowsersCount} browsers serving multiple requests`
           : '';
 
       this.logger.log(`System Stats:
-        - Active Browsers: ${activeBrowsers.length}/${this.browserPool.getBrowserCount()}
-        - Pending Requests: ${pendingRequests}${reuseSummary}
-        - Browser Details: ${browserDetails}`);
+       - Active Browsers: ${activeBrowsers.length}/${this.browserPool.getBrowserCount()}
+       - Pending Requests: ${pendingRequests}${sharingSummary}
+       - Total Open Tabs: ${Array.from(tabsByBrowser.values()).reduce((sum, count) => sum + count, 0)}
+       - Browser Details: ${browserDetails}`);
     } catch (error: any) {
       this.logger.error('Error logging system stats', error);
     }

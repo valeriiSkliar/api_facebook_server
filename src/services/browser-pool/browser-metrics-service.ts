@@ -20,7 +20,6 @@ export class BrowserMetricsService {
     peakPoolSize: 0,
     stateDistribution: {
       [BrowserState.AVAILABLE]: 0,
-      [BrowserState.RESERVED]: 0,
       [BrowserState.IN_USE]: 0,
       [BrowserState.CLOSING]: 0,
     },
@@ -84,7 +83,6 @@ export class BrowserMetricsService {
     // Reset counts
     this.metrics.stateDistribution = {
       [BrowserState.AVAILABLE]: 0,
-      [BrowserState.RESERVED]: 0,
       [BrowserState.IN_USE]: 0,
       [BrowserState.CLOSING]: 0,
     };
@@ -135,7 +133,6 @@ export class BrowserMetricsService {
     this.metrics.peakPoolSize = 0;
     this.metrics.stateDistribution = {
       [BrowserState.AVAILABLE]: 0,
-      [BrowserState.RESERVED]: 0,
       [BrowserState.IN_USE]: 0,
       [BrowserState.CLOSING]: 0,
     };

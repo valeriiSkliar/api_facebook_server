@@ -34,11 +34,9 @@ export class BrowserStorageService {
 
       await this.redisService.set(key, redisBrowserData, expiry);
 
-      // If user ID is specified, create a user -> browser mapping
-      if (instance.userId) {
-        const userKey = `${this.USER_BROWSER_PREFIX}${instance.userId}`;
-        await this.redisService.set(userKey, instance.id, expiry);
-      }
+      // Note: We don't associate browsers with users anymore
+      // as we're now using a tab-based approach where multiple
+      // users can share a browser
 
       return true;
     } catch (error) {

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Logger } from '@nestjs/common';
 
 import { Injectable } from '@nestjs/common';
@@ -10,6 +11,8 @@ import { BrowserPoolService } from './browser-pool/browser-pool-service';
 import { FacebookAdScraperService } from './FacebookAdScraperService';
 import { AdLibraryQuery } from '@src/models/AdLibraryQuery';
 import { Browser } from 'playwright';
+import { TabManager } from './browser-pool/tab-manager';
+import { BrowserLifecycleManager } from './browser-pool/browser-lifecycle-manager';
 
 @Injectable()
 export class RequestProcessorService {
@@ -18,7 +21,10 @@ export class RequestProcessorService {
   constructor(
     private readonly requestManager: RequestManagerService,
     private readonly browserPool: BrowserPoolService,
+    private readonly tabManager: TabManager,
     private readonly facebookAdScraperService: FacebookAdScraperService,
+    private readonly lifecycleManager: BrowserLifecycleManager,
+
     // Include other scrapers as needed
   ) {}
 
@@ -43,10 +49,40 @@ export class RequestProcessorService {
       // Choose the appropriate scraper based on request type
       let result;
       switch (request.requestType) {
-        case 'facebook_scraper':
+        case 'facebook_scraper': {
+          const tabInfo = await this.tabManager.getTabByRequest(requestId);
+          if (!tabInfo) {
+            throw new Error(
+              `Tab not found for request ${requestId}. Cannot proceed.`,
+            );
+          }
+          const tabId = tabInfo.id;
+          const browserId = tabInfo.browserId;
           // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-          result = await this.processFacebookScraper(request);
+          // result = await this.processFacebookScraper(request);
+          result = await this.browserPool.executeInBrowser(
+            browserId,
+            async ({ browser }) => {
+              // Получаем browser от пула
+              // --- Получаем Page ---
+              const page = this.lifecycleManager.getPageForTab(tabId);
+              if (!page) {
+                throw new Error(`Page object not found for tab ${tabId}.`);
+              }
+
+              // --- Вызываем скрапер, передавая browser и page ---
+              return await this.facebookAdScraperService.executeScraperWithBrowserAndPage(
+                this.buildFacebookQuery(request), // Ваша логика построения query
+                request.parameters, // Опции скрапинга
+                browser,
+                page, // Передаем полученную страницу
+                browserId,
+                requestId, // Передаем requestId для возможной доп. логики
+              );
+            },
+          );
           break;
+        }
         case 'tiktok_scraper':
           // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           result = await this.processTikTokScraper(request);

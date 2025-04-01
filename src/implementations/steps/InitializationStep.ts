@@ -10,86 +10,80 @@ export class InitializationStep extends AbstractScraperStep {
   }
 
   async execute(context: ScraperContext): Promise<void> {
-    // Check if we already have a browser and page in the context
-    // This would be set when using a browser from the pool
-    if (context.state.browser && !context.state.page) {
-      // && context.state.page) {
+    // СЛУЧАЙ 1: Browser И Page предоставлены извне (например, из пула)
+    if (context.state.browser && context.state.page) {
       this.logger.log(
-        '[InitializationStep.execute] Using provided browser and page from pool',
+        '[InitializationStep.execute] Using provided browser and page from context.',
       );
+      // Убедимся, что viewport установлен (можно делать при создании page в LifecycleManager)
+      try {
+        await context.state.page.setViewportSize(
+          context.options.browser?.viewport || { width: 1280, height: 800 },
+        );
+      } catch (vpError: unknown) {
+        // Логгируем ошибку, если страница могла быть закрыта
+        this.logger.warn(
+          `[InitializationStep.execute] Could not set viewport, page might be closed: ${vpError instanceof Error ? vpError.message : 'Unknown error'}`,
+        );
+        // Возможно, стоит выбросить ошибку, если страница обязательна
+        if (!context.state.page.isClosed()) throw vpError; // Перебрасываем, если страница еще открыта
+      }
+      context.state.externalBrowser = true; // Помечаем как внешние
+      return; // Инициализация завершена успешно
+    }
+
+    // СЛУЧАЙ 2: Только Browser предоставлен (маловероятен для вашего потока, но для защиты)
+    // Если этот блок вызывается - значит Page не была передана в контекст на предыдущем шаге!
+    if (context.state.browser && !context.state.page) {
+      this.logger.warn(
+        '[InitializationStep.execute] External browser provided, BUT NO PAGE. Creating new page!',
+      );
+      // !!! Этот блок создает НОВУЮ страницу, которую вы хотите избежать !!!
+      // Если вы всегда ожидаете и браузер, и страницу, здесь можно выбросить ошибку:
+      // throw new Error("InitializationStep expected both browser and page in context, but page was missing.");
+
+      // Или оставить текущую логику, если она нужна для других сценариев:
       const browserContext = await context.state.browser.newContext();
       const page = await browserContext.newPage();
       await page.setViewportSize(
         context.options.browser?.viewport || { width: 1280, height: 800 },
       );
-
-      // Store browser and page in context
-      context.state.page = page;
-
-      // We still need to set the viewport
-      // await context.state.page.setViewportSize(
-      //   context.options.browser?.viewport || { width: 1280, height: 800 },
-      // );
-
-      // Mark as external so we don't close it in cleanup
+      context.state.page = page; // Используется НОВАЯ страница
       context.state.externalBrowser = true;
-
-      // Continue to the next step in the pipeline
       return;
     }
-    // Launch browser with options from context
+
+    // СЛУЧАЙ 3: Ничего не предоставлено - запускаем новый браузер и страницу
     this.logger.log(
-      '[InitializationStep.execute] Launching browser',
-      context.options.browser,
+      '[InitializationStep.execute] No external browser/page. Launching new browser.',
     );
     const browser = await launchPlaywright({
       launchOptions: {
-        headless: context.options.browser?.headless
-          ? context.options.browser?.headless
-          : false,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-        ],
+        /* ... ваши опции ... */
       },
     });
-
     const page = await browser.newPage();
     await page.setViewportSize(
       context.options.browser?.viewport || { width: 1280, height: 800 },
     );
 
-    // Store browser and page in context
     context.state.browser = browser;
     context.state.page = page;
+    context.state.externalBrowser = false; // Управляется этим пайплайном
   }
 
   async cleanup(context: ScraperContext): Promise<void> {
-    // Only close the browser if it's not external (not from the pool)
+    // Закрываем только если ресурсы НЕ внешние
     if (context.state.browser && !context.state.externalBrowser) {
       if (context.options.behavior?.cleanUpTimeout) {
-        this.logger.log(
-          `Waiting for ${context.options.behavior.cleanUpTimeout}ms before closing browser`,
-        );
-        await new Promise((resolve) =>
-          setTimeout(resolve, context.options.behavior!.cleanUpTimeout),
-        );
-        this.logger.log('Closing browser');
+        // ... (логика ожидания)
       }
-      await context.state.page?.close();
+      this.logger.log('Closing internally managed browser and page.');
+      await context.state.page?.close(); // Безопасно закрываем страницу
+      await context.state.browser.close(); // Закрываем браузер
+    } else {
+      this.logger.log('Skipping cleanup for externally managed browser/page.');
+      // Важно: Внешняя страница должна закрываться через BrowserPoolService.closeTab / TabManager.closeTab
     }
-    // if (context.state.browser) {
-    //   if (context.options.behavior?.cleanUpTimeout) {
-    //     this.logger.log(
-    //       `Waiting for ${context.options.behavior.cleanUpTimeout}ms before closing browser`,
-    //     );
-    //     await new Promise((resolve) =>
-    //       setTimeout(resolve, context.options.behavior!.cleanUpTimeout),
-    //     );
-    //     this.logger.log('Closing browser');
-    //   }
-    //   await context.state.browser.close();
-    // }
   }
 }

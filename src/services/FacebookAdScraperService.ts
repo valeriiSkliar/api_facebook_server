@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/require-await */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
@@ -7,9 +8,7 @@ import { AdLibraryQuery } from '../models/AdLibraryQuery';
 import { ScraperOptions } from '../models/ScraperOptions';
 import { ScraperResult } from '../models/ScraperResult';
 import { BrowserPoolService } from './browser-pool/browser-pool-service';
-import { Browser } from 'playwright';
-// import { plainToInstance } from 'class-transformer';
-// import { ScraperResponseDto } from '@src/dto';
+import { Browser, Page } from 'playwright';
 
 @Injectable()
 export class FacebookAdScraperService {
@@ -18,6 +17,45 @@ export class FacebookAdScraperService {
     private readonly logger: Logger,
     private readonly browserPoolService: BrowserPoolService,
   ) {}
+
+  async executeScraperWithBrowserAndPage(
+    query: AdLibraryQuery,
+    options?: Partial<ScraperOptions>,
+    browser?: Browser,
+    page?: Page, // Принимаем Page
+    browserId?: string,
+    requestId?: string, // Опционально, если нужно
+  ): Promise<ScraperResult> {
+    this.logger.log(
+      `Executing scraper for request ${requestId} using browser ${browserId} and provided page.`,
+    );
+
+    const scraper = this.scraperFactory.createScraper(options);
+    const context = this.scraperFactory.createContext(query, options);
+
+    // --- Установка Browser и Page в контекст ---
+    if (browser && page) {
+      context.state.browser = browser;
+      context.state.page = page; // <<== Вот здесь помещаем нужную страницу в контекст
+      context.state.browserId = browserId;
+      context.state.externalBrowser = true; // Помечаем, что ресурсы внешние
+      this.logger.log('Using external browser and page in scraper context.');
+    } else {
+      // Эта ветка не должна выполняться в вашем целевом потоке, но может быть для тестов
+      this.logger.warn(
+        'Executing scraper without externally provided browser/page.',
+      );
+    }
+
+    try {
+      const result = await scraper.execute(context);
+      result.includeAdsInResponse = options?.includeAdsInResponse || false;
+      return result;
+    } catch (error) {
+      this.logger.error(`Scraping failed for request ${requestId}`, error);
+      throw error;
+    }
+  }
 
   /**
    * Scrape ads using a specific browser ID from the pool

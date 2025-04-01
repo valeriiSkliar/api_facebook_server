@@ -13,6 +13,7 @@ import { TabManager, BrowserTab } from './tab-manager';
 export class BrowserLifecycleManager {
   private readonly logger = new Logger(BrowserLifecycleManager.name);
   private readonly MAX_TABS_PER_BROWSER = 10;
+  private activePages = new Map<string, Page>();
 
   constructor(private readonly tabManager: TabManager) {}
 
@@ -111,6 +112,14 @@ export class BrowserLifecycleManager {
       // Close all tabs for this browser
       await this.tabManager.closeAllTabsForBrowser(instance.id);
 
+      for (const tabId of instance.tabIds) {
+        const page = this.activePages.get(tabId);
+        if (page && !page.isClosed()) {
+          await page.close();
+        }
+        this.activePages.delete(tabId);
+      }
+
       // Close the browser
       await instance.browser.close();
 
@@ -166,7 +175,7 @@ export class BrowserLifecycleManager {
         requestId,
         userId,
         userEmail,
-        page,
+        // page,
       );
 
       // Update browser instance
@@ -183,7 +192,11 @@ export class BrowserLifecycleManager {
         `Created tab ${tab.id} in browser ${instance.id} for request ${requestId}`,
       );
 
-      return { tab, page };
+      if (tab && page) {
+        this.activePages.set(tab.id, page); // Сохраняем страницу в карту
+        return { tab, page };
+      }
+      return null;
     } catch (error) {
       this.logger.error(`Error creating tab in browser ${instance.id}:`, error);
       return null;
@@ -214,6 +227,19 @@ export class BrowserLifecycleManager {
         if (instance.openTabs === 0) {
           instance.state = BrowserState.AVAILABLE;
         }
+        const page = this.activePages.get(tabId);
+        if (page && !page.isClosed()) {
+          try {
+            await page.close(); // Закрываем саму страницу Playwright
+            this.logger.log(`Playwright page for tab ${tabId} closed.`);
+          } catch (closeError) {
+            this.logger.error(
+              `Error closing Playwright page for tab ${tabId}:`,
+              closeError,
+            );
+          }
+        }
+        this.activePages.delete(tabId); // Удаляем из карты
 
         this.logger.log(`Closed tab ${tabId} in browser ${instance.id}`);
       }
@@ -226,6 +252,19 @@ export class BrowserLifecycleManager {
       );
       return false;
     }
+  }
+
+  /**
+   * Get a page for a tab
+   * @param tabId - Tab ID
+   */
+  getPageForTab(tabId: string): Page | null {
+    const page = this.activePages.get(tabId);
+    if (page && !page.isClosed()) {
+      return page;
+    }
+    this.logger.warn(`Page for tab ${tabId} not found or already closed.`);
+    return null;
   }
 
   /**

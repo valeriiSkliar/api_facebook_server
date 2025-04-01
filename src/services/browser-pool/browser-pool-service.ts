@@ -1,3 +1,4 @@
+/* eslint-disable no-useless-escape */
 import {
   Injectable,
   Logger,
@@ -99,30 +100,41 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
    */
   async getBrowserWithCapacity(): Promise<BrowserInstance | null> {
     try {
-      // Get all browsers that are not in CLOSING state and have capacity
-      const availableBrowsers = Array.from(this.activeBrowsers.values()).filter(
-        (browser) =>
-          browser.state !== BrowserState.CLOSING &&
-          browser.openTabs < this.config.maxTabsPerBrowser!,
+      const allBrowsers = Array.from(this.activeBrowsers.values());
+      this.logger.debug(
+        `Checking ${allBrowsers.length} active browsers for capacity (maxTabs: ${this.config.maxTabsPerBrowser}).`,
+      );
+
+      const availableBrowsers = allBrowsers.filter((browser) => {
+        const hasCapacity = browser.openTabs < this.config.maxTabsPerBrowser!;
+        const isAvailableState = browser.state !== BrowserState.CLOSING; // Убедитесь, что этот статус корректен
+        const isHealthy = browser.healthStatus !== false; // Проверка здоровья
+        this.logger.debug(
+          ` -> Browser <span class="math-inline">\{browser\.id\.substring\(0, 8\)\}\: state\=</span>{browser.state}, tabs=<span class="math-inline">\{browser\.openTabs\}, hasCapacity\=</span>{hasCapacity}, isAvailableState=<span class="math-inline">\{isAvailableState\}, isHealthy\=</span>{isHealthy}`,
+        );
+        return hasCapacity && isAvailableState && isHealthy;
+      });
+
+      this.logger.debug(
+        `Found ${availableBrowsers.length} browsers potentially suitable.`,
       );
 
       if (availableBrowsers.length === 0) {
+        this.logger.log('No browsers found with capacity.');
         return null;
       }
 
-      // Sort by open tabs (browsers with fewer tabs first) for better distribution
+      // Сортировка для выбора наименее загруженного
       availableBrowsers.sort((a, b) => a.openTabs - b.openTabs);
-
-      const browser = availableBrowsers[0];
+      const chosenBrowser = availableBrowsers[0];
       this.logger.log(
-        `Found browser with capacity: ${browser.id} (${browser.openTabs}/${this.config.maxTabsPerBrowser} tabs)`,
+        `Selected browser ${chosenBrowser.id.substring(0, 8)} with ${chosenBrowser.openTabs} tabs.`,
       );
-
-      return new Promise((resolve) => {
-        resolve(browser);
+      return await new Promise((resolve) => {
+        resolve(chosenBrowser);
       });
     } catch (error) {
-      this.logger.error('Error finding browser with capacity:', error);
+      this.logger.error('Error in getBrowserWithCapacity:', error);
       return null;
     }
   }

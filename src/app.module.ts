@@ -7,6 +7,8 @@ import { RedisService } from './redis/redis.service';
 import { AuthMiddleware } from './middleware/auth.middleware';
 import { RequestModule } from './modules/request-module';
 import { PrismaModule } from './prisma/prisma.module';
+import { ScheduleModule } from '@nestjs/schedule';
+import { SessionModule } from './modules/session.module';
 
 @Module({
   imports: [
@@ -17,7 +19,9 @@ import { PrismaModule } from './prisma/prisma.module';
     PrismaModule,
     RedisModule,
     ScraperModule,
-    RequestModule, // Add the new Request module
+    RequestModule,
+    ScheduleModule.forRoot(),
+    SessionModule,
   ],
   controllers: [],
   providers: [AppService, RedisService],

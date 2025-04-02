@@ -1,6 +1,6 @@
 // src/tiktok-search/session-schedule.service.ts
 import { Injectable, Logger } from '@nestjs/common';
-import { Interval } from '@nestjs/schedule';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { SessionRefreshService } from './session-refresh.service';
 import { PrismaService } from '@src/prisma/prisma.service';
 
@@ -16,7 +16,7 @@ export class SessionScheduleService {
   /**
    * Check sessions every 45 minutes and refresh if needed
    */
-  @Interval('checkAndRefreshSessions', 2700000) // 2700000 = 45 minutes
+  @Cron(CronExpression.EVERY_MINUTE)
   async checkAndRefreshSessions() {
     try {
       this.logger.log('Scheduled session check started');

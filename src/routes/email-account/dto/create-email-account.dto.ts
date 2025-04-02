@@ -1,4 +1,11 @@
-import { IsString, IsEmail, IsOptional, IsBoolean, IsJSON } from 'class-validator';
+import {
+  IsString,
+  IsEmail,
+  IsOptional,
+  IsBoolean,
+  IsJSON,
+} from 'class-validator';
+import { Transform } from 'class-transformer';
 
 export class CreateEmailAccountDto {
   @IsEmail()
@@ -9,6 +16,12 @@ export class CreateEmailAccountDto {
 
   @IsOptional()
   @IsJSON()
+  @Transform(({ value }) => {
+    if (typeof value === 'object') {
+      return JSON.stringify(value);
+    }
+    return value as string;
+  })
   connection_details?: Record<string, any>;
 
   @IsString()

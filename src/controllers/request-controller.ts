@@ -12,10 +12,33 @@ import {
   Logger,
   Request,
 } from '@nestjs/common';
-import { RequestManagerService } from '../services/request-manager-service';
+import {
+  RequestManagerService,
+  RequestStatus,
+} from '../services/request-manager-service';
 import { CreateRequestDto } from '@src/dto/create-request.dto';
 import { UpdateRequestStatusDto } from '@src/dto/update-request-status.dto';
 import { AuthenticatedRequest } from '../interfaces/auth.interface';
+import { AdData } from '@src/models/AdData';
+import { ScraperResult } from '@src/models/ScraperResult';
+
+// Interface for potential error structures stored in response_data
+interface ErrorData {
+  error?: string | object; // Can be string or another object
+  message?: string;
+  // Potentially other fields from Error objects
+  [key: string]: any;
+}
+
+// Type guard for ScraperResult
+function isScraperResult(data: unknown): data is ScraperResult {
+  return (
+    typeof data === 'object' &&
+    data !== null &&
+    'success' in data &&
+    'ads' in data
+  );
+}
 
 @Controller('requests')
 export class RequestController {
@@ -57,31 +80,147 @@ export class RequestController {
   @Get(':id')
   async getRequest(@Param('id') requestId: string) {
     try {
-      const request = await this.requestManager.getRequest(requestId);
+      // Get the full request record from the database
+      const dbRequest =
+        await this.requestManager.getRequestWithResults(requestId);
 
-      if (!request) {
+      if (!dbRequest) {
         throw new HttpException('Request not found', HttpStatus.NOT_FOUND);
       }
 
-      return {
-        success: true,
+      // Prepare the base response structure
+      const response: {
+        success: boolean;
         request: {
-          id: request.id,
-          type: request.requestType,
-          status: request.status,
-          createdAt: request.createdAt,
-          processedAt: request.processedAt,
-          lastActivityAt: request.lastActivityAt,
+          id: string;
+          type: string;
+          status: string; // Will reflect the actual DB status
+          createdAt: Date;
+          processedAt: Date | null;
+          outputPath?: string | null;
+        };
+        results?: AdData[] | null;
+        error?: string | ErrorData | null; // For storing user-friendly error messages or structured errors
+      } = {
+        success: true, // Assume success initially
+        request: {
+          id: dbRequest.external_request_id,
+          type: dbRequest.request_type,
+          status: dbRequest.status, // Reflect actual DB status
+          createdAt: dbRequest.created_at,
+          processedAt: dbRequest.processed_at,
+          outputPath: null,
         },
+        results: null,
+        error: null,
       };
-    } catch (error) {
-      if (error instanceof HttpException) {
-        throw error;
-      }
 
-      this.logger.error(`Error getting request ${requestId}`, error);
+      const currentStatus = dbRequest.status as RequestStatus;
+
+      // --- Handle COMPLETED status ---
+      if (currentStatus === RequestStatus.COMPLETED) {
+        if (dbRequest.response_data) {
+          try {
+            // Handle both string and object response_data
+            const parsedData: unknown =
+              typeof dbRequest.response_data === 'string'
+                ? JSON.parse(dbRequest.response_data)
+                : dbRequest.response_data;
+
+            if (isScraperResult(parsedData)) {
+              response.results = parsedData.ads || [];
+              response.request.outputPath = parsedData.outputPath;
+              response.success = parsedData.success;
+
+              if (!parsedData.success && parsedData.errors?.length > 0) {
+                response.error = parsedData.errors.map(
+                  // Try to get meaningful message, fallback to string representation
+                  (e) =>
+                    typeof e === 'object' && e !== null && 'message' in e
+                      ? e.message
+                      : String(e),
+                );
+              }
+            } else {
+              const errorMessage = `Request completed, but stored result data does not match expected ScraperResult format.`;
+              this.logger.error(`${errorMessage} RequestID: ${requestId}`);
+              // Report the parsing failure, but keep success=true because the request *did* complete.
+              // The client needs to know the job finished, but results are unavailable via API.
+              response.success = true; // Keep true as the job itself finished
+              response.error = errorMessage;
+              response.results = null; // Results are unreadable
+            }
+          } catch (parseError) {
+            const errorMessage = `Request completed, but failed to parse stored result data.`;
+            this.logger.error(
+              `${errorMessage} RequestID: ${requestId}`,
+              parseError,
+            );
+            // Report the parsing failure, but keep success=true because the request *did* complete.
+            // The client needs to know the job finished, but results are unavailable via API.
+            response.success = true; // Keep true as the job itself finished
+            response.error = errorMessage;
+            response.results = null; // Results are unreadable
+          }
+        } else {
+          // Completed but no data - could be valid if scraper found nothing, or an issue.
+          this.logger.warn(
+            `Request ${requestId} is COMPLETED but has no response_data.`,
+          );
+          // Indicate completion but maybe warn about missing data.
+          response.success = true; // Job completed.
+          response.error = 'Request completed, but no result data was stored.';
+        }
+      }
+      // --- Handle FAILED status ---
+      else if (currentStatus === RequestStatus.FAILED) {
+        response.success = false; // Mark response as unsuccessful
+        if (dbRequest.response_data) {
+          try {
+            let parsedError: ErrorData | string;
+            // Check if it's already a string, avoid double parsing
+            if (typeof dbRequest.response_data === 'string') {
+              parsedError = JSON.parse(dbRequest.response_data) as ErrorData;
+            } else {
+              parsedError = dbRequest.response_data as ErrorData; // Assume it might already be an object
+            }
+
+            // Extract a meaningful error message
+            if (typeof parsedError === 'object' && parsedError !== null) {
+              response.error =
+                parsedError.error ||
+                parsedError.message ||
+                JSON.stringify(parsedError);
+            } else {
+              // Fallback for non-object errors or simple strings
+              response.error = String(parsedError);
+            }
+          } catch (parseError) {
+            this.logger.error(
+              `Failed to parse error JSON for failed request ${requestId}. Raw data: ${JSON.stringify(dbRequest.response_data)}`,
+              parseError,
+            );
+            response.error = 'Processing failed with unspecified error.';
+          }
+        } else {
+          response.error =
+            dbRequest.error_details ??
+            'Processing failed with no specific error details recorded.';
+        }
+      }
+      // --- Handle PENDING or PROCESSING status ---
+      // For these statuses, results and error remain null, success remains true (as the request is ongoing or queued)
+
+      return response;
+    } catch (error) {
+      // Handle general errors like DB connection issues or HttpExceptions
+      if (error instanceof HttpException) {
+        throw error; // Re-throw known HTTP exceptions
+      }
+      // Log unexpected errors
+      this.logger.error(`Unhandled error getting request ${requestId}`, error);
       throw new HttpException(
-        'Failed to retrieve request',
+        'Failed to retrieve request due to an internal error.',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }

@@ -7,7 +7,7 @@ import { RedisService } from '../redis/redis.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { BrowserPoolService } from './browser-pool/browser-pool-service';
 import { CreateRequestDto } from '@src/dto/create-request.dto';
-import { Prisma } from '@prisma/client';
+import { Prisma, Request } from '@prisma/client';
 import { QueueService } from './queue-service';
 import { TabManager } from './browser-pool/tab-manager';
 
@@ -53,6 +53,34 @@ export class RequestManagerService {
     private readonly queueService: QueueService,
     private readonly tabManager: TabManager,
   ) {}
+
+  /**
+   * Get the full request record from the database, including results.
+   */
+  async getRequestWithResults(requestId: string): Promise<Request | null> {
+    this.logger.debug(
+      `Workspaceing request with results from DB for ID: ${requestId}`,
+    );
+    try {
+      const dbRequest = await this.prismaService.request.findFirst({
+        where: { external_request_id: requestId },
+      });
+      if (!dbRequest) {
+        this.logger.warn(
+          `Request with external_request_id ${requestId} not found in DB.`,
+        );
+      }
+      return dbRequest;
+    } catch (error) {
+      this.logger.error(
+        `Error getting request with results ${requestId} from DB`,
+        error,
+      );
+      // В зависимости от политики обработки ошибок, можно либо вернуть null, либо пробросить исключение
+      // throw new Error(`Failed to retrieve request details for ${requestId}`);
+      return null;
+    }
+  }
 
   /**
    * Create a new request and reserve a tab in a browser

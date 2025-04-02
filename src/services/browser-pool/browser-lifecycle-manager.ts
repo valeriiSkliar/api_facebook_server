@@ -8,6 +8,7 @@ import {
   BrowserOperationResult,
 } from './types';
 import { TabManager, BrowserTab } from './tab-manager';
+import { Env } from '@lib/Env';
 
 @Injectable()
 export class BrowserLifecycleManager {
@@ -32,7 +33,7 @@ export class BrowserLifecycleManager {
 
       // Launch playwright browser with appropriate options
       const browser = await chromium.launch({
-        headless: options?.headless ? options?.headless : false,
+        headless: Boolean(Env.IS_PRODUCTION),
         slowMo: options?.slowMo ?? 50,
         args: [
           '--no-sandbox',

@@ -6,7 +6,6 @@ import {
   OnModuleDestroy,
 } from '@nestjs/common';
 import { Page } from 'playwright';
-import { ScraperOptionsDto } from '../../dto/ScraperOptionsDto';
 import {
   BrowserState,
   BrowserInstance,
@@ -17,6 +16,7 @@ import { BrowserLifecycleManager } from './browser-lifecycle-manager';
 import { BrowserStorageService } from './browser-storage-service';
 import { BrowserMetricsService } from './browser-metrics-service';
 import { TabManager, BrowserTab } from './tab-manager';
+import { Env } from '@lib/Env';
 
 @Injectable()
 export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
@@ -146,7 +146,6 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
     requestId: string,
     userId: string,
     userEmail: string,
-    options?: ScraperOptionsDto,
   ): Promise<{ browserId: string; tabId: string; page?: Page } | null> {
     try {
       // First try to find a browser with capacity
@@ -163,9 +162,8 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
 
         // Create a new browser
         const result = await this.lifecycleManager.createBrowser({
-          headless: options?.browser?.headless
-            ? options?.browser?.headless
-            : false,
+          headless: Boolean(Env.IS_PRODUCTION),
+
           slowMo: 50,
         });
 

@@ -128,7 +128,7 @@ export class RequestManagerService {
         requestId,
         userId,
         userEmail,
-        parameters,
+        // parameters,
       );
 
       if (tabCreation) {

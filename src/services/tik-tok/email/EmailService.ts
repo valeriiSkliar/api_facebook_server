@@ -8,8 +8,8 @@ import {
   MailboxObject,
 } from 'imapflow';
 import { PrismaClient } from '@prisma/client';
+import { Logger } from '@nestjs/common';
 
-import { Log } from 'crawlee';
 import { Env } from '@lib/Env';
 
 import { EmailVerificationCodeType, IEmailService } from '@src/interfaces';
@@ -18,13 +18,17 @@ import { EmailAccount, EmailConnectionDetails } from '@src/models';
 
 export class EmailService implements IEmailService {
   private prisma: PrismaClient;
-  private logger: Log;
+  private logger: Logger;
   private imapConfig: ImapFlowOptions;
 
-  constructor(prisma: PrismaClient, logger: Log, emailAccount: EmailAccount) {
+  constructor(
+    prisma: PrismaClient,
+    logger: Logger,
+    emailAccount: EmailAccount,
+  ) {
     this.prisma = prisma;
     this.logger = logger;
-    this.logger.info('Creating email service instance', {
+    this.logger.log('Creating email service instance', {
       emailAccount: emailAccount,
     });
 
@@ -32,7 +36,7 @@ export class EmailService implements IEmailService {
       emailAccount.connection_details as EmailConnectionDetails;
 
     // Log the configuration we're about to use
-    this.logger.info('IMAP Configuration:', {
+    this.logger.log('IMAP Configuration:', {
       host: connectionDetails?.imap_host || Env.UKR_NET_IMAP_HOST,
       port: connectionDetails?.imap_port || 993,
       email: emailAccount.email_address,
@@ -68,7 +72,7 @@ export class EmailService implements IEmailService {
 
     try {
       await client.connect();
-      this.logger.info('Connected to IMAP server');
+      this.logger.log('Connected to IMAP server');
 
       const lock = await client.getMailboxLock('INBOX');
       try {
@@ -262,7 +266,7 @@ export class EmailService implements IEmailService {
     const client = this.getImapClient();
 
     try {
-      this.logger.info('Testing connection to IMAP server...', {
+      this.logger.log('Testing connection to IMAP server...', {
         host: this.imapConfig.host,
         user: this.imapConfig.auth.user,
       });
@@ -315,7 +319,7 @@ export class EmailService implements IEmailService {
       try {
         await client.logout();
       } catch (error) {
-        this.logger.info('Error during logout', { error });
+        this.logger.log('Error during logout', { error });
       }
     }
   }

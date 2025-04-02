@@ -137,7 +137,7 @@ export class SessionRefreshService {
    */
   private createAuthenticator(emailAccount: EmailAccount): IAuthenticator {
     return AuthenticatorFactory.createTikTokAuthenticator(
-      this.crawleeLogger,
+      this.logger,
       {
         sessionStoragePath:
           process.env.SESSION_STORAGE_PATH || './storage/sessions',

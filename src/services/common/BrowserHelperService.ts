@@ -1,4 +1,4 @@
-import { Log } from 'crawlee';
+import { Logger } from '@nestjs/common';
 import { Locator, Page } from 'playwright';
 
 /**
@@ -15,7 +15,7 @@ export interface ApiResponseData {
  */
 export class BrowserHelperService {
   private static instance: BrowserHelperService;
-  private logger: Log | null = null;
+  private logger: Logger | null = null;
 
   /**
    * Private constructor to prevent direct instantiation
@@ -37,7 +37,7 @@ export class BrowserHelperService {
    * Sets the logger for the service
    * @param logger The logger instance to use
    */
-  public setLogger(logger: Log): void {
+  public setLogger(logger: Logger): void {
     this.logger = logger;
   }
 
@@ -110,7 +110,7 @@ export class BrowserHelperService {
       }
 
       await page.waitForTimeout(5000); // Increased timeout for page stabilization
-      this.logger?.info('Checking if logged in...');
+      this.logger?.log('Checking if logged in...');
 
       const loggedInSelectors = [
         // TikTok main site selectors
@@ -137,7 +137,7 @@ export class BrowserHelperService {
             .isVisible(selector, { timeout: 5000 }) // Increased timeout per selector
             .catch(() => false);
           if (isVisible) {
-            this.logger?.info('Logged in successfully');
+            this.logger?.log('Logged in successfully');
             return true;
           }
         } catch (selectorError) {
@@ -160,7 +160,7 @@ export class BrowserHelperService {
           .catch(() => false);
 
         if (loginButtonVisible) {
-          this.logger?.info('Login button found - not logged in');
+          this.logger?.log('Login button found - not logged in');
           return false;
         }
       } catch (loginButtonError) {
@@ -179,7 +179,7 @@ export class BrowserHelperService {
           currentUrl.includes('/profile') ||
           currentUrl.includes('/settings')
         ) {
-          this.logger?.info('On authenticated page - assuming logged in');
+          this.logger?.log('On authenticated page - assuming logged in');
           return true;
         }
       } catch (urlError) {
@@ -189,7 +189,7 @@ export class BrowserHelperService {
         });
       }
 
-      this.logger?.info(
+      this.logger?.log(
         'Could not definitively determine login state - assuming not logged in',
       );
       return false;
@@ -233,7 +233,7 @@ export class BrowserHelperService {
     maxDelay: number = 1500,
     bottomMargin: number = 200,
   ): Promise<void> {
-    this.logger?.info('Starting natural scrolling simulation');
+    this.logger?.log('Starting natural scrolling simulation');
 
     let scrollCount = 0;
     let reachedBottom = false;
@@ -252,7 +252,7 @@ export class BrowserHelperService {
 
       // Calculate if we're near the bottom
       if (scrollTop + clientHeight >= scrollHeight - bottomMargin) {
-        this.logger?.info('Reached bottom of page');
+        this.logger?.log('Reached bottom of page');
         reachedBottom = true;
         break;
       }
@@ -272,7 +272,7 @@ export class BrowserHelperService {
       scrollCount++;
     }
 
-    this.logger?.info(`Completed natural scrolling (${scrollCount} scrolls)`);
+    this.logger?.log(`Completed natural scrolling (${scrollCount} scrolls)`);
   }
 
   /**
@@ -293,7 +293,7 @@ export class BrowserHelperService {
       console.warn('Logger not set in BrowserHelperService');
     }
 
-    this.logger?.info('Setting up basic request interception', { urlPattern });
+    this.logger?.log('Setting up basic request interception', { urlPattern });
 
     await page.route(urlPattern, async (route) => {
       // Allow the request to continue
@@ -307,7 +307,7 @@ export class BrowserHelperService {
         try {
           // Use type assertion with the generic type parameter
           const responseData = (await response.json()) as T;
-          this.logger?.info('Intercepted API response', { url });
+          this.logger?.log('Intercepted API response', { url });
           callback(responseData);
         } catch (error) {
           this.logger?.error('Error processing intercepted response', {

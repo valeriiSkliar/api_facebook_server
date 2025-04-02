@@ -1,6 +1,6 @@
 // src/auth/factories/AuthenticatorFactory.ts
 
-import { Log, PlaywrightCrawlerOptions } from 'crawlee';
+import { PlaywrightCrawlerOptions } from 'crawlee';
 import {
   IAuthenticator,
   ICaptchaSolver,
@@ -16,6 +16,7 @@ import {
   SadCaptchaSolverService,
 } from '@src/services';
 import { EmailAccount } from '@src/models/tik-tok/email-account';
+import { Logger } from '@nestjs/common';
 
 /**
  * Factory for creating authenticator instances
@@ -29,7 +30,7 @@ export class AuthenticatorFactory {
    * @returns TikTokAuthenticator instance
    */
   static createTikTokAuthenticator(
-    logger: Log,
+    logger: Logger,
     options: {
       sessionStoragePath?: string;
       captchaSolverApiKey?: string;
@@ -88,7 +89,7 @@ export class AuthenticatorFactory {
    */
   private static createSessionManager(
     storagePath: string,
-    logger: Log,
+    logger: Logger,
   ): ISessionManager {
     return new FileSystemSessionManager(storagePath, logger);
   }
@@ -101,7 +102,7 @@ export class AuthenticatorFactory {
    */
   private static createCaptchaSolver(
     apiKey: string,
-    logger: Log,
+    logger: Logger,
   ): ICaptchaSolver {
     const screenshotsDir =
       Env.CAPTCHA_SCREENSHOTS_DIR || 'storage/captcha-screenshots';
@@ -116,7 +117,7 @@ export class AuthenticatorFactory {
    */
   private static createEmailVerificationHandler(
     prisma: PrismaClient,
-    logger: Log,
+    logger: Logger,
     emailAccount: EmailAccount,
     // imapConfig?: IImapConfig,
   ): EmailService {

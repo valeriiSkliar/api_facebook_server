@@ -1,15 +1,14 @@
 // src/auth/implementations/AuthenticationPipeline.ts
 import { Page } from 'playwright';
-import { Log } from 'crawlee';
 import { AuthCredentials, AuthResult } from '@src/models';
 import { IAuthenticationStep, AuthStepType } from '@src/interfaces';
+import { Logger } from '@nestjs/common';
 
 export class AuthenticationPipeline {
   private steps: IAuthenticationStep[] = [];
-  private logger: Log;
   private sessionRestored = false;
-
-  constructor(logger: Log) {
+  private logger: Logger;
+  constructor(logger: Logger) {
     this.logger = logger;
   }
 
@@ -30,13 +29,13 @@ export class AuthenticationPipeline {
         step.getType() === AuthStepType.LOGIN &&
         step.getType() !== AuthStepType.POST_SESSION
       ) {
-        this.logger.info(
+        this.logger.log(
           `Skipping login step ${step.getName()} as session was restored`,
         );
         continue;
       }
 
-      this.logger.info(`Executing authentication step: ${step.getName()}`);
+      this.logger.log(`Executing authentication step: ${step.getName()}`);
 
       try {
         const success = await step.execute(page, credentials);
@@ -48,7 +47,7 @@ export class AuthenticationPipeline {
         if (!success) {
           // If session restore failed, continue with other steps
           if (step.getType() === AuthStepType.PRE_SESSION) {
-            this.logger.info(
+            this.logger.log(
               'Session restore failed, continuing with login steps',
             );
             continue;
@@ -65,7 +64,7 @@ export class AuthenticationPipeline {
 
         // If session restore errored, continue with other steps
         if (step.getType() === AuthStepType.PRE_SESSION) {
-          this.logger.info(
+          this.logger.log(
             'Session restore errored, continuing with login steps',
           );
           continue;

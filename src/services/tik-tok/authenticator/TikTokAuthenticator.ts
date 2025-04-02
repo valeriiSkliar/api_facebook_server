@@ -2,7 +2,6 @@
 
 import {
   createPlaywrightRouter,
-  Log,
   PlaywrightCrawler,
   PlaywrightCrawlerOptions,
 } from 'crawlee';
@@ -18,6 +17,7 @@ import {
 } from '@src/interfaces';
 import { AuthenticationPipeline } from '@src/implementations';
 import { AuthCredentials, Session } from '@src/models';
+import { Logger } from '@nestjs/common';
 
 /**
  * TikTok authenticator implementation
@@ -27,7 +27,7 @@ export class TikTokAuthenticator implements IAuthenticator {
   private crawler: PlaywrightCrawler | null = null;
   private router: ReturnType<typeof createPlaywrightRouter> =
     createPlaywrightRouter();
-  private logger: Log;
+  private logger: Logger;
   private captchaSolver: ICaptchaSolver;
   private emailVerifier: IEmailVerificationHandler;
   private sessionManager: ISessionManager;
@@ -55,7 +55,7 @@ export class TikTokAuthenticator implements IAuthenticator {
    * @param emailService Email service implementation
    */
   constructor(
-    logger: Log,
+    logger: Logger,
     captchaSolver: ICaptchaSolver,
     sessionManager: ISessionManager,
     crawlerOptions: Partial<PlaywrightCrawlerOptions> = {},
@@ -141,9 +141,7 @@ export class TikTokAuthenticator implements IAuthenticator {
       return this.crawler;
     }
 
-    this.logger.info(
-      'Initializing PlaywrightCrawler for TikTok authentication',
-    );
+    this.logger.log('Initializing PlaywrightCrawler for TikTok authentication');
 
     // Define the session state path based on credentials
     // let sessionStatePath = '';
@@ -165,7 +163,7 @@ export class TikTokAuthenticator implements IAuthenticator {
         },
       });
 
-      this.logger.info('Valid session found:', {
+      this.logger.log('Valid session found:', {
         email: credentials.email,
         session: validSession,
       });
@@ -187,7 +185,7 @@ export class TikTokAuthenticator implements IAuthenticator {
 
     this.router.addDefaultHandler(async (ctx) => {
       try {
-        this.logger.info('Starting authentication process');
+        this.logger.log('Starting authentication process');
 
         // // Use the request interception step to set up request interception
         // if (validSessionId) {
@@ -230,23 +228,23 @@ export class TikTokAuthenticator implements IAuthenticator {
         // );
 
         // // Execute natural scrolling step with increased max scrolls
-        // this.logger.info(
+        // this.logger.log(
         //   'Starting natural scrolling to trigger API requests',
         // );
         // await this.naturalScrollingStep.execute(ctx.page);
 
         // // If scrolling was interrupted by API request capture
         // if (this.naturalScrollingStep.wasInterruptedByApiRequest()) {
-        //   this.logger.info(
+        //   this.logger.log(
         //     'Scrolling was interrupted by successful API request capture',
         //   );
         //   } else {
-        //     this.logger.info(
+        //     this.logger.log(
         //       'Scrolling completed without API request capture, may need to retry',
         //     );
 
         //     // Try one more time with more aggressive scrolling
-        //     this.logger.info('Attempting more aggressive scrolling');
+        //     this.logger.log('Attempting more aggressive scrolling');
         //     await ctx.page.evaluate(() => {
         //       window.scrollTo(0, 0); // Scroll back to top
         //     });
@@ -259,7 +257,7 @@ export class TikTokAuthenticator implements IAuthenticator {
         //       });
         //       await ctx.page.waitForTimeout(2000);
         //     } catch {
-        //       this.logger.info(
+        //       this.logger.log(
         //         'Could not find filter button, continuing with scrolling',
         //       );
         //     }
@@ -269,7 +267,7 @@ export class TikTokAuthenticator implements IAuthenticator {
         //     await this.naturalScrollingStep.execute(ctx.page);
         //   }
         // } else {
-        //   this.logger.info(
+        //   this.logger.log(
         //     'Session restoration failed or expired, proceeding with new login',
         //   );
         //   // If the session was not restored, start the authentication pipeline
@@ -309,11 +307,11 @@ export class TikTokAuthenticator implements IAuthenticator {
    */
   async verifySession(): Promise<boolean> {
     if (!this.currentSession) {
-      this.logger.info('No active session to verify');
+      this.logger.log('No active session to verify');
       return false;
     }
 
-    this.logger.info('Verifying TikTok session', {
+    this.logger.log('Verifying TikTok session', {
       sessionId: this.currentSession.id,
     });
 
@@ -328,11 +326,11 @@ export class TikTokAuthenticator implements IAuthenticator {
    */
   async refreshSession(): Promise<boolean> {
     if (!this.currentSession) {
-      this.logger.info('No active session to refresh');
+      this.logger.log('No active session to refresh');
       return false;
     }
 
-    this.logger.info('Refreshing TikTok session', {
+    this.logger.log('Refreshing TikTok session', {
       sessionId: this.currentSession.id,
     });
 
@@ -347,11 +345,11 @@ export class TikTokAuthenticator implements IAuthenticator {
    */
   async logout(): Promise<void> {
     if (!this.currentSession) {
-      this.logger.info('No active session to logout from');
+      this.logger.log('No active session to logout from');
       return;
     }
 
-    this.logger.info('Logging out from TikTok', {
+    this.logger.log('Logging out from TikTok', {
       sessionId: this.currentSession.id,
     });
 
@@ -370,7 +368,7 @@ export class TikTokAuthenticator implements IAuthenticator {
    * Cleans up resources used by the authenticator
    */
   async dispose(): Promise<void> {
-    this.logger.info('Disposing TikTok authenticator');
+    this.logger.log('Disposing TikTok authenticator');
 
     if (this.crawler) {
       await this.crawler.teardown();

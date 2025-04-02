@@ -1,6 +1,6 @@
 // src/auth/services/SadCaptchaSolverService.ts
 
-import { Log } from 'crawlee';
+import { Logger } from '@nestjs/common';
 import { Page } from 'playwright';
 import axios from 'axios';
 import * as fs from 'fs';
@@ -24,7 +24,7 @@ interface SadCaptchaResponse {
  */
 export class SadCaptchaSolverService implements ICaptchaSolver {
   private readonly baseUrl = 'https://www.sadcaptcha.com/api/v1';
-  private readonly logger: Log;
+  private readonly logger: Logger;
   private readonly apiKey: string;
   private readonly screenshotsDir: string;
   private browserHelperService: BrowserHelperService;
@@ -36,7 +36,7 @@ export class SadCaptchaSolverService implements ICaptchaSolver {
    * @param screenshotsDir Directory to store captcha screenshots
    */
   constructor(
-    logger: Log,
+    logger: Logger,
     apiKey: string,
     screenshotsDir = 'storage/screenshots',
   ) {
@@ -55,7 +55,7 @@ export class SadCaptchaSolverService implements ICaptchaSolver {
    * @returns Promise resolving to captcha detection result
    */
   async detect(page: Page): Promise<CaptchaDetectionResult> {
-    this.logger.info('Detecting captcha', { url: page.url() });
+    this.logger.log('Detecting captcha', { url: page.url() });
 
     try {
       // Common captcha selectors for TikTok
@@ -77,7 +77,7 @@ export class SadCaptchaSolverService implements ICaptchaSolver {
         const isVisible = await page.isVisible(selector).catch(() => false);
 
         if (isVisible) {
-          this.logger.info(`Captcha detected with selector: ${selector}`);
+          this.logger.log(`Captcha detected with selector: ${selector}`);
 
           // Take a screenshot of the captcha
           const timestamp = Date.now();
@@ -150,11 +150,11 @@ export class SadCaptchaSolverService implements ICaptchaSolver {
       !detectionResult.element ||
       !detectionResult.screenshotPath
     ) {
-      this.logger.info('No captcha to solve or missing required information');
+      this.logger.log('No captcha to solve or missing required information');
       return false;
     }
 
-    this.logger.info('Solving captcha', {
+    this.logger.log('Solving captcha', {
       type: detectionResult.type,
       selector: detectionResult.selector,
     });
@@ -199,7 +199,7 @@ export class SadCaptchaSolverService implements ICaptchaSolver {
       const imageBase64 = buffer.toString('base64');
 
       // Get the captcha element
-      this.logger.info('Getting captcha element', {
+      this.logger.log('Getting captcha element', {
         selector: captchaImageSelector,
       });
       const captchaElement = await page.$(captchaImageSelector);
@@ -213,7 +213,7 @@ export class SadCaptchaSolverService implements ICaptchaSolver {
       if (!solution) {
         return false;
       }
-      this.logger.info('Captcha solution received', { solution });
+      this.logger.log('Captcha solution received', { solution });
 
       // Get element dimensions and position
       const boundingBox = await captchaElement.boundingBox();
@@ -221,7 +221,7 @@ export class SadCaptchaSolverService implements ICaptchaSolver {
         this.logger.error('Could not get captcha element dimensions');
         return false;
       }
-      this.logger.info('Captcha element dimensions', { boundingBox });
+      this.logger.log('Captcha element dimensions', { boundingBox });
 
       // Take a screenshot before clicking for debugging
       await page.screenshot({
@@ -247,7 +247,7 @@ export class SadCaptchaSolverService implements ICaptchaSolver {
       }
 
       // Log the target box for debugging
-      this.logger.info('Target element for clicks', { targetBox });
+      this.logger.log('Target element for clicks', { targetBox });
 
       // Calculate absolute click positions within the page
       const clickPoints = [
@@ -261,7 +261,7 @@ export class SadCaptchaSolverService implements ICaptchaSolver {
         },
       ];
 
-      this.logger.info('Absolute click points on page', { clickPoints });
+      this.logger.log('Absolute click points on page', { clickPoints });
 
       // Click the points with absolute coordinates (not relative to element)
       for (const point of clickPoints) {
@@ -273,7 +273,7 @@ export class SadCaptchaSolverService implements ICaptchaSolver {
         const moveX = point.x + this.browserHelperService.randomBetween(-2, 2);
         const moveY = point.y + this.browserHelperService.randomBetween(-2, 2);
 
-        this.logger.info('Moving mouse to position', { x: moveX, y: moveY });
+        this.logger.log('Moving mouse to position', { x: moveX, y: moveY });
         await page.mouse.move(moveX, moveY, {
           steps: this.browserHelperService.randomBetween(5, 10),
         });
@@ -281,7 +281,7 @@ export class SadCaptchaSolverService implements ICaptchaSolver {
         await page.waitForTimeout(300);
 
         // Click at the exact calculated position
-        this.logger.info('Clicking at position', { x: point.x, y: point.y });
+        this.logger.log('Clicking at position', { x: point.x, y: point.y });
         await page.mouse.click(point.x, point.y);
 
         // Take screenshot after each click for debugging
@@ -293,7 +293,7 @@ export class SadCaptchaSolverService implements ICaptchaSolver {
         });
       }
 
-      this.logger.info('Captcha solution applied');
+      this.logger.log('Captcha solution applied');
 
       // Increase wait time after applying solution to give TikTok's system time to process
       await page.waitForTimeout(3500);
@@ -354,7 +354,7 @@ export class SadCaptchaSolverService implements ICaptchaSolver {
       try {
         const elements = await containerElement.$$(selector);
         if (elements.length > 0) {
-          this.logger.info(`Found puzzle element with selector ${selector}`);
+          this.logger.log(`Found puzzle element with selector ${selector}`);
           return elements[0];
         }
       } catch (error) {
@@ -368,9 +368,7 @@ export class SadCaptchaSolverService implements ICaptchaSolver {
         const fullSelector = `${containerSelector} ${selector}`;
         const element = await page.$(fullSelector);
         if (element) {
-          this.logger.info(
-            `Found puzzle element with selector ${fullSelector}`,
-          );
+          this.logger.log(`Found puzzle element with selector ${fullSelector}`);
           return element;
         }
       } catch (error) {
@@ -378,9 +376,7 @@ export class SadCaptchaSolverService implements ICaptchaSolver {
       }
     }
 
-    this.logger.warning(
-      'Could not find specific puzzle element, using container',
-    );
+    this.logger.warn('Could not find specific puzzle element, using container');
     return null;
   }
 
@@ -411,7 +407,7 @@ export class SadCaptchaSolverService implements ICaptchaSolver {
         const isEnabled = await confirmButton.isEnabled().catch(() => false);
 
         if (isVisible && isEnabled) {
-          this.logger.info(
+          this.logger.log(
             `CAPTCHA solved, clicking confirm button (${confirmSelector})...`,
           );
 
@@ -432,7 +428,7 @@ export class SadCaptchaSolverService implements ICaptchaSolver {
           // Check multiple times for email verification as it might appear with delay
           for (let i = 0; i < 3; i++) {
             if (await this.checkEmailVerification(page)) {
-              this.logger.info(
+              this.logger.log(
                 'Email verification form detected after CAPTCHA',
                 {
                   attempt: i,
@@ -449,12 +445,12 @@ export class SadCaptchaSolverService implements ICaptchaSolver {
             // Even if captcha is gone, wait and check for email verification again
             await page.waitForTimeout(2000);
             if (await this.checkEmailVerification(page)) {
-              this.logger.info(
+              this.logger.log(
                 'Email verification form detected after CAPTCHA disappeared',
               );
               return true;
             }
-            this.logger.info('CAPTCHA verification completed successfully');
+            this.logger.log('CAPTCHA verification completed successfully');
             return true;
           }
 
@@ -463,19 +459,19 @@ export class SadCaptchaSolverService implements ICaptchaSolver {
           if (!currentUrl.includes('captcha')) {
             // Even if URL changed, check for email verification
             if (await this.checkEmailVerification(page)) {
-              this.logger.info(
+              this.logger.log(
                 'Email verification form detected after URL change',
               );
               return true;
             }
-            this.logger.info(
+            this.logger.log(
               'Page URL changed after CAPTCHA - assuming success',
             );
             return true;
           }
         }
       } catch (error) {
-        this.logger.warning('Failed to click confirm button:', {
+        this.logger.warn('Failed to click confirm button:', {
           selector: confirmSelector,
           error: (error as Error).message,
         });
@@ -486,22 +482,22 @@ export class SadCaptchaSolverService implements ICaptchaSolver {
     try {
       const finalCheck = await page.$(selector);
       if (!finalCheck) {
-        this.logger.info('CAPTCHA no longer present - assuming success');
+        this.logger.log('CAPTCHA no longer present - assuming success');
         return true;
       }
 
       const isVisible = await finalCheck.isVisible().catch(() => false);
       if (!isVisible) {
-        this.logger.info('CAPTCHA no longer visible - assuming success');
+        this.logger.log('CAPTCHA no longer visible - assuming success');
         return true;
       }
     } catch (error) {
       // If error occurs during check, it might mean the element is gone
-      this.logger.info('Error checking captcha element - it may be gone');
+      this.logger.log('Error checking captcha element - it may be gone');
       return true;
     }
 
-    this.logger.warning('Could not confirm CAPTCHA solution');
+    this.logger.warn('Could not confirm CAPTCHA solution');
     return false;
   }
 
@@ -564,7 +560,7 @@ export class SadCaptchaSolverService implements ICaptchaSolver {
     try {
       if (!fs.existsSync(directory)) {
         fs.mkdirSync(directory, { recursive: true });
-        this.logger.info(`Created directory: ${directory}`);
+        this.logger.log(`Created directory: ${directory}`);
       }
     } catch (error) {
       this.logger.error(`Error creating directory ${directory}:`, {

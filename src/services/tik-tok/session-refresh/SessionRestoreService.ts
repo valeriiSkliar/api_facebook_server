@@ -3,21 +3,21 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 
 import { Page } from 'playwright';
-import { Log } from 'crawlee';
 import * as fs from 'fs-extra';
 import { BrowserHelperService } from '@src/services';
+import { Logger } from '@nestjs/common';
 /**
  * Service for restoring saved browser sessions
  */
 export class SessionRestoreService {
-  private logger: Log;
+  private logger: Logger;
   private browserHelperService: BrowserHelperService;
 
   /**
    * Creates a new SessionRestoreService instance
    * @param logger Logger instance
    */
-  constructor(logger: Log) {
+  constructor(logger: Logger) {
     this.logger = logger;
     this.browserHelperService = BrowserHelperService.getInstance();
   }
@@ -31,7 +31,7 @@ export class SessionRestoreService {
   async restoreSession(page: Page, sessionPath: string): Promise<boolean> {
     try {
       await fs.access(sessionPath);
-      this.logger.info(
+      this.logger.log(
         '[SessionRestoreService] Found saved session state, attempting to restore...',
         {
           sessionPath,
@@ -96,7 +96,7 @@ export class SessionRestoreService {
           );
         }
 
-        this.logger.info(
+        this.logger.log(
           '[SessionRestoreService] Session restored successfully',
         );
         return true;
@@ -118,7 +118,7 @@ export class SessionRestoreService {
         '[SessionRestoreService] Error restoring session state:',
         { error: (err as Error).message },
       );
-      this.logger.info(
+      this.logger.log(
         '[SessionRestoreService] No saved session found or error restoring session, proceeding with normal login',
       );
       return false;

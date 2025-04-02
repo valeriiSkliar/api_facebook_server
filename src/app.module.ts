@@ -9,6 +9,8 @@ import { RequestModule } from './modules/request-module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { SessionModule } from './modules/session.module';
+import { TiktokAccountModule } from './routes/tiktok-account/tiktok-account.module';
+import { EmailAccountModule } from './routes/email-account/email-account.module';
 
 @Module({
   imports: [
@@ -22,6 +24,8 @@ import { SessionModule } from './modules/session.module';
     RequestModule,
     ScheduleModule.forRoot(),
     SessionModule,
+    TiktokAccountModule,
+    EmailAccountModule,
   ],
   controllers: [],
   providers: [AppService, RedisService],

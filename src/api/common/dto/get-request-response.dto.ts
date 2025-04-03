@@ -1,4 +1,4 @@
-import { AdDataDto } from './AdDataDto'; // Используем существующий AdDataDto
+import { AdDataDto } from '../../facebook/dto';
 import { Type } from 'class-transformer';
 import {
   IsString,
@@ -42,7 +42,7 @@ export class GetRequestResponseDto {
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => AdDataDto) // Убедитесь, что AdDataDto валидирует AdData
+  @Type(() => AdDataDto)
   results?: AdDataDto[] | null;
 
   @IsOptional()

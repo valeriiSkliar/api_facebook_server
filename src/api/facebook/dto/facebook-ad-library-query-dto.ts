@@ -8,10 +8,13 @@ import {
   IsEnum,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { ScraperOptionsDto } from './ScraperOptionsDto';
+import { ScraperOptionsDto } from './facebook-scraper-options-dto';
 
 import { IsDateString, ArrayMinSize } from 'class-validator';
-import { AdLibraryQuery, AdLibraryFilters } from '@src/models/AdLibraryQuery';
+import {
+  AdLibraryQuery,
+  AdLibraryFilters,
+} from '../../../models/AdLibraryQuery';
 
 export class DateRangeDto {
   @IsOptional()

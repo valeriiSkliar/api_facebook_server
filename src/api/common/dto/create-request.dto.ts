@@ -7,7 +7,7 @@ import {
   IsEnum,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { ScraperOptionsDto } from './ScraperOptionsDto';
+import { ScraperOptionsDto } from '../../facebook/dto';
 
 export class CreateRequestDto {
   @IsString()

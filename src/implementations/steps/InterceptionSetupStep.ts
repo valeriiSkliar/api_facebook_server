@@ -7,8 +7,7 @@ import { Logger } from '@nestjs/common';
 import { z } from 'zod';
 import { plainToInstance } from 'class-transformer';
 import { validateOrReject } from 'class-validator';
-import { AdDataDto } from '../../dto/AdDataDto';
-
+import { AdDataDto } from '@src/api/facebook/dto';
 const SnapshotSchema = z
   .object({
     body: z

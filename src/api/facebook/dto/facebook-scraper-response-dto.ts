@@ -5,12 +5,11 @@ import {
   IsNumber,
   IsOptional,
   IsString,
-  Min,
   ValidateNested,
 } from 'class-validator';
-import { AdDataDto } from './AdDataDto';
+import { AdDataDto } from './facebook-ad-data-dto';
 
-export class ScraperResultDto {
+export class FacebookScraperResponseDto {
   /**
    * Indicates if the scraping operation was successful
    */
@@ -18,44 +17,36 @@ export class ScraperResultDto {
   success: boolean;
 
   /**
-   * Total count of ads collected
+   * Total number of ads that were collected
    */
   @IsNumber()
-  @Min(0)
   totalCount: number;
 
   /**
-   * Total execution time in milliseconds
+   * Execution time in milliseconds
    */
   @IsNumber()
-  @Min(0)
   executionTime: number;
 
   /**
-   * Path where the data was saved (if applicable)
+   * Path where the scraped data was saved
    */
   @IsOptional()
   @IsString()
   outputPath?: string;
 
   /**
-   * Any errors that occurred during scraping
+   * Error messages if any occurred during scraping
    */
   @IsArray()
   @IsString({ each: true })
   errors: string[];
 
   /**
-   * Whether to include the ads in the response
-   */
-  @IsBoolean()
-  includeAdsInResponse: boolean;
-
-  /**
-   * The collected ad data (only included when includeAdsInResponse is true)
+   * The actual ad data, if requested in options
+   * Only included when includeAdsInResponse is true
    */
   @IsOptional()
-  @IsArray()
   @ValidateNested({ each: true })
   @Type(() => AdDataDto)
   ads?: AdDataDto[];

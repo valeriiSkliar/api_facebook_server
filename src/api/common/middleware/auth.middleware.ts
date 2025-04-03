@@ -1,6 +1,6 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { AuthenticatedRequest } from '@src/interfaces/auth.interface';
+import { AuthenticatedRequest } from '../../../interfaces/auth.interface';
 import { Response, NextFunction } from 'express';
 
 @Injectable()

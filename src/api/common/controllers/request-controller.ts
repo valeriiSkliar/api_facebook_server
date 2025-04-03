@@ -15,12 +15,12 @@ import {
 import {
   RequestManagerService,
   RequestStatus,
-} from '../services/request-manager-service';
-import { CreateRequestDto } from '@src/dto/create-request.dto';
-import { UpdateRequestStatusDto } from '@src/dto/update-request-status.dto';
-import { AuthenticatedRequest } from '../interfaces/auth.interface';
-import { AdData } from '@src/models/AdData';
-import { ScraperResult } from '@src/models/ScraperResult';
+} from '../../../services/request-manager-service';
+import { CreateRequestDto } from '../dto/create-request.dto';
+import { UpdateRequestStatusDto } from '../dto/update-request-status.dto';
+import { AuthenticatedRequest } from '../../../interfaces/auth.interface';
+import { AdData } from '../../../models/AdData';
+import { ScraperResult } from '../../../models/ScraperResult';
 
 // Interface for potential error structures stored in response_data
 interface ErrorData {

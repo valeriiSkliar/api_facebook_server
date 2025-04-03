@@ -12,7 +12,7 @@ import {
 
 // import { ScraperOptions } from '@src/models/ScraperOptions';
 import { Type } from 'class-transformer';
-import { AdLibraryQuery } from '@src/models/AdLibraryQuery';
+import { AdLibraryQuery } from '../../../models/AdLibraryQuery';
 
 // export class ScraperOptionsDto implements Partial<ScraperOptions> {
 //   @IsObject()

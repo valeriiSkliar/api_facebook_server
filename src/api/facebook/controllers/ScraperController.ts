@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import {
   BadRequestException,
   Body,
@@ -6,10 +7,14 @@ import {
   Get,
   Logger,
 } from '@nestjs/common';
-import { FacebookAdScraperService } from '../services/FacebookAdScraperService';
-import { SearchParameterService } from '../services/SearchParameterService';
-import { ScraperRequestDto, ScraperResponseDto } from '@src/dto';
+import { FacebookAdScraperService } from '../../../services/FacebookAdScraperService';
+import { SearchParameterService } from '../../../services/SearchParameterService';
 import { plainToInstance } from 'class-transformer';
+import {
+  FacebookScraperRequestDto,
+  FacebookScraperResponseDto,
+  FacebookScraperResultDto,
+} from '../dto';
 
 @Controller('scraper')
 export class ScraperController {
@@ -29,8 +34,8 @@ export class ScraperController {
 
   @Post('facebook-ads')
   async scrapeFacebookAds(
-    @Body() dto: ScraperRequestDto,
-  ): Promise<ScraperResponseDto> {
+    @Body() dto: FacebookScraperRequestDto,
+  ): Promise<FacebookScraperResponseDto> {
     this.logger.log(
       `Received scraping request for query: ${dto.query.queryString}`,
     );
@@ -53,13 +58,12 @@ export class ScraperController {
     );
 
     // Transform the result to response DTO
-    const resultDto = plainToInstance(ScraperResponseDto, {
+    const resultDto = plainToInstance(FacebookScraperResultDto, {
       success: result.success,
       totalCount: result.totalCount,
       executionTime: result.executionTime,
       outputPath: result.outputPath || '',
       errors: result.errors.map((e) => e.message || String(e)),
-      includeAdsInResponse: !!result.includeAdsInResponse,
       ads: result.includeAdsInResponse ? result.ads : undefined,
     });
     // Only include ads if requested and available
@@ -75,7 +79,6 @@ export class ScraperController {
       executionTime: resultDto.executionTime,
       outputPath: resultDto.outputPath,
       errors: resultDto.errors,
-      includeAdsInResponse: resultDto.includeAdsInResponse,
       ads: resultDto.ads,
     };
   }

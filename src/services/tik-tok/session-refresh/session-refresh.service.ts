@@ -1,5 +1,9 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+import { PrismaService } from '@core/storage/prisma';
 import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '@src/prisma/prisma.service';
 import { AuthCredentials } from '@src/models/tik-tok/AuthCredentials';
 import { Log } from 'crawlee';
 import { Env } from '@lib/Env';

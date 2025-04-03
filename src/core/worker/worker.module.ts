@@ -2,7 +2,7 @@ import { Module, Logger, forwardRef } from '@nestjs/common';
 import { WorkerService } from './worker.service';
 import { QueueModule } from '@core/queue/queue.module';
 import { BrowserPoolModule } from '@core/browser/browser-pool/browser-pool.module';
-import { PrismaModule } from '@src/prisma/prisma.module';
+import { PrismaModule } from '@core/storage/prisma';
 import { ScraperRegistry } from '@src/services/ScraperRegistry';
 import { ScraperFactory } from '@src/implementations/factories/ScraperFactory';
 import { StepFactory } from '@src/implementations/factories/StepFactory';

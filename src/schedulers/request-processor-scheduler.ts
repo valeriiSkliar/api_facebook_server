@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { QueueService } from '../services/queue-service';
+import { QueueService } from '@core/queue/queue.service';
 import { RequestProcessorService } from '../services/request-processor-service';
 import { RequestManagerService } from '../services/request-manager-service';
 

@@ -1,6 +1,9 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 import { Injectable, Logger } from '@nestjs/common';
-import { RedisService } from '../core/storage/redis/redis.service';
-import { PrismaService } from '../prisma/prisma.service';
+import { RedisService } from '@core/storage/redis/redis.service';
+import { PrismaService } from '@core/storage/prisma';
 import * as crypto from 'crypto';
 
 export interface CacheOptions {

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { QueueService } from './queue-service';
+import { QueueService } from '@core/queue/queue.service';
 import {
   RequestManagerService,
   RequestMetadata,

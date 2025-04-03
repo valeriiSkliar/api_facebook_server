@@ -1,8 +1,11 @@
 // src/services/tik-tok/authenticator/TikTokAuthService.ts
 
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+import { PrismaService } from '@core/storage/prisma';
 import { Injectable, Logger } from '@nestjs/common';
 import { TikTokAuthenticator } from './TikTokAuthenticator';
-import { PrismaService } from '@src/prisma/prisma.service';
 import { AuthCredentials } from '@src/models/tik-tok/AuthCredentials';
 import { Env } from '@lib/Env';
 // import { EmailAccount } from '@src/models/tik-tok/email-account';

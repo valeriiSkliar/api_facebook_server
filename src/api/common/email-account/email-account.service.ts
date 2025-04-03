@@ -1,5 +1,8 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '@src/prisma/prisma.service';
+import { PrismaService } from '@core/storage/prisma';
 import { CreateEmailAccountDto } from './dto/create-email-account.dto';
 import { UpdateEmailAccountDto } from './dto/update-email-account.dto';
 

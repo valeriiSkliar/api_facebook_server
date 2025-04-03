@@ -14,9 +14,12 @@ import {
   TikTokAuthenticator,
   FileSystemSessionManager,
   SadCaptchaSolverService,
+  BrowserPoolService,
+  TabManager,
 } from '@src/services';
 import { EmailAccount } from '@src/models/tik-tok/email-account';
 import { Logger } from '@nestjs/common';
+import { RedisService } from '@src/redis/redis.service';
 
 /**
  * Factory for creating authenticator instances
@@ -26,7 +29,9 @@ export class AuthenticatorFactory {
    * Creates a TikTok authenticator with all necessary dependencies
    * @param logger Logger instance
    * @param options Additional options for authenticator creation
-   * @param emailAccountId ID of the email account to use
+   * @param emailAccount Email account to use
+   * @param browserPoolService Browser pool service to use
+   * @param tabManager Tab manager to use
    * @returns TikTokAuthenticator instance
    */
   static createTikTokAuthenticator(
@@ -37,6 +42,8 @@ export class AuthenticatorFactory {
       crawlerOptions?: Partial<PlaywrightCrawlerOptions>;
     } = {},
     emailAccount: EmailAccount,
+    browserPoolService: BrowserPoolService,
+    tabManager: TabManager,
   ): IAuthenticator {
     // Set default options
     const sessionStoragePath =
@@ -45,7 +52,7 @@ export class AuthenticatorFactory {
       './storage/sessions';
     const captchaSolverApiKey =
       options.captchaSolverApiKey || process.env.SAD_CAPTCHA_API_KEY || '';
-    const crawlerOptions = options.crawlerOptions || {};
+    // const crawlerOptions = options.crawlerOptions || {};
 
     // Create dependencies
     const sessionManager = AuthenticatorFactory.createSessionManager(
@@ -66,7 +73,8 @@ export class AuthenticatorFactory {
       logger,
       captchaSolver,
       sessionManager,
-      crawlerOptions,
+      browserPoolService,
+      tabManager,
       emailService,
     );
 
@@ -105,18 +113,20 @@ export class AuthenticatorFactory {
   }
 
   /**
-   * Creates an email verification handler instance
-   * @param prisma Prisma client instance
+   * Creates a browser pool service instance
    * @param logger Logger instance
-   * @returns EmailService implementation
+   * @returns BrowserPoolService implementation
    */
-  private static createEmailVerificationHandler(
-    prisma: PrismaClient,
-    logger: Logger,
-    emailAccount: EmailAccount,
-    // imapConfig?: IImapConfig,
-  ): EmailService {
-    // Create the email service first
-    return new EmailService(prisma, logger, emailAccount);
+  private static createBrowserPoolService(): BrowserPoolService {
+    return {} as BrowserPoolService;
+  }
+
+  /**
+   * Creates a tab manager instance
+   * @param logger Logger instance
+   * @returns TabManager implementation
+   */
+  private static createTabManager(): TabManager {
+    return new TabManager(new RedisService());
   }
 }

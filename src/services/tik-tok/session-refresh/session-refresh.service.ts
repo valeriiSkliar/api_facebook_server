@@ -8,12 +8,17 @@ import * as fs from 'fs-extra';
 import * as path from 'path';
 import { EmailAccount } from '@src/models/tik-tok/email-account';
 import { AuthenticatorFactory } from '@src/implementations/factories/tik-tok';
-
+import { BrowserPoolService } from '@src/services/browser-pool/browser-pool-service';
+import { TabManager } from '@src/services/browser-pool/tab-manager';
 @Injectable()
 export class SessionRefreshService {
   private readonly logger = new Logger(SessionRefreshService.name);
   private readonly crawleeLogger: Log;
-  constructor(private readonly prisma: PrismaService) {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly browserPoolService: BrowserPoolService,
+    private readonly tabManager: TabManager,
+  ) {
     this.crawleeLogger = new Log({ prefix: 'SessionRefreshService' });
   }
 
@@ -147,6 +152,8 @@ export class SessionRefreshService {
         },
       },
       emailAccount,
+      this.browserPoolService,
+      this.tabManager,
     );
   }
 }

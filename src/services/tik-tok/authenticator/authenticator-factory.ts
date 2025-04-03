@@ -12,6 +12,7 @@ import {
 } from '@src/interfaces';
 import { PrismaClient } from '@prisma/client';
 import { Env } from '@lib/Env';
+import { AuthenticatorOptions, AuthenticatorContext } from '@src/models';
 
 /**
  * Тип платформы для аутентификации
@@ -199,5 +200,46 @@ export class AuthenticatorFactory {
       tabManager,
       emailService,
     );
+  }
+
+  createContext(options?: Partial<AuthenticatorOptions>): AuthenticatorContext {
+    return {
+      options: this.mergeWithDefaultOptions(options),
+      state: {
+        errors: [],
+        forceStop: false,
+        externalBrowser: false,
+      },
+    };
+  }
+  private mergeWithDefaultOptions(
+    options?: Partial<AuthenticatorOptions>,
+  ): AuthenticatorOptions {
+    const defaultOptions: AuthenticatorOptions = {
+      browser: {
+        headless: true,
+      },
+      network: {
+        timeout: 30000,
+        retries: 3,
+      },
+      behavior: {
+        applyFilters: false,
+        maxRetries: 3,
+        waitForResults: true,
+        maxWaitTimeoutForStep: 30000,
+        cleanUpTimeout: 300000,
+      },
+      storage: {
+        enabled: true,
+        format: 'json',
+        outputPath: './storage/sessions',
+      },
+    };
+
+    return {
+      ...defaultOptions,
+      ...options,
+    };
   }
 }

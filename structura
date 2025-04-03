@@ -1,0 +1,56 @@
+src/
+├── api/                         # API оболочка
+│   ├── controllers/             # Контроллеры для внешнего API
+│   ├── dto/                     # Data Transfer Objects для API
+│   ├── middleware/              # Middleware (аутентификация, логирование и т.д.)
+│   └── pipes/                   # Validation pipes
+│
+├── core/                        # Общее ядро
+│   ├── browser/                 # Управление браузерами
+│   │   ├── browser-pool/        # Пул браузеров
+│   │   ├── tab-manager/         # Управление вкладками
+│   │   └── lifecycle/           # Жизненный цикл браузера
+│   ├── queue/                   # Система очередей запросов
+│   ├── cache/                   # Кэширование
+│   ├── storage/                 # Работа с данными
+│   │   ├── file-storage/        # Хранение файлов
+│   │   └── redis/               # Redis сервисы
+│   └── interfaces/              # Общие интерфейсы
+│
+├── scrapers/                    # Парсеры (общая логика)
+│   ├── common/                  # Общие компоненты для всех парсеров
+│   │   ├── pipeline/            # Базовая реализация pipeline
+│   │   ├── steps/               # Общие шаги для парсеров
+│   │   └── filters/             # Общие фильтры
+│   ├── facebook/                # Парсер Facebook
+│   │   ├── ad-library/          # Специфика API Ad Library
+│   │   ├── steps/               # Специфичные шаги для Facebook
+│   │   ├── models/              # Модели данных для Facebook
+│   │   └── services/            # Специфичные сервисы
+│   ├── tiktok/                  # Парсер TikTok (если нужен)
+│   │   ├── authenticator/       # Аутентификация в TikTok
+│   │   ├── api/                 # Работа с API TikTok
+│   │   └── models/              # Модели данных для TikTok
+│   └── factories/               # Фабрики для создания экземпляров парсеров
+│
+├── services/                    # Бизнес-логика
+│   ├── request-manager/         # Управление запросами
+│   ├── session-manager/         # Управление сессиями
+│   ├── worker/                  # Worker для обработки задач
+│   └── scheduler/               # Планировщики задач
+│
+├── database/                    # Работа с БД
+│   ├── prisma/                  # Prisma ORM
+│   ├── entities/                # Модели сущностей
+│   ├── repositories/            # Репозитории
+│   └── migrations/              # Миграции БД
+│
+├── config/                      # Конфигурация приложения
+│   ├── app-config.ts            # Основная конфигурация
+│   ├── env.ts                   # Переменные окружения
+│   └── logger-config.ts         # Конфигурация логгера
+│
+└── utils/                       # Утилиты и хелперы
+    ├── helpers/                 # Вспомогательные функции
+    ├── decorators/              # Пользовательские декораторы
+    └── validators/              # Валидаторы

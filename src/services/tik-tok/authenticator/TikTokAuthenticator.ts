@@ -135,6 +135,9 @@ export class TikTokAuthenticator extends BaseAuthenticator {
 
       // Установка страницы и браузера в контекст перед выполнением пайплайна
       this.context.state.page = page;
+      // Добавляем browserId и tabId в контекст для отслеживания
+      this.context.state.browserId = browserId;
+      this.context.state.tabId = tabId;
 
       try {
         const browser =
@@ -265,14 +268,25 @@ export class TikTokAuthenticator extends BaseAuthenticator {
     // For example:
     try {
       const verificationSessionId = `verify_${this.currentSession.id}`;
+      // Добавляем более уникальный идентификатор с меткой времени
+      const uniqueVerificationId = `${verificationSessionId}_${Date.now()}`;
+
       const tabCreation = await this.browserPool.createSystemTabForSession(
-        verificationSessionId,
+        uniqueVerificationId,
         this.currentSession.userId,
       );
 
       if (!tabCreation) {
+        this.logger.warn(
+          'Failed to create browser tab for session verification',
+        );
         return false;
       }
+
+      this.logger.log('Browser tab created for session verification', {
+        browserId: tabCreation.browserId,
+        tabId: tabCreation.tabId,
+      });
 
       const result = await this.browserPool.executeInTab(
         tabCreation.browserId,
@@ -291,6 +305,10 @@ export class TikTokAuthenticator extends BaseAuthenticator {
 
       // Clean up
       await this.browserPool.closeTab(tabCreation.browserId, tabCreation.tabId);
+      this.logger.log('Closed verification browser tab', {
+        browserId: tabCreation.browserId,
+        tabId: tabCreation.tabId,
+      });
 
       return result;
     } catch (error) {

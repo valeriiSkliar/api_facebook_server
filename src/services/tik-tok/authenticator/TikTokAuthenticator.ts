@@ -9,7 +9,11 @@ import { AuthenticationPipeline } from '@src/implementations';
 import { ICaptchaSolver, ISessionManager } from '@src/interfaces';
 import { AuthCredentials, Session } from '@src/models';
 import { PrismaClient } from '@prisma/client';
-import { CookieConsentStep, InitializationStep } from '../steps';
+import {
+  CookieConsentStep,
+  InitializationStep,
+  NavigationStep,
+} from '../steps';
 import { BaseAuthenticator } from '@src/services/auth/BaseAuthenticator';
 import { EmailService } from '../email/EmailService';
 
@@ -74,6 +78,7 @@ export class TikTokAuthenticator extends BaseAuthenticator {
   private initializeAuthPipeline(): void {
     // Add authentication steps to the pipeline
     this.authPipeline.addStep(new InitializationStep(this.logger));
+    this.authPipeline.addStep(new NavigationStep(this.logger));
     this.authPipeline.addStep(new CookieConsentStep(this.logger));
     //   .addStep(new SessionRestoreStep(this.logger, AuthStepType.PRE_SESSION))
     // .addStep(new InitializationStep(this.logger, AuthStepType.PRE_SESSION))
@@ -108,8 +113,6 @@ export class TikTokAuthenticator extends BaseAuthenticator {
         credentials.email,
       );
 
-      // const context = this.authPipeline.createContext();
-
       if (!tabCreation) {
         throw new Error('Failed to create browser tab for authentication');
       }
@@ -130,7 +133,22 @@ export class TikTokAuthenticator extends BaseAuthenticator {
         throw new Error(`No page found for tab ${tabId}`);
       }
 
+      // Установка страницы и браузера в контекст перед выполнением пайплайна
       this.context.state.page = page;
+
+      try {
+        const browser =
+          await this.browserPool['lifecycleManager'].getBrowserForTab(tabId);
+        if (browser) {
+          // @ts-expect-error - используем упрощенный объект браузера
+          this.context.state.browser = browser;
+          this.logger.log(`Using browser ${browser.id} for authentication`);
+        }
+      } catch (browserError) {
+        this.logger.warn(
+          `Could not get browser for tab ${tabId}, continuing without browser context: ${browserError instanceof Error ? browserError.message : 'Unknown error'}`,
+        );
+      }
 
       const result = await this.authPipeline.execute(this.context, credentials);
 
@@ -138,49 +156,21 @@ export class TikTokAuthenticator extends BaseAuthenticator {
         throw new Error(`Authentication failed: ${result.error}`);
       }
 
-      // await this.browserPool.executeInBrowser(
-      //   browserId,
-      //   async ({ browser }) => {
-      //     // Get page from tab
-      //     if (!browser) {
-      //       throw new Error(`No browser found for browserId ${browserId}`);
-      //     }
-      //     if (!tabId) {
-      //       throw new Error(`No tabId found for browserId ${browserId}`);
-      //     }
+      // Запись успешных результатов аутентификации
+      this.logger.log('Authentication pipeline execution completed', {
+        success: result.success,
+        sessionRestored: result.data?.sessionRestored,
+        executionTime: result.data?.executionTime,
+      });
 
-      //     const page =
-      //       this.browserPool['lifecycleManager'].getPageForTab(tabId);
-
-      //     if (!page) {
-      //       throw new Error(`No page found for tab ${tabId}`);
-      //     }
-
-      //     // Execute the authentication pipeline
-
-      //     if (!result.success) {
-      //       throw new Error(`Authentication failed: ${result.error}`);
-      //     }
-
-      //     // If session was restored, record this information
-      //     this.logger.log('Authentication pipeline execution completed', {
-      //       success: result.success,
-      //       sessionRestored: result.data?.sessionRestored,
-      //       executionTime: result.data?.executionTime,
-      //     });
-
-      //     // Save successful session to database
-      //     if (result.success) {
-      //       await this.saveSessionToDatabase(
-      //         credentials.email,
-      //         credentials.sessionPath ||
-      //           `${this.sessionStoragePath}/session_${credentials.email.replace(/[@.]/g, '_')}.json`,
-      //       );
-      //     }
-
-      //     return result;
-      //   },
-      // );
+      // Сохранение сессии в базу данных при успешной аутентификации
+      if (result.success) {
+        await this.saveSessionToDatabase(
+          credentials.email,
+          credentials.sessionPath ||
+            `${this.sessionStoragePath}/tiktok_${credentials.email.replace(/[@.]/g, '_')}.json`,
+        );
+      }
     } catch (error) {
       this.logger.error('Error during authentication process:', {
         error: error instanceof Error ? error.message : String(error),

@@ -16,7 +16,7 @@ export class SessionScheduleService {
   /**
    * Check sessions every 45 minutes and refresh if needed
    */
-  @Cron(CronExpression.EVERY_MINUTE)
+  @Cron(CronExpression.EVERY_30_SECONDS)
   async checkAndRefreshSessions() {
     try {
       this.logger.log('Scheduled session check started');

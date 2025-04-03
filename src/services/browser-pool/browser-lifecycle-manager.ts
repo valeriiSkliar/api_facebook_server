@@ -309,8 +309,7 @@ export class BrowserLifecycleManager {
   }
 
   /**
-   * Get a page for a tab
-   * @param tabId - Tab ID
+   * Gets the page associated with a tab ID
    */
   getPageForTab(tabId: string): Page | null {
     const page = this.activePages.get(tabId);
@@ -319,6 +318,25 @@ export class BrowserLifecycleManager {
     }
     this.logger.warn(`Page for tab ${tabId} not found or already closed.`);
     return null;
+  }
+
+  /**
+   * Gets the browser instance associated with a tab ID
+   * Note: This is a simplified version that returns just the ID, not the full browser object
+   */
+  async getBrowserForTab(tabId: string): Promise<{ id: string } | null> {
+    try {
+      const tab = await this.tabManager.getTab(tabId);
+      if (!tab) {
+        this.logger.warn(`No tab found with ID ${tabId}`);
+        return null;
+      }
+
+      return tab.browserId ? { id: tab.browserId } : null;
+    } catch (error) {
+      this.logger.error(`Error getting browser for tab ${tabId}:`, error);
+      return null;
+    }
   }
 
   /**

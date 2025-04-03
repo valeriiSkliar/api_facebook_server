@@ -87,7 +87,6 @@ export class TikTokAuthenticator extends BaseAuthenticator {
     // Add authentication steps to the pipeline
     this.authPipeline.addStep(new InitializationStep(this.logger));
     this.authPipeline.addStep(new NavigationStep(this.logger));
-    // Добавляем шаг восстановления сессии перед другими шагами логина
     this.authPipeline.addStep(new SessionRestoreStep(this.logger));
     this.authPipeline.addStep(new CookieConsentStep(this.logger));
     this.authPipeline.addStep(new LoginButtonStep(this.logger));
@@ -100,11 +99,7 @@ export class TikTokAuthenticator extends BaseAuthenticator {
     this.authPipeline.addStep(
       new EmailVerificationStep(this.logger, this.emailService),
     );
-    // Добавляем шаг сохранения сессии в конце
     this.authPipeline.addStep(new SaveSessionStep(this.logger));
-    //   .addStep(new LoginFormStep(this.logger, AuthStepType.LOGIN))
-    //   .addStep(new CaptchaVerificationStep(this.logger, this.captchaSolver, AuthStepType.LOGIN))
-    //   .addStep(new EmailVerificationStep(this.logger, this.emailService, AuthStepType.LOGIN))
 
     this.logger.log('Authentication pipeline initialized');
   }

@@ -7,6 +7,10 @@ import { PrismaService } from '@src/prisma/prisma.service';
 @Injectable()
 export class SessionScheduleService {
   private readonly logger = new Logger(SessionScheduleService.name);
+  // Флаг для отслеживания запущенного процесса обновления сессий
+  private isRefreshing = false;
+  // Время последнего обновления сессии
+  private lastRefreshTime = 0;
 
   constructor(
     private sessionRefreshService: SessionRefreshService,
@@ -14,11 +18,32 @@ export class SessionScheduleService {
   ) {}
 
   /**
-   * Check sessions every 45 minutes and refresh if needed
+   * Check sessions every 30 seconds and refresh if needed
    */
   @Cron(CronExpression.EVERY_30_SECONDS)
   async checkAndRefreshSessions() {
+    // Проверяем, не запущен ли уже процесс обновления
+    if (this.isRefreshing) {
+      const timeSinceLastRefresh = Date.now() - this.lastRefreshTime;
+      // Если обновление запущено менее 30 секунд назад, пропускаем
+      if (timeSinceLastRefresh < 30000) {
+        this.logger.log(
+          `Skipping session refresh - already in progress (${timeSinceLastRefresh}ms ago)`,
+        );
+        return;
+      } else {
+        // Если прошло больше 30 секунд, считаем предыдущее обновление зависшим и сбрасываем флаг
+        this.logger.warn(
+          `Previous refresh seems to be stuck (${timeSinceLastRefresh}ms) - resetting flag`,
+        );
+      }
+    }
+
     try {
+      // Устанавливаем флаг запущенного процесса
+      this.isRefreshing = true;
+      this.lastRefreshTime = Date.now();
+
       this.logger.log('Scheduled session check started');
 
       // Check if we have any valid API configs
@@ -57,6 +82,9 @@ export class SessionScheduleService {
         `Error during scheduled session check: ${errorMessage}`,
         errorStack,
       );
+    } finally {
+      // Сбрасываем флаг независимо от результата
+      this.isRefreshing = false;
     }
   }
 }

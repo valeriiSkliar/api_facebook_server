@@ -10,6 +10,12 @@ import { AuthCredentials } from '@src/models/tik-tok/AuthCredentials';
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
+  // Флаг для отслеживания активных процессов аутентификации
+  private isAuthenticating = false;
+  // Хранение последней используемой почты для предотвращения дублирования
+  private lastAuthEmail: string | null = null;
+  // Время последней аутентификации
+  private lastAuthTime = 0;
 
   constructor(
     @Inject('IAuthenticatorFactory')
@@ -22,7 +28,25 @@ export class AuthService {
    * @returns Promise resolving to boolean indicating success
    */
   async authenticate(credentials: AuthCredentials): Promise<boolean> {
+    // Проверка на параллельную аутентификацию с тем же самым email
+    if (this.isAuthenticating && this.lastAuthEmail === credentials.email) {
+      const timeSinceLastAuth = Date.now() - this.lastAuthTime;
+      // Если прошло менее 10 секунд с предыдущей попытки аутентификации, пропускаем
+      if (timeSinceLastAuth < 10000) {
+        this.logger.warn('Parallel authentication detected and prevented', {
+          email: credentials.email,
+          timeSinceLastAuth: `${timeSinceLastAuth}ms`,
+        });
+        return false;
+      }
+    }
+
     try {
+      // Устанавливаем флаг и данные текущей аутентификации
+      this.isAuthenticating = true;
+      this.lastAuthEmail = credentials.email;
+      this.lastAuthTime = Date.now();
+
       const authenticator = this.authenticatorFactory.createAuthenticator(
         this.logger,
       );
@@ -47,6 +71,9 @@ export class AuthService {
       });
 
       return false;
+    } finally {
+      // Сбрасываем флаг аутентификации
+      this.isAuthenticating = false;
     }
   }
 
@@ -67,6 +94,23 @@ export class AuthService {
    * @returns Promise resolving to boolean indicating success
    */
   async refreshSession(credentials?: AuthCredentials): Promise<boolean> {
+    // Если уже идет процесс аутентификации и это тот же email - пропускаем
+    if (
+      credentials &&
+      this.isAuthenticating &&
+      this.lastAuthEmail === credentials.email
+    ) {
+      const timeSinceLastAuth = Date.now() - this.lastAuthTime;
+      // Если прошло менее 10 секунд с предыдущей попытки аутентификации, пропускаем
+      if (timeSinceLastAuth < 10000) {
+        this.logger.warn('Parallel session refresh detected and prevented', {
+          email: credentials.email,
+          timeSinceLastAuth: `${timeSinceLastAuth}ms`,
+        });
+        return false;
+      }
+    }
+
     const authenticator = this.authenticatorFactory.createAuthenticator(
       this.logger,
     );
@@ -80,8 +124,28 @@ export class AuthService {
         this.logger.log(
           'Session refresh failed, attempting full authentication',
         );
-        await authenticator.runAuthenticator(credentials);
-        return await authenticator.verifySession();
+        // Пропускаем полную аутентификацию, если она уже идет
+        if (this.isAuthenticating && this.lastAuthEmail === credentials.email) {
+          this.logger.warn(
+            'Skipping authentication as it is already in progress',
+            { email: credentials.email },
+          );
+          return false;
+        }
+
+        // Устанавливаем флаг и данные текущей аутентификации
+        this.isAuthenticating = true;
+        this.lastAuthEmail = credentials.email;
+        this.lastAuthTime = Date.now();
+
+        try {
+          await authenticator.runAuthenticator(credentials);
+          const result = await authenticator.verifySession();
+          return result;
+        } finally {
+          // Сбрасываем флаг аутентификации
+          this.isAuthenticating = false;
+        }
       }
 
       return refreshed;
@@ -90,6 +154,8 @@ export class AuthService {
         error: error instanceof Error ? error.message : String(error),
       });
 
+      // Сбрасываем флаг аутентификации на случай ошибки
+      this.isAuthenticating = false;
       return false;
     }
   }

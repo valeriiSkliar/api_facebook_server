@@ -12,6 +12,13 @@ export class SessionRefreshService {
   private readonly logger = new Logger(SessionRefreshService.name);
   private readonly crawleeLogger: Log;
 
+  // Флаг для отслеживания активного процесса обновления
+  private isRefreshing = false;
+  // Время последнего обновления
+  private lastRefreshTime = 0;
+  // Email аккаунта, используемого для текущего обновления
+  private currentRefreshEmail: string | null = null;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly authService: AuthService,
@@ -23,6 +30,28 @@ export class SessionRefreshService {
    * Find the most recent active session and refresh it
    */
   async refreshActiveSession(): Promise<boolean> {
+    // Проверяем, не запущен ли уже процесс обновления
+    if (this.isRefreshing) {
+      const timeSinceLastRefresh = Date.now() - this.lastRefreshTime;
+      // Если обновление запущено менее 15 секунд назад, пропускаем
+      if (timeSinceLastRefresh < 15000) {
+        this.logger.warn(
+          `Session refresh already in progress (${timeSinceLastRefresh}ms) for ${this.currentRefreshEmail}. Skipping.`,
+        );
+        return false;
+      } else {
+        // Если прошло больше 15 секунд, считаем предыдущее обновление зависшим и сбрасываем флаг
+        this.logger.warn(
+          `Previous refresh for ${this.currentRefreshEmail} seems to be stuck (${timeSinceLastRefresh}ms). Resetting and continuing.`,
+        );
+      }
+    }
+
+    // Устанавливаем флаг и время начала
+    this.isRefreshing = true;
+    this.lastRefreshTime = Date.now();
+    this.currentRefreshEmail = null;
+
     try {
       this.logger.log('Looking for an active session to refresh');
 
@@ -44,6 +73,9 @@ export class SessionRefreshService {
         this.logger.warn('No active session found for refresh');
         return await this.createNewSession();
       }
+
+      // Обновляем текущий email
+      this.currentRefreshEmail = activeSession.email;
 
       // Create the session storage path if it doesn't exist
       const sessionStoragePath =
@@ -85,6 +117,9 @@ export class SessionRefreshService {
         error instanceof Error ? error.stack : undefined,
       );
       return false;
+    } finally {
+      // Сбрасываем флаги в любом случае
+      this.isRefreshing = false;
     }
   }
 
@@ -106,6 +141,9 @@ export class SessionRefreshService {
         this.logger.error('No active email accounts found');
         return false;
       }
+
+      // Обновляем текущий email
+      this.currentRefreshEmail = emailAccount.email_address;
 
       // Create the session storage path
       const sessionStoragePath =

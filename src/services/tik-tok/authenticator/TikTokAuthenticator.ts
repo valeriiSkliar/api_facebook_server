@@ -102,12 +102,11 @@ export class TikTokAuthenticator implements IAuthenticator {
 
     try {
       // Create a dedicated ID for this authentication request
-      const authRequestId = `auth_${credentials.email}_${Date.now()}`;
+      const authSessionId = `auth_${credentials.email}_${Date.now()}`;
 
-      // Acquire a browser and tab from the pool
-      const tabCreation = await this.browserPool.createTabForRequest(
-        authRequestId,
-        credentials.email, // Using email as userId
+      // Acquire a browser and tab from the pool using system tab method
+      const tabCreation = await this.browserPool.createSystemTabForSession(
+        authSessionId,
         credentials.email,
       );
 
@@ -121,7 +120,7 @@ export class TikTokAuthenticator implements IAuthenticator {
       this.logger.log('Browser tab created for authentication', {
         browserId,
         tabId,
-        requestId: authRequestId,
+        sessionId: authSessionId,
       });
 
       // Execute authentication process in the browser
@@ -269,10 +268,9 @@ export class TikTokAuthenticator implements IAuthenticator {
     // Implementation would need to create a tab, load the session, and check if logged in
     // For example:
     try {
-      const verificationRequest = `verify_${this.currentSession.id}`;
-      const tabCreation = await this.browserPool.createTabForRequest(
-        verificationRequest,
-        this.currentSession.userId,
+      const verificationSessionId = `verify_${this.currentSession.id}`;
+      const tabCreation = await this.browserPool.createSystemTabForSession(
+        verificationSessionId,
         this.currentSession.userId,
       );
 
@@ -284,12 +282,14 @@ export class TikTokAuthenticator implements IAuthenticator {
         tabCreation.browserId,
         tabCreation.tabId,
         async ({ page }) => {
+          // Явно указываем тип Page для объекта страницы
+          const typedPage = page as Page;
+
           // Navigate to TikTok
-          await (page as Page).goto(this.loginUrl, {
-            waitUntil: 'networkidle',
-          });
+          await typedPage.goto(this.loginUrl, { waitUntil: 'networkidle' });
+
           // Check if logged in
-          return await this.browserHelperService.isLoggedIn(page as Page);
+          return await this.browserHelperService.isLoggedIn(typedPage);
         },
       );
 
@@ -342,46 +342,49 @@ export class TikTokAuthenticator implements IAuthenticator {
     });
 
     try {
-      // const logoutRequest = `logout_${this.currentSession.id}`;
-      // const tabCreation = await this.browserPool.createTabForRequest(
-      //   logoutRequest,
-      //   this.currentSession.userId,
-      //   this.currentSession.userId,
-      // );
+      // Раскомментируем и обновим код для logout с использованием системной вкладки
+      const logoutSessionId = `logout_${this.currentSession.id}`;
+      const tabCreation = await this.browserPool.createSystemTabForSession(
+        logoutSessionId,
+        this.currentSession.userId,
+      );
 
-      // if (tabCreation) {
-      //   await this.browserPool.executeInTab(
-      //     tabCreation.browserId,
-      //     tabCreation.tabId,
-      //     async ({ page }) => {
-      //       // Navigate to TikTok
-      //       await page.goto(this.loginUrl, { waitUntil: 'networkidle' });
+      if (tabCreation) {
+        await this.browserPool.executeInTab(
+          tabCreation.browserId,
+          tabCreation.tabId,
+          async ({ page }) => {
+            // Явно указываем тип Page для объекта страницы
+            const typedPage = page as Page;
 
-      //       // Perform logout actions
-      //       try {
-      //         // Click user menu
-      //         await page.click('div[data-e2e="profile-icon"]');
-      //         await page.waitForTimeout(1000);
+            // Navigate to TikTok
+            await typedPage.goto(this.loginUrl, { waitUntil: 'networkidle' });
 
-      //         // Click logout button - adjust selector as needed
-      //         await page.click(
-      //           'button[aria-label="Log out"], a[href*="logout"]',
-      //         );
-      //         await page.waitForTimeout(3000);
-      //       } catch (error) {
-      //         this.logger.error('Error performing logout actions', {
-      //           error: error instanceof Error ? error.message : String(error),
-      //         });
-      //       }
-      //     },
-      //   );
+            // Perform logout actions
+            try {
+              // Click user menu
+              await typedPage.click('div[data-e2e="profile-icon"]');
+              await typedPage.waitForTimeout(1000);
 
-      //   // Clean up
-      //   await this.browserPool.closeTab(
-      //     tabCreation.browserId,
-      //     tabCreation.tabId,
-      //   );
-      // }
+              // Click logout button - adjust selector as needed
+              await typedPage.click(
+                'button[aria-label="Log out"], a[href*="logout"]',
+              );
+              await typedPage.waitForTimeout(3000);
+            } catch (error) {
+              this.logger.error('Error performing logout actions', {
+                error: error instanceof Error ? error.message : String(error),
+              });
+            }
+          },
+        );
+
+        // Clean up
+        await this.browserPool.closeTab(
+          tabCreation.browserId,
+          tabCreation.tabId,
+        );
+      }
 
       // Mark session as invalid in database
       if (this.currentSession) {

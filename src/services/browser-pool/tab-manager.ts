@@ -30,13 +30,18 @@ export class TabManager {
    */
   async createTab(
     browserId: string,
-    requestId: string,
-    userId: string,
+    requestId?: string,
+    userId?: string,
     userEmail?: string,
     page?: Page,
   ): Promise<BrowserTab> {
+    // Генерируем requestId если не предоставлен
+    const actualRequestId = requestId || `system_${uuidv4()}`;
+    // Генерируем userId если не предоставлен
+    const actualUserId = userId || `system_user_${uuidv4()}`;
+
     this.logger.log(
-      `Creating tab for request ${requestId} in browser ${browserId} ${page?.url()}`,
+      `Creating tab for request ${actualRequestId} in browser ${browserId} ${page?.url()}`,
     );
 
     const tabId = `tab_${uuidv4()}`;
@@ -46,8 +51,8 @@ export class TabManager {
     const tab: BrowserTab = {
       id: tabId,
       browserId,
-      requestId,
-      userId,
+      requestId: actualRequestId,
+      userId: actualUserId,
       userEmail,
       createdAt: now,
       lastUsedAt: now,
@@ -66,14 +71,28 @@ export class TabManager {
 
     // Create request-to-tab mapping
     await this.redisService.set(
-      `${this.REQUEST_TAB_PREFIX}${requestId}`,
+      `${this.REQUEST_TAB_PREFIX}${actualRequestId}`,
       tabId,
       this.DEFAULT_TTL,
     );
 
-    this.logger.log(`Created tab ${tabId} for request ${requestId}`);
+    this.logger.log(`Created tab ${tabId} for request ${actualRequestId}`);
 
     return tab;
+  }
+
+  /**
+   * Create a new tab without request association for system operations
+   */
+  async createSystemTab(
+    browserId: string,
+    sessionId?: string,
+    userEmail?: string,
+  ): Promise<BrowserTab> {
+    const systemRequestId = `system_${sessionId || uuidv4()}`;
+    const systemUserId = `system_${sessionId || uuidv4()}`;
+
+    return this.createTab(browserId, systemRequestId, systemUserId, userEmail);
   }
 
   /**

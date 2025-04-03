@@ -219,6 +219,90 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
+   * Create a system tab for session management or other system operations
+   * not tied to a specific user request
+   */
+  async createSystemTabForSession(
+    sessionId?: string,
+    userEmail?: string,
+  ): Promise<{ browserId: string; tabId: string; page: Page } | null> {
+    try {
+      // Получаем или создаем браузер
+      let browser = await this.getBrowserWithCapacity();
+
+      // Если нет браузера с достаточной емкостью, создаем новый
+      if (!browser) {
+        if (this.activeBrowsers.size >= this.config.maxPoolSize!) {
+          this.logger.warn(
+            `Cannot create browser: max limit of ${this.config.maxPoolSize} reached`,
+          );
+          return null;
+        }
+
+        // Создаем новый браузер
+        const result = await this.lifecycleManager.createBrowser({
+          headless: Boolean(Env.IS_PRODUCTION),
+          slowMo: 50,
+        });
+
+        if (!result.success || !result.data) {
+          this.logger.error('Failed to create browser:', result.error);
+          return null;
+        }
+
+        browser = result.data;
+        this.activeBrowsers.set(browser.id, browser);
+
+        // Записываем метрики
+        this.metricsService.recordBrowserCreation(
+          browser.metrics?.creationTime || 0,
+        );
+
+        // Сохраняем в Redis
+        await this.storageService.saveBrowser(browser, this.config.browserTTL);
+      }
+
+      // Создаем системную вкладку в браузере
+      const systemId = sessionId || `system_${Date.now()}`;
+      const tabResult = await this.lifecycleManager.createSystemTab(
+        browser,
+        systemId,
+        userEmail,
+      );
+
+      if (!tabResult) {
+        this.logger.error(
+          `Failed to create system tab in browser ${browser.id}`,
+        );
+        return null;
+      }
+
+      const { tab, page } = tabResult;
+
+      // Обновляем браузер в Redis
+      await this.storageService.saveBrowser(browser, this.config.browserTTL);
+
+      this.logger.log(
+        `Created system tab ${tab.id} in browser ${browser.id} for session ${systemId}`,
+      );
+
+      return {
+        browserId: browser.id,
+        tabId: tab.id,
+        page,
+      };
+    } catch (error) {
+      const sessionInfo = sessionId || 'unknown';
+      this.logger.error(
+        `Error creating system tab for session ${sessionInfo}:`,
+        error,
+      );
+      this.metricsService.recordError();
+      return null;
+    }
+  }
+
+  /**
    * Close a tab
    */
   async closeTab(browserId: string, tabId: string): Promise<boolean> {

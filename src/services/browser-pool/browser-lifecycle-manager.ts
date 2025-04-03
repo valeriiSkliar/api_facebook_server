@@ -143,14 +143,14 @@ export class BrowserLifecycleManager {
   /**
    * Create a new tab in a browser
    * @param instance - Browser instance
-   * @param requestId - Request ID
-   * @param userId - User ID
+   * @param requestId - Request ID (optional for system operations)
+   * @param userId - User ID (optional for system operations)
    * @param userEmail - User email
    */
   async createTab(
     instance: BrowserInstance,
-    requestId: string,
-    userId: string,
+    requestId?: string,
+    userId?: string,
     userEmail?: string,
   ): Promise<{ tab: BrowserTab; page: Page } | null> {
     if (!instance || !instance.browser) {
@@ -190,7 +190,7 @@ export class BrowserLifecycleManager {
       }
 
       this.logger.log(
-        `Created tab ${tab.id} in browser ${instance.id} for request ${requestId}`,
+        `Created tab ${tab.id} in browser ${instance.id} for request ${tab.requestId}`,
       );
 
       if (tab && page) {
@@ -200,6 +200,59 @@ export class BrowserLifecycleManager {
       return null;
     } catch (error) {
       this.logger.error(`Error creating tab in browser ${instance.id}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Create a system tab not associated with any request
+   * @param instance - Browser instance
+   * @param sessionId - Optional session identifier
+   * @param userEmail - Optional user email
+   */
+  async createSystemTab(
+    instance: BrowserInstance,
+    sessionId?: string,
+    userEmail?: string,
+  ): Promise<{ tab: BrowserTab; page: Page } | null> {
+    if (!instance || !instance.browser) {
+      this.logger.error(`Invalid browser instance when creating system tab`);
+      return null;
+    }
+
+    try {
+      // Create a new page in the browser
+      const page = await instance.browser.newPage();
+
+      // Create the tab in TabManager with system identifiers
+      const tab = await this.tabManager.createSystemTab(
+        instance.id,
+        sessionId,
+        userEmail,
+      );
+
+      // Update browser instance
+      instance.openTabs++;
+      instance.tabIds.push(tab.id);
+      instance.lastUsedAt = new Date();
+
+      // Update browser state if this is the first tab
+      if (instance.openTabs === 1) {
+        instance.state = BrowserState.IN_USE;
+      }
+
+      this.logger.log(`Created system tab ${tab.id} in browser ${instance.id}`);
+
+      if (tab && page) {
+        this.activePages.set(tab.id, page);
+        return { tab, page };
+      }
+      return null;
+    } catch (error) {
+      this.logger.error(
+        `Error creating system tab in browser ${instance.id}:`,
+        error,
+      );
       return null;
     }
   }

@@ -25,7 +25,7 @@ export const Env = createEnv({
    * Server-side environment variables schema
    */
   server: {
-    IS_PRODUCTION: z.boolean().default(true),
+    IS_PRODUCTION: z.boolean().default(false),
     // API Keys
     API_KEY: z.string().transform((val) => (val ? val : 'your-api-key-here')),
     OPENAI_API_KEY: z.string().optional(),

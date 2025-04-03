@@ -1,27 +1,23 @@
 // src/services/tik-tok/authenticator/TikTokAuthenticator.ts
-
 import { Logger } from '@nestjs/common';
 import { Page } from 'playwright';
 
-import { BrowserHelperService, EmailService } from '@src/services';
+import { BrowserHelperService } from '@src/services';
 import { BrowserPoolService } from '@src/services/browser-pool/browser-pool-service';
 import { TabManager } from '@src/services/browser-pool/tab-manager';
 import { AuthenticationPipeline } from '@src/implementations';
-import {
-  ISessionManager,
-  ICaptchaSolver,
-  IAuthenticator,
-} from '@src/interfaces';
+import { ICaptchaSolver, ISessionManager } from '@src/interfaces';
 import { AuthCredentials, Session } from '@src/models';
 import { PrismaClient } from '@prisma/client';
 import { CookieConsentStep } from '../steps';
+import { BaseAuthenticator } from '@src/services/auth/BaseAuthenticator';
+import { EmailService } from '../email/EmailService';
 
 /**
- * TikTok authenticator implementation
- * Handles the authentication process for TikTok using browser pool
+ * TikTok authenticator implementation that extends BaseAuthenticator
+ * Handles the authentication process for TikTok
  */
-export class TikTokAuthenticator implements IAuthenticator {
-  private logger: Logger;
+export class TikTokAuthenticator extends BaseAuthenticator {
   private captchaSolver: ICaptchaSolver;
   private sessionManager: ISessionManager;
   private currentSession: Session | null = null;
@@ -52,7 +48,8 @@ export class TikTokAuthenticator implements IAuthenticator {
     tabManager: TabManager,
     emailService: EmailService,
   ) {
-    this.logger = logger;
+    super(logger); // Call base constructor with logger
+
     this.captchaSolver = captchaSolver;
     this.sessionManager = sessionManager;
     this.browserPool = browserPool;
@@ -76,10 +73,9 @@ export class TikTokAuthenticator implements IAuthenticator {
    */
   private initializeAuthPipeline(): void {
     // Add authentication steps to the pipeline
-    this.authPipeline
-      //   .addStep(new SessionRestoreStep(this.logger, AuthStepType.PRE_SESSION))
-      // .addStep(new InitializationStep(this.logger, AuthStepType.PRE_SESSION))
-      .addStep(new CookieConsentStep(this.logger));
+    this.authPipeline.addStep(new CookieConsentStep(this.logger));
+    //   .addStep(new SessionRestoreStep(this.logger, AuthStepType.PRE_SESSION))
+    // .addStep(new InitializationStep(this.logger, AuthStepType.PRE_SESSION))
     //   .addStep(new LoginFormStep(this.logger, AuthStepType.LOGIN))
     //   .addStep(new CaptchaVerificationStep(this.logger, this.captchaSolver, AuthStepType.LOGIN))
     //   .addStep(new EmailVerificationStep(this.logger, this.emailService, AuthStepType.LOGIN))
@@ -129,7 +125,6 @@ export class TikTokAuthenticator implements IAuthenticator {
         browserId,
         async ({ browser }) => {
           // Get page from tab
-
           if (!browser) {
             throw new Error(`No browser found for browserId ${browserId}`);
           }
@@ -283,7 +278,7 @@ export class TikTokAuthenticator implements IAuthenticator {
         tabCreation.browserId,
         tabCreation.tabId,
         async ({ page }) => {
-          // Явно указываем тип Page для объекта страницы
+          // Explicitly type the page as Page
           const typedPage = page as Page;
 
           // Navigate to TikTok
@@ -343,7 +338,6 @@ export class TikTokAuthenticator implements IAuthenticator {
     });
 
     try {
-      // Раскомментируем и обновим код для logout с использованием системной вкладки
       const logoutSessionId = `logout_${this.currentSession.id}`;
       const tabCreation = await this.browserPool.createSystemTabForSession(
         logoutSessionId,
@@ -355,7 +349,7 @@ export class TikTokAuthenticator implements IAuthenticator {
           tabCreation.browserId,
           tabCreation.tabId,
           async ({ page }) => {
-            // Явно указываем тип Page для объекта страницы
+            // Explicitly type the page as Page
             const typedPage = page as Page;
 
             // Navigate to TikTok

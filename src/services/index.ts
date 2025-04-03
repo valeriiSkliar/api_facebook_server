@@ -7,3 +7,4 @@ export * from './browser-pool';
 export * from './common';
 export * from './tik-tok/email';
 export * from './tik-tok/captcha-solver';
+export * from './auth';

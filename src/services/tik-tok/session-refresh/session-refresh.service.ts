@@ -2,21 +2,19 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@src/prisma/prisma.service';
 import { AuthCredentials } from '@src/models/tik-tok/AuthCredentials';
 import { Log } from 'crawlee';
-import { IAuthenticator } from '@src/interfaces/tik-tok/IAuthenticator';
 import { Env } from '@lib/Env';
 import * as fs from 'fs-extra';
 import * as path from 'path';
-import { BrowserPoolService } from '@src/services/browser-pool/browser-pool-service';
-import { TabManager } from '@src/services/browser-pool/tab-manager';
-import { AuthenticatorFactory, AuthPlatform } from '../authenticator';
+import { AuthService } from '@src/services/auth/AuthService';
+
 @Injectable()
 export class SessionRefreshService {
   private readonly logger = new Logger(SessionRefreshService.name);
   private readonly crawleeLogger: Log;
+
   constructor(
     private readonly prisma: PrismaService,
-    private readonly browserPoolService: BrowserPoolService,
-    private readonly tabManager: TabManager,
+    private readonly authService: AuthService,
   ) {
     this.crawleeLogger = new Log({ prefix: 'SessionRefreshService' });
   }
@@ -61,19 +59,26 @@ export class SessionRefreshService {
         sessionPath: activeSession.storage_path,
       };
 
-      const authenticator = this.createAuthenticator();
-      await authenticator.runAuthenticator(credentials);
+      // Use the high-level AuthService to refresh the session
+      const success = await this.authService.refreshSession(credentials);
 
-      // Mark the session as updated in the database
-      await this.prisma.session.update({
-        where: { id: activeSession.id },
-        data: {
-          last_activity_timestamp: new Date(),
-        },
-      });
+      if (success) {
+        // Mark the session as updated in the database
+        await this.prisma.session.update({
+          where: { id: activeSession.id },
+          data: {
+            last_activity_timestamp: new Date(),
+          },
+        });
 
-      this.logger.log(`Session refresh completed for: ${activeSession.email}`);
-      return true;
+        this.logger.log(
+          `Session refresh completed for: ${activeSession.email}`,
+        );
+      } else {
+        this.logger.warn(`Session refresh failed for: ${activeSession.email}`);
+      }
+
+      return success;
     } catch (error) {
       this.logger.error(
         `Failed to refresh session: ${error instanceof Error ? error.message : String(error)}`,
@@ -118,11 +123,20 @@ export class SessionRefreshService {
         sessionPath: sessionPath,
       };
 
-      const authenticator = this.createAuthenticator();
-      await authenticator.runAuthenticator(credentials);
+      // Use the high-level AuthService to authenticate
+      const success = await this.authService.authenticate(credentials);
 
-      this.logger.log(`New session created for: ${emailAccount.email_address}`);
-      return true;
+      if (success) {
+        this.logger.log(
+          `New session created for: ${emailAccount.email_address}`,
+        );
+      } else {
+        this.logger.warn(
+          `Failed to create new session for: ${emailAccount.email_address}`,
+        );
+      }
+
+      return success;
     } catch (error) {
       this.logger.error(
         `Failed to create new session: ${error instanceof Error ? error.message : String(error)}`,
@@ -130,17 +144,5 @@ export class SessionRefreshService {
       );
       return false;
     }
-  }
-
-  /**
-   * Create an authenticator instance for the session
-   */
-  private createAuthenticator(): IAuthenticator {
-    return AuthenticatorFactory.createForPlatform(
-      AuthPlatform.TIKTOK,
-      this.logger,
-      this.browserPoolService,
-      this.tabManager,
-    );
   }
 }

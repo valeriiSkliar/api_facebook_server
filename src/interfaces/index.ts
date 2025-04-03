@@ -5,3 +5,5 @@ export * from './CachedResponse';
 export * from './auth.interface';
 export * from './IPipeline';
 export * from './AbstractBasePipeline';
+export * from './IAuthenticatorFactory';
+export * from './IAuthenticator';

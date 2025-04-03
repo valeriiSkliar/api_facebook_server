@@ -15,7 +15,8 @@
     "paths": {
       "@lib/*": ["lib/*"],
       "@src/*": ["src/*"],
-      "@api/*": ["src/api/*"]
+      "@api/*": ["src/api/*"],
+      "@core/*": ["src/core/*"]
     },
     "incremental": true,
     "skipLibCheck": true,

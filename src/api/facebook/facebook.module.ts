@@ -4,7 +4,7 @@ import { FacebookAdScraperService } from '../../services/FacebookAdScraperServic
 import { SearchParameterService } from '../../services/SearchParameterService';
 import { ScraperFactory } from '../../implementations/factories/ScraperFactory';
 import { StepFactory } from '../../implementations/factories/StepFactory';
-import { BrowserPoolModule } from '../../services/browser-pool/browser-pool.module';
+import { BrowserPoolModule } from '@core/browser/browser-pool';
 
 @Module({
   imports: [BrowserPoolModule],

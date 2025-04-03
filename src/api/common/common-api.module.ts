@@ -3,8 +3,8 @@ import { RequestController } from './controllers/request-controller';
 import { RequestManagerService } from '../../services/request-manager-service';
 import { AuthMiddleware } from './middleware/auth.middleware';
 import { PrismaModule } from '../../prisma/prisma.module';
-import { RedisModule } from '../../redis/redis.module';
-import { BrowserPoolModule } from '../../services/browser-pool/browser-pool.module';
+import { RedisModule } from '../../core/storage/redis/redis.module';
+import { BrowserPoolModule } from '@core/browser/browser-pool';
 import { QueueService } from '../../services/queue-service';
 
 @Module({

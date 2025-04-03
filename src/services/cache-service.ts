@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { RedisService } from '../redis/redis.service';
+import { RedisService } from '../core/storage/redis/redis.service';
 import { PrismaService } from '../prisma/prisma.service';
 import * as crypto from 'crypto';
 

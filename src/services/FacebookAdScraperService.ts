@@ -7,7 +7,7 @@ import { ScraperFactory } from '../implementations/factories/ScraperFactory';
 import { AdLibraryQuery } from '../models/AdLibraryQuery';
 import { ScraperOptions } from '../models/ScraperOptions';
 import { ScraperResult } from '../models/ScraperResult';
-import { BrowserPoolService } from './browser-pool/browser-pool-service';
+import { BrowserPoolService } from '@core/browser/browser-pool/browser-pool-service';
 import { Browser, Page } from 'playwright';
 
 @Injectable()

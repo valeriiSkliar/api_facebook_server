@@ -6,8 +6,8 @@ import { TikTokAuthenticator } from '@src/services/tik-tok/authenticator/TikTokA
 import { SadCaptchaSolverService } from '@src/services/tik-tok/captcha-solver/SadCaptchaSolverService';
 import { FileSystemSessionManager } from '@src/services/tik-tok/session-refresh/FileSystemSessionManager';
 import { EmailService } from '@src/services/tik-tok/email/EmailService';
-import { BrowserPoolService } from '@src/services/browser-pool/browser-pool-service';
-import { TabManager } from '@src/services/browser-pool/tab-manager';
+import { BrowserPoolService } from '@core/browser/browser-pool/browser-pool-service';
+import { TabManager } from '@core/browser/browser-pool/tab-manager';
 import { PrismaClient } from '@prisma/client';
 import { Env } from '@lib/Env';
 import { IAuthenticator, IAuthenticatorFactory } from '@src/interfaces';

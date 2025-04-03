@@ -1,7 +1,7 @@
 // src/services/browser-pool/browser-storage-service.ts
 
 import { Injectable, Logger } from '@nestjs/common';
-import { RedisService } from '../../redis/redis.service';
+import { RedisService } from '../../core/storage/redis/redis.service';
 import { BrowserInstance } from './types';
 
 @Injectable()

@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { RedisService } from '@src/redis/redis.service';
+import { RedisService } from '@src/core/storage/redis/redis.service';
 
 @Injectable()
 export class QueueService {

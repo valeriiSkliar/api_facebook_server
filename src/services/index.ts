@@ -3,7 +3,6 @@ export * from './SearchParameterService';
 export * from './RequestCaptureService';
 export * from './tik-tok/authenticator';
 export * from './tik-tok/session-refresh';
-export * from './browser-pool';
 export * from './common';
 export * from './tik-tok/email';
 export * from './tik-tok/captcha-solver';

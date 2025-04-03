@@ -3,12 +3,12 @@
 
 import { Injectable, Logger } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
-import { RedisService } from '../redis/redis.service';
+import { RedisService } from '../core/storage/redis/redis.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { BrowserPoolService } from './browser-pool/browser-pool-service';
+import { BrowserPoolService } from '@core/browser/browser-pool/browser-pool-service';
 import { Prisma, Request } from '@prisma/client';
 import { QueueService } from './queue-service';
-import { TabManager } from './browser-pool/tab-manager';
+import { TabManager } from '@core/browser/browser-pool/tab-manager';
 import { CreateRequestDto } from '@src/api/common/dto';
 
 export interface RequestMetadata {

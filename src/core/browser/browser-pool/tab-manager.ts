@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
 import { Page } from 'playwright';
-import { RedisService } from '../../redis/redis.service';
+import { RedisService } from '@core/storage/redis/redis.service';
 
 // Interface to represent a browser tab
 export interface BrowserTab {

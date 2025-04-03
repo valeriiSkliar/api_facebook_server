@@ -5,7 +5,7 @@ import { BrowserPoolService } from './browser-pool-service';
 import { BrowserLifecycleManager } from './browser-lifecycle-manager';
 import { BrowserStorageService } from './browser-storage-service';
 import { BrowserMetricsService } from './browser-metrics-service';
-import { RedisModule } from '../../redis/redis.module';
+import { RedisModule } from '../../core/storage/redis/redis.module';
 import { TabManager } from './tab-manager';
 
 @Module({

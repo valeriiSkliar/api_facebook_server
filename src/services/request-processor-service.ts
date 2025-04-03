@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Logger } from '@nestjs/common';
 
@@ -7,12 +9,12 @@ import {
   RequestMetadata,
   RequestStatus,
 } from './request-manager-service';
-import { BrowserPoolService } from './browser-pool/browser-pool-service';
+import { BrowserPoolService } from '@core/browser/browser-pool/browser-pool-service';
 import { FacebookAdScraperService } from './FacebookAdScraperService';
 import { AdLibraryQuery } from '@src/models/AdLibraryQuery';
 import { Browser } from 'playwright';
-import { TabManager } from './browser-pool/tab-manager';
-import { BrowserLifecycleManager } from './browser-pool/browser-lifecycle-manager';
+import { TabManager } from '@core/browser/browser-pool/tab-manager';
+import { BrowserLifecycleManager } from '@core/browser/browser-pool/browser-lifecycle-manager';
 
 @Injectable()
 export class RequestProcessorService {

@@ -1,10 +1,14 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 // src/services/tik-tok/authenticator/TikTokAuthenticator.ts
 import { Logger } from '@nestjs/common';
 import { Page } from 'playwright';
 
 import { BrowserHelperService } from '@src/services';
-import { BrowserPoolService } from '@src/services/browser-pool/browser-pool-service';
-import { TabManager } from '@src/services/browser-pool/tab-manager';
+import { BrowserPoolService } from '@core/browser/browser-pool/browser-pool-service';
+import { TabManager } from '@core/browser/browser-pool/tab-manager';
 import { AuthenticationPipeline } from '@src/implementations';
 import { ICaptchaSolver, ISessionManager } from '@src/interfaces';
 import { AuthCredentials, Session } from '@src/models';

@@ -1,12 +1,13 @@
-import { AbstractScraperStep } from '@src/interfaces/AbstractScraperStep';
 import { ScraperContext } from '@src/models/ScraperContext';
 import { launchPlaywright } from 'crawlee';
-import { Logger } from '@nestjs/common';
+import { AbstractScraperStep, AuthStepType } from '@src/interfaces';
 
 // steps/InitializationStep.ts
 export class InitializationStep extends AbstractScraperStep {
-  constructor(name: string, logger: Logger) {
-    super(name, logger);
+  private readonly stepType: AuthStepType;
+
+  getType(): AuthStepType {
+    return this.stepType;
   }
 
   async execute(context: ScraperContext): Promise<boolean> {

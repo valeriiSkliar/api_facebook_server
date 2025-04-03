@@ -19,7 +19,6 @@ import {
 } from '@src/services';
 import { EmailAccount } from '@src/models/tik-tok/email-account';
 import { Logger } from '@nestjs/common';
-import { RedisService } from '@src/redis/redis.service';
 
 /**
  * Factory for creating authenticator instances
@@ -110,23 +109,5 @@ export class AuthenticatorFactory {
     const screenshotsDir =
       Env.CAPTCHA_SCREENSHOTS_DIR || 'storage/captcha-screenshots';
     return new SadCaptchaSolverService(logger, apiKey, screenshotsDir);
-  }
-
-  /**
-   * Creates a browser pool service instance
-   * @param logger Logger instance
-   * @returns BrowserPoolService implementation
-   */
-  private static createBrowserPoolService(): BrowserPoolService {
-    return {} as BrowserPoolService;
-  }
-
-  /**
-   * Creates a tab manager instance
-   * @param logger Logger instance
-   * @returns TabManager implementation
-   */
-  private static createTabManager(): TabManager {
-    return new TabManager(new RedisService());
   }
 }

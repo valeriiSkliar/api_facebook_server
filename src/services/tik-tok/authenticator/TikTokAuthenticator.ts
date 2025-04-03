@@ -14,6 +14,7 @@ import {
 } from '@src/interfaces';
 import { AuthCredentials, Session } from '@src/models';
 import { PrismaClient } from '@prisma/client';
+import { CookieConsentStep } from '../steps';
 
 /**
  * TikTok authenticator implementation
@@ -75,10 +76,10 @@ export class TikTokAuthenticator implements IAuthenticator {
    */
   private initializeAuthPipeline(): void {
     // Add authentication steps to the pipeline
-    // Examples (you'll need to implement these step classes):
-    // this.authPipeline
-    //   .addStep(new SessionRestoreStep(this.logger, AuthStepType.PRE_SESSION))
-    //   .addStep(new CookieConsentStep(this.logger, AuthStepType.LOGIN))
+    this.authPipeline
+      //   .addStep(new SessionRestoreStep(this.logger, AuthStepType.PRE_SESSION))
+      // .addStep(new InitializationStep(this.logger, AuthStepType.PRE_SESSION))
+      .addStep(new CookieConsentStep(this.logger));
     //   .addStep(new LoginFormStep(this.logger, AuthStepType.LOGIN))
     //   .addStep(new CaptchaVerificationStep(this.logger, this.captchaSolver, AuthStepType.LOGIN))
     //   .addStep(new EmailVerificationStep(this.logger, this.emailService, AuthStepType.LOGIN))

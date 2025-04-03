@@ -9,7 +9,7 @@ import { AuthenticationPipeline } from '@src/implementations';
 import { ICaptchaSolver, ISessionManager } from '@src/interfaces';
 import { AuthCredentials, Session } from '@src/models';
 import { PrismaClient } from '@prisma/client';
-import { CookieConsentStep } from '../steps';
+import { CookieConsentStep, InitializationStep } from '../steps';
 import { BaseAuthenticator } from '@src/services/auth/BaseAuthenticator';
 import { EmailService } from '../email/EmailService';
 
@@ -73,6 +73,7 @@ export class TikTokAuthenticator extends BaseAuthenticator {
    */
   private initializeAuthPipeline(): void {
     // Add authentication steps to the pipeline
+    this.authPipeline.addStep(new InitializationStep(this.logger));
     this.authPipeline.addStep(new CookieConsentStep(this.logger));
     //   .addStep(new SessionRestoreStep(this.logger, AuthStepType.PRE_SESSION))
     // .addStep(new InitializationStep(this.logger, AuthStepType.PRE_SESSION))

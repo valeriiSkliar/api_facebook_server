@@ -20,6 +20,10 @@ import {
 } from '../steps';
 import { BaseAuthenticator } from '@src/services/auth/BaseAuthenticator';
 import { EmailService } from '../email/EmailService';
+import { FillLoginFormStep } from '../steps/fill-login-form-step';
+import { SubmitLoginFormStep } from '../steps/submit-login-form-step';
+import { CaptchaVerificationStep } from '../steps/captcha-verification-step';
+import { EmailVerificationStep } from '../steps/email-verification-step';
 
 /**
  * TikTok authenticator implementation that extends BaseAuthenticator
@@ -88,7 +92,14 @@ export class TikTokAuthenticator extends BaseAuthenticator {
     this.authPipeline.addStep(new CookieConsentStep(this.logger));
     this.authPipeline.addStep(new LoginButtonStep(this.logger));
     this.authPipeline.addStep(new SelectPhoneEmailLoginStep(this.logger));
-
+    this.authPipeline.addStep(new FillLoginFormStep(this.logger));
+    this.authPipeline.addStep(new SubmitLoginFormStep(this.logger));
+    this.authPipeline.addStep(
+      new CaptchaVerificationStep(this.logger, this.captchaSolver),
+    );
+    this.authPipeline.addStep(
+      new EmailVerificationStep(this.logger, this.emailService),
+    );
     // Добавляем шаг сохранения сессии в конце
     this.authPipeline.addStep(new SaveSessionStep(this.logger));
     //   .addStep(new LoginFormStep(this.logger, AuthStepType.LOGIN))

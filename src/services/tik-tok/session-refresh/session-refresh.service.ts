@@ -6,10 +6,9 @@ import { IAuthenticator } from '@src/interfaces/tik-tok/IAuthenticator';
 import { Env } from '@lib/Env';
 import * as fs from 'fs-extra';
 import * as path from 'path';
-import { EmailAccount } from '@src/models/tik-tok/email-account';
-import { AuthenticatorFactory } from '@src/implementations/factories/tik-tok';
 import { BrowserPoolService } from '@src/services/browser-pool/browser-pool-service';
 import { TabManager } from '@src/services/browser-pool/tab-manager';
+import { AuthenticatorFactory, AuthPlatform } from '../authenticator';
 @Injectable()
 export class SessionRefreshService {
   private readonly logger = new Logger(SessionRefreshService.name);
@@ -62,9 +61,7 @@ export class SessionRefreshService {
         sessionPath: activeSession.storage_path,
       };
 
-      const authenticator = this.createAuthenticator(
-        activeSession.emailAccount as EmailAccount,
-      );
+      const authenticator = this.createAuthenticator();
       await authenticator.runAuthenticator(credentials);
 
       // Mark the session as updated in the database
@@ -121,9 +118,7 @@ export class SessionRefreshService {
         sessionPath: sessionPath,
       };
 
-      const authenticator = this.createAuthenticator(
-        emailAccount as EmailAccount,
-      );
+      const authenticator = this.createAuthenticator();
       await authenticator.runAuthenticator(credentials);
 
       this.logger.log(`New session created for: ${emailAccount.email_address}`);
@@ -140,18 +135,10 @@ export class SessionRefreshService {
   /**
    * Create an authenticator instance for the session
    */
-  private createAuthenticator(emailAccount: EmailAccount): IAuthenticator {
-    return AuthenticatorFactory.createTikTokAuthenticator(
+  private createAuthenticator(): IAuthenticator {
+    return AuthenticatorFactory.createForPlatform(
+      AuthPlatform.TIKTOK,
       this.logger,
-      {
-        sessionStoragePath:
-          process.env.SESSION_STORAGE_PATH || './storage/sessions',
-        captchaSolverApiKey: Env.SAD_CAPTCHA_API_KEY,
-        crawlerOptions: {
-          headless: Env.IS_PRODUCTION,
-        },
-      },
-      emailAccount,
       this.browserPoolService,
       this.tabManager,
     );

@@ -4,7 +4,7 @@ import { Session } from './Session';
  * Authentication result model
  * Contains the result of an authentication attempt
  */
-export interface AuthResult {
+export interface AuthResult<TData = any> {
   /**
    * Whether the authentication was successful
    */
@@ -19,4 +19,9 @@ export interface AuthResult {
    * Error message if authentication failed
    */
   error?: string;
+
+  /**
+   * Data returned by the authentication step
+   */
+  data?: TData;
 }

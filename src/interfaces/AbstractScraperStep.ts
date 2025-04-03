@@ -16,7 +16,7 @@ export abstract class AbstractScraperStep implements IScraperStep {
     return true;
   }
 
-  abstract execute(context: ScraperContext): Promise<void>;
+  abstract execute(context: ScraperContext): Promise<boolean>;
 
   async cleanup(context: ScraperContext): Promise<void> {
     // Default implementation - do nothing

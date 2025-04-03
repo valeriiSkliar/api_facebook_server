@@ -15,10 +15,10 @@ export abstract class AbstractFilterStep extends AbstractScraperStep {
     return !!context.query.filters?.[this.filterType];
   }
 
-  abstract applyFilter(context: ScraperContext): Promise<void>;
+  abstract applyFilter(context: ScraperContext): Promise<boolean>;
 
-  async execute(context: ScraperContext): Promise<void> {
+  async execute(context: ScraperContext): Promise<boolean> {
     this.logger.log(`Applying filter: ${this.filterType}`);
-    await this.applyFilter(context);
+    return await this.applyFilter(context);
   }
 }

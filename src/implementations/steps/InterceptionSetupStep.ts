@@ -72,7 +72,7 @@ export class InterceptionSetupStep extends AbstractScraperStep {
     this.responseCache = new ResponseCacheService(logger);
   }
 
-  async execute(context: ScraperContext): Promise<void> {
+  async execute(context: ScraperContext): Promise<boolean> {
     if (!context.state.page) {
       throw new Error('Page not initialized');
     }
@@ -138,6 +138,7 @@ export class InterceptionSetupStep extends AbstractScraperStep {
         }
       }
     });
+    return true;
   }
 
   private async processResponse(

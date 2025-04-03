@@ -5,12 +5,12 @@ import { AbstractScraperStep } from '@src/interfaces/AbstractScraperStep';
 import { ScraperContext } from '@src/models/ScraperContext';
 
 export class StorageStep extends AbstractScraperStep {
-  async execute(context: ScraperContext): Promise<void> {
+  async execute(context: ScraperContext): Promise<boolean> {
     const { adsCollected } = context.state;
 
     if (adsCollected.length === 0) {
       this.logger.warn('No ads collected, skipping storage');
-      return;
+      return true;
     }
 
     // Generate filename with timestamp
@@ -32,5 +32,6 @@ export class StorageStep extends AbstractScraperStep {
       context.options.storage = {};
     }
     context.options.storage.outputPath = filePath;
+    return true;
   }
 }

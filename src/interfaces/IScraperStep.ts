@@ -1,8 +1,7 @@
 import { ScraperContext } from '@src/models/ScraperContext';
+import { IPipelineStep } from './IPipeline';
 
-export interface IScraperStep {
-  getName(): string;
+export interface IScraperStep extends IPipelineStep<ScraperContext> {
   shouldExecute(context: ScraperContext): boolean;
-  execute(context: ScraperContext): Promise<void>;
   cleanup(context: ScraperContext): Promise<void>;
 }

@@ -1,11 +1,11 @@
 import { Logger } from '@nestjs/common';
-import { ScraperPipeline } from '@src/models/ScraperPipeline';
 import { ScraperContext } from '@src/models/ScraperContext';
 import { AdLibraryQuery } from '@src/models/AdLibraryQuery';
 import { FilterRegistry } from '../filters/FilterRegistry';
 import { StepFactory } from './StepFactory';
 import { ScraperOptions } from '@src/models/ScraperOptions';
 import { Injectable } from '@nestjs/common';
+import { ScraperPipeline } from '@src/implementations';
 
 @Injectable()
 export class ScraperFactory {
@@ -28,7 +28,7 @@ export class ScraperFactory {
       for (const filterType of filterRegistry.getAvailableFilters()) {
         const filter = filterRegistry.getFilter(filterType, this.logger);
         if (filter) {
-          pipeline.addStep(filter);
+          // pipeline.addStep(filter);
         }
       }
     }

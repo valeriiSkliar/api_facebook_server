@@ -2,15 +2,15 @@ import { Logger } from '@nestjs/common';
 import { ScraperContext } from '@src/models/ScraperContext';
 import { ScraperResult } from '@src/models/ScraperResult';
 import { IScraperStep } from '@src/interfaces/IScraperStep';
+import { BasePipeline } from '@src/interfaces';
 
-export class ScraperPipeline {
-  private steps: IScraperStep[] = [];
-
-  constructor(private readonly logger: Logger) {}
-
-  addStep(step: IScraperStep): ScraperPipeline {
-    this.steps.push(step);
-    return this;
+export class ScraperPipeline extends BasePipeline<
+  IScraperStep,
+  ScraperContext,
+  ScraperResult
+> {
+  constructor(logger: Logger) {
+    super(logger);
   }
 
   async execute(context: ScraperContext): Promise<ScraperResult> {
@@ -21,7 +21,7 @@ export class ScraperPipeline {
       for (const step of this.steps) {
         const stepName = step.getName();
         if (step.shouldExecute(context)) {
-          this.logger.log(`Executing step: ${stepName}`);
+          this.logStepExecution(stepName);
           // If using external browser, log additional info for debugging
           if (
             context.state.externalBrowser &&
@@ -34,7 +34,7 @@ export class ScraperPipeline {
           await step.execute(context);
           executedSteps.push(step.getName());
         } else {
-          this.logger.log(`Skipping step: ${stepName}`);
+          this.logStepSkip(stepName);
           if (context.state.forceStop) {
             this.logger.log(
               `Force stop requested, halting pipeline after step: ${stepName}`,
@@ -43,9 +43,6 @@ export class ScraperPipeline {
           }
         }
       }
-      this.logger.log(
-        `Pipeline executed ${executedSteps.length} steps: ${executedSteps.join(', ')}`,
-      );
 
       // Format the result to match ScraperResult structure
       return {
@@ -73,10 +70,7 @@ export class ScraperPipeline {
         try {
           await step.cleanup(context);
         } catch (error) {
-          this.logger.error(
-            `Failed to clean up step: ${step.getName()}`,
-            error,
-          );
+          this.logStepError(`cleanup for ${step.getName()}`, error);
         }
       }
     }

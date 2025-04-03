@@ -9,7 +9,7 @@ export class InitializationStep extends AbstractScraperStep {
     super(name, logger);
   }
 
-  async execute(context: ScraperContext): Promise<void> {
+  async execute(context: ScraperContext): Promise<boolean> {
     // СЛУЧАЙ 1: Browser И Page предоставлены извне (например, из пула)
     if (context.state.browser && context.state.page) {
       this.logger.log(
@@ -29,7 +29,7 @@ export class InitializationStep extends AbstractScraperStep {
         if (!context.state.page.isClosed()) throw vpError; // Перебрасываем, если страница еще открыта
       }
       context.state.externalBrowser = true; // Помечаем как внешние
-      return; // Инициализация завершена успешно
+      return true; // Инициализация завершена успешно
     }
 
     // СЛУЧАЙ 2: Только Browser предоставлен (маловероятен для вашего потока, но для защиты)
@@ -50,7 +50,7 @@ export class InitializationStep extends AbstractScraperStep {
       );
       context.state.page = page; // Используется НОВАЯ страница
       context.state.externalBrowser = true;
-      return;
+      return true;
     }
 
     // СЛУЧАЙ 3: Ничего не предоставлено - запускаем новый браузер и страницу
@@ -70,6 +70,7 @@ export class InitializationStep extends AbstractScraperStep {
     context.state.browser = browser;
     context.state.page = page;
     context.state.externalBrowser = false; // Управляется этим пайплайном
+    return true;
   }
 
   async cleanup(context: ScraperContext): Promise<void> {

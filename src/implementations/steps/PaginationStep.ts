@@ -17,7 +17,7 @@ export class PaginationStep extends AbstractScraperStep {
     return !context.state.forceStop && context.state.hasMoreResults;
   }
 
-  async execute(context: ScraperContext): Promise<void> {
+  async execute(context: ScraperContext): Promise<boolean> {
     if (!context.state.page) {
       throw new Error('Page not initialized');
     }
@@ -80,8 +80,9 @@ export class PaginationStep extends AbstractScraperStep {
       } else {
         // Reset counter if we found new ads
         noNewAdsCount = 0;
+        const newAdsFound = currentAdCount - previousAdCount;
+        this.logger.log(`Found ${newAdsFound} new ads`);
         previousAdCount = currentAdCount;
-        this.logger.log(`Found ${currentAdCount - previousAdCount} new ads`);
       }
 
       // Additional check for visible ad elements
@@ -110,5 +111,7 @@ export class PaginationStep extends AbstractScraperStep {
       this.logger.log('No new ads found after multiple attempts');
       context.state.hasMoreResults = false;
     }
+
+    return true;
   }
 }

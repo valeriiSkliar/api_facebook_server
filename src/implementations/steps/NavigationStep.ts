@@ -4,7 +4,7 @@ import { AdLibraryQuery } from '@src/models/AdLibraryQuery';
 
 // steps/NavigationStep.ts
 export class NavigationStep extends AbstractScraperStep {
-  async execute(context: ScraperContext): Promise<void> {
+  async execute(context: ScraperContext): Promise<boolean> {
     if (!context.state.page) {
       throw new Error('Page not initialized');
     }
@@ -47,6 +47,7 @@ export class NavigationStep extends AbstractScraperStep {
       // if (loginButton) {
       //   throw new Error('Facebook authentication required');
       // }
+      return true;
     } catch (error) {
       this.logger.error('Navigation failed:', error);
       await this.cleanup(context);

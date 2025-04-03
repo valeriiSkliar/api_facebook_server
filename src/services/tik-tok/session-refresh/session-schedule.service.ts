@@ -20,7 +20,7 @@ export class SessionScheduleService {
   /**
    * Check sessions every 30 seconds and refresh if needed
    */
-  @Cron(CronExpression.EVERY_30_SECONDS)
+  @Cron(CronExpression.EVERY_30_MINUTES)
   async checkAndRefreshSessions() {
     // Проверяем, не запущен ли уже процесс обновления
     if (this.isRefreshing) {

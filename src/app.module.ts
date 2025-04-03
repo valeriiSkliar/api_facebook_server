@@ -1,8 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AppService } from './app.service';
-import { RedisModule } from './core/storage/redis/redis.module';
-import { RedisService } from './core/storage/redis/redis.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TiktokAccountModule } from './routes/tiktok-account/tiktok-account.module';
@@ -10,6 +8,7 @@ import { EmailAccountModule } from './routes/email-account/email-account.module'
 import { AuthModule } from './services/auth/auth-module';
 import { ApiModule } from './api/api.module';
 import { CoreModule } from './core/core.module';
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -17,15 +16,14 @@ import { CoreModule } from './core/core.module';
       envFilePath: '.env',
     }),
     PrismaModule,
-    RedisModule,
     ScheduleModule.forRoot(),
+    CoreModule,
     AuthModule,
     TiktokAccountModule,
     EmailAccountModule,
     ApiModule,
-    CoreModule,
   ],
   controllers: [],
-  providers: [AppService, RedisService],
+  providers: [AppService],
 })
 export class AppModule {}

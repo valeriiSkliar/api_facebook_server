@@ -7,7 +7,7 @@ import { RedisService } from '../core/storage/redis/redis.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { BrowserPoolService } from '@core/browser/browser-pool/browser-pool-service';
 import { Prisma, Request } from '@prisma/client';
-import { QueueService } from './queue-service';
+import { QueueService } from '@core/queue/queue.service';
 import { TabManager } from '@core/browser/browser-pool/tab-manager';
 import { CreateRequestDto } from '@src/api/common/dto';
 

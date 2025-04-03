@@ -1,16 +1,15 @@
-import { Module, MiddlewareConsumer } from '@nestjs/common';
+import { Module, MiddlewareConsumer, forwardRef } from '@nestjs/common';
 import { RequestController } from './controllers/request-controller';
 import { RequestManagerService } from '../../services/request-manager-service';
 import { AuthMiddleware } from './middleware/auth.middleware';
 import { PrismaModule } from '../../prisma/prisma.module';
-import { RedisModule } from '../../core/storage/redis/redis.module';
-import { BrowserPoolModule } from '@core/browser/browser-pool';
-import { QueueService } from '../../services/queue-service';
+import { CoreModule } from '../../core/core.module';
+import { QueueModule } from '@core/queue/queue.module';
 
 @Module({
-  imports: [PrismaModule, RedisModule, BrowserPoolModule],
+  imports: [PrismaModule, forwardRef(() => CoreModule), QueueModule],
   controllers: [RequestController],
-  providers: [RequestManagerService, QueueService],
+  providers: [RequestManagerService],
   exports: [RequestManagerService],
 })
 export class CommonApiModule {

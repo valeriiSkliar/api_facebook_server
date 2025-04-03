@@ -1,12 +1,11 @@
 // src/auth/implementations/AuthenticationPipeline.ts
-import { Page } from 'playwright';
-import { AuthCredentials, AuthResult } from '@src/models';
+import { AuthCredentials, AuthResult, AuthenticatorContext } from '@src/models';
 import { IAuthenticationStep, AuthStepType } from '@src/interfaces';
 import { BasePipeline } from '@src/interfaces';
 
 export class AuthenticationPipeline extends BasePipeline<
   IAuthenticationStep,
-  Page,
+  AuthenticatorContext,
   AuthResult,
   AuthCredentials
 > {
@@ -20,7 +19,7 @@ export class AuthenticationPipeline extends BasePipeline<
   }
 
   async execute(
-    page: Page,
+    context: AuthenticatorContext,
     credentials: AuthCredentials,
   ): Promise<
     AuthResult<{
@@ -46,7 +45,7 @@ export class AuthenticationPipeline extends BasePipeline<
       this.logger.log(`Executing authentication step: ${step.getName()}`);
 
       try {
-        const success = await step.execute(page, credentials);
+        const success = await step.execute(context, credentials);
         // If this is the session restore step, update the session restored flag based on its result
         if (step.getType() === AuthStepType.PRE_SESSION) {
           this.setSessionRestored(success);

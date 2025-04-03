@@ -107,6 +107,8 @@ export class TikTokAuthenticator extends BaseAuthenticator {
         credentials.email,
       );
 
+      // const context = this.authPipeline.createContext();
+
       if (!tabCreation) {
         throw new Error('Failed to create browser tab for authentication');
       }
@@ -120,57 +122,64 @@ export class TikTokAuthenticator extends BaseAuthenticator {
         sessionId: authSessionId,
       });
 
-      // Execute authentication process in the browser
-      await this.browserPool.executeInBrowser(
-        browserId,
-        async ({ browser }) => {
-          // Get page from tab
-          if (!browser) {
-            throw new Error(`No browser found for browserId ${browserId}`);
-          }
-          if (!tabId) {
-            throw new Error(`No tabId found for browserId ${browserId}`);
-          }
+      // Get page from tab
+      const page = this.browserPool['lifecycleManager'].getPageForTab(tabId);
 
-          const page =
-            this.browserPool['lifecycleManager'].getPageForTab(tabId);
+      if (!page) {
+        throw new Error(`No page found for tab ${tabId}`);
+      }
 
-          if (!page) {
-            throw new Error(`No page found for tab ${tabId}`);
-          }
+      this.context.state.page = page;
 
-          // Navigate to TikTok login page
-          await page.goto(this.loginUrl, {
-            waitUntil: 'networkidle',
-            timeout: 60000,
-          });
+      const result = await this.authPipeline.execute(this.context, credentials);
 
-          // Execute the authentication pipeline
-          const result = await this.authPipeline.execute(page, credentials);
+      if (!result.success) {
+        throw new Error(`Authentication failed: ${result.error}`);
+      }
 
-          if (!result.success) {
-            throw new Error(`Authentication failed: ${result.error}`);
-          }
+      // await this.browserPool.executeInBrowser(
+      //   browserId,
+      //   async ({ browser }) => {
+      //     // Get page from tab
+      //     if (!browser) {
+      //       throw new Error(`No browser found for browserId ${browserId}`);
+      //     }
+      //     if (!tabId) {
+      //       throw new Error(`No tabId found for browserId ${browserId}`);
+      //     }
 
-          // If session was restored, record this information
-          this.logger.log('Authentication pipeline execution completed', {
-            success: result.success,
-            sessionRestored: result.data?.sessionRestored,
-            executionTime: result.data?.executionTime,
-          });
+      //     const page =
+      //       this.browserPool['lifecycleManager'].getPageForTab(tabId);
 
-          // Save successful session to database
-          if (result.success) {
-            await this.saveSessionToDatabase(
-              credentials.email,
-              credentials.sessionPath ||
-                `${this.sessionStoragePath}/session_${credentials.email.replace(/[@.]/g, '_')}.json`,
-            );
-          }
+      //     if (!page) {
+      //       throw new Error(`No page found for tab ${tabId}`);
+      //     }
 
-          return result;
-        },
-      );
+      //     // Execute the authentication pipeline
+
+      //     if (!result.success) {
+      //       throw new Error(`Authentication failed: ${result.error}`);
+      //     }
+
+      //     // If session was restored, record this information
+      //     this.logger.log('Authentication pipeline execution completed', {
+      //       success: result.success,
+      //       sessionRestored: result.data?.sessionRestored,
+      //       executionTime: result.data?.executionTime,
+      //     });
+
+      //     // Save successful session to database
+      //     if (result.success) {
+      //       await this.saveSessionToDatabase(
+      //         credentials.email,
+      //         credentials.sessionPath ||
+      //           `${this.sessionStoragePath}/session_${credentials.email.replace(/[@.]/g, '_')}.json`,
+      //       );
+      //     }
+
+      //     return result;
+      //   },
+      // );
     } catch (error) {
       this.logger.error('Error during authentication process:', {
         error: error instanceof Error ? error.message : String(error),

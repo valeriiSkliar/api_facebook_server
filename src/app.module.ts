@@ -8,9 +8,9 @@ import { AuthMiddleware } from './middleware/auth.middleware';
 import { RequestModule } from './modules/request-module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ScheduleModule } from '@nestjs/schedule';
-import { SessionModule } from './modules/session.module';
 import { TiktokAccountModule } from './routes/tiktok-account/tiktok-account.module';
 import { EmailAccountModule } from './routes/email-account/email-account.module';
+import { AuthModule } from './services/auth/auth-module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -22,7 +22,7 @@ import { EmailAccountModule } from './routes/email-account/email-account.module'
     ScraperModule,
     RequestModule,
     ScheduleModule.forRoot(),
-    SessionModule,
+    AuthModule,
     TiktokAccountModule,
     EmailAccountModule,
   ],

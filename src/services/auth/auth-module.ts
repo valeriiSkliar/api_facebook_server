@@ -1,22 +1,25 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { BrowserPoolModule } from '@src/services/browser-pool/browser-pool.module';
 import { PrismaModule } from '@src/prisma/prisma.module';
-import { AuthService, TikTokAuthenticatorFactory } from '@src/services';
-import { SessionModule } from '@src/modules/session.module';
+import {
+  AuthService,
+  SessionRefreshService,
+  SessionScheduleService,
+  TikTokAuthenticatorFactory,
+} from '@src/services';
+// import { SessionModule } from '@src/modules/session.module';
 
-/**
- * Module for authentication services
- * Provides dependencies and exports services for application use
- */
 @Module({
-  imports: [BrowserPoolModule, PrismaModule, forwardRef(() => SessionModule)],
+  imports: [BrowserPoolModule, PrismaModule, PrismaModule],
   providers: [
+    SessionScheduleService,
+    SessionRefreshService,
     AuthService,
     {
       provide: 'IAuthenticatorFactory',
       useClass: TikTokAuthenticatorFactory,
     },
   ],
-  exports: [AuthService],
+  exports: [SessionScheduleService, SessionRefreshService],
 })
 export class AuthModule {}

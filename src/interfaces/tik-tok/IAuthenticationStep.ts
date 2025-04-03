@@ -1,5 +1,4 @@
-import { Page } from 'playwright';
-import { AuthCredentials } from '@src/models';
+import { AuthCredentials, AuthenticatorContext } from '@src/models';
 import { IPipelineStep } from '../IPipeline';
 
 export enum AuthStepType {
@@ -12,7 +11,7 @@ export enum AuthStepType {
  * Authentication pipeline step interface
  */
 export interface IAuthenticationStep
-  extends IPipelineStep<Page, AuthCredentials> {
+  extends IPipelineStep<AuthenticatorContext, AuthCredentials> {
   /**
    * Get the type of authentication step
    */

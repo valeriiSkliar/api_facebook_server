@@ -1,6 +1,6 @@
-import { Page } from 'playwright';
 import { Logger } from '@nestjs/common';
 import { AuthStepType, IAuthenticationStep } from '@src/interfaces';
+import { AuthenticatorContext } from '@src/models';
 
 export class CookieConsentStep implements IAuthenticationStep {
   private readonly logger: Logger;
@@ -21,17 +21,17 @@ export class CookieConsentStep implements IAuthenticationStep {
     return true;
   }
 
-  async execute(page: Page): Promise<boolean> {
+  async execute(context: AuthenticatorContext): Promise<boolean> {
     try {
       this.logger.log('Handling cookie consent banner');
 
       const cookieBannerSelector = 'div.tiktok-cookie-banner';
       const allowButtonSelector = 'button:has-text("Allow all")';
 
-      await page.waitForTimeout(2000);
+      await context.state.page?.waitForTimeout(2000);
 
       // First check if the cookie banner exists at all
-      const cookieBanner = await page.$(cookieBannerSelector);
+      const cookieBanner = await context.state.page?.$(cookieBannerSelector);
 
       // If no cookie banner is found, it might be already accepted or not shown yet
       if (!cookieBanner) {
@@ -43,14 +43,14 @@ export class CookieConsentStep implements IAuthenticationStep {
 
       try {
         // Wait for the Allow button with a timeout
-        const allowAllButton = await page.waitForSelector(
+        const allowAllButton = await context.state.page?.waitForSelector(
           `${cookieBannerSelector} ${allowButtonSelector}`,
           { timeout: 5000, state: 'visible' },
         );
 
         if (allowAllButton) {
           // Take a screenshot before clicking for debugging purposes
-          await page.screenshot({
+          await context.state.page?.screenshot({
             path: 'storage/screenshots/before-cookie-consent.png',
           });
 
@@ -59,13 +59,14 @@ export class CookieConsentStep implements IAuthenticationStep {
           this.logger.log('Successfully clicked "Allow all" button');
 
           // Wait a moment for the banner to disappear and take another screenshot
-          await page.waitForTimeout(2000);
-          await page.screenshot({
+          await context.state.page?.waitForTimeout(2000);
+          await context.state.page?.screenshot({
             path: 'storage/screenshots/after-cookie-consent.png',
           });
 
           // Verify the banner disappeared
-          const bannerAfterClick = await page.$(cookieBannerSelector);
+          const bannerAfterClick =
+            await context.state.page?.$(cookieBannerSelector);
           if (bannerAfterClick) {
             this.logger.warn(
               'Cookie banner still present after clicking "Allow all"',
@@ -95,7 +96,7 @@ export class CookieConsentStep implements IAuthenticationStep {
             'Trying to click alternative button in cookie banner',
           );
           await anyButton.click();
-          await page.waitForTimeout(2000);
+          await context.state.page?.waitForTimeout(2000);
         }
 
         // Even if we couldn't click a specific button, return success
@@ -109,7 +110,7 @@ export class CookieConsentStep implements IAuthenticationStep {
     } catch (error: unknown) {
       // Take a screenshot to help debug the error state
       try {
-        await page.screenshot({
+        await context.state.page?.screenshot({
           path: 'storage/screenshots/cookie-consent-error.png',
           fullPage: true,
         });
@@ -126,7 +127,7 @@ export class CookieConsentStep implements IAuthenticationStep {
       this.logger.error('Error handling cookie consent:', {
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
-        url: page.url(),
+        url: context.state.page?.url(),
       });
       // Not critical if this fails
       return true;

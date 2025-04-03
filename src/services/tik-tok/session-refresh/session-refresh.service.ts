@@ -143,7 +143,7 @@ export class SessionRefreshService {
           process.env.SESSION_STORAGE_PATH || './storage/sessions',
         captchaSolverApiKey: Env.SAD_CAPTCHA_API_KEY,
         crawlerOptions: {
-          headless: Env.HEADLESS,
+          headless: Env.IS_PRODUCTION,
         },
       },
       emailAccount,

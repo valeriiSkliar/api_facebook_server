@@ -56,10 +56,6 @@ export class AuthenticatorFactory {
       captchaSolverApiKey,
       logger,
     );
-    // const emailVerifier = AuthenticatorFactory.createEmailVerificationHandler(
-    //   prisma,
-    //   logger,
-    // );
 
     // Create prisma client and email service
     const prisma = new PrismaClient();
@@ -69,7 +65,6 @@ export class AuthenticatorFactory {
     const authenticator = new TikTokAuthenticator(
       logger,
       captchaSolver,
-      // emailVerifier,
       sessionManager,
       crawlerOptions,
       emailService,

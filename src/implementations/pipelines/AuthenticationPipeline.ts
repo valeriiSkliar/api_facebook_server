@@ -10,12 +10,26 @@ export class AuthenticationPipeline extends BasePipeline<
   AuthCredentials
 > {
   private sessionRestored = false;
+  private sessionRestoreAttempted = false;
 
   /**
    * Set whether a session has been restored
    */
   setSessionRestored(restored: boolean): void {
     this.sessionRestored = restored;
+    this.sessionRestoreAttempted = true;
+
+    // Явно логируем состояние для отладки
+    this.logger.log(`Session restored flag set to: ${restored}`);
+  }
+
+  /**
+   * Явно сбрасываем флаг восстановления сессии
+   */
+  resetSessionRestored(): void {
+    this.sessionRestored = false;
+    // Явно логируем сброс для отладки
+    this.logger.log('Session restored flag was reset to false');
   }
 
   async execute(
@@ -30,12 +44,28 @@ export class AuthenticationPipeline extends BasePipeline<
   > {
     const startTime = Date.now();
 
+    this.sessionRestored = false;
+    this.sessionRestoreAttempted = false;
+
+    if (!context.state.page) {
+      return {
+        success: false,
+        error: 'No page available in context',
+        data: {
+          startTime,
+          executionTime: Date.now() - startTime,
+          sessionRestored: false,
+        },
+      };
+    }
+
     for (const step of this.steps) {
-      // Skip login steps if session was restored AND it's not a POST_SESSION step
+      const stepType = step.getType();
+
       if (
+        this.sessionRestoreAttempted &&
         this.sessionRestored &&
-        step.getType() === AuthStepType.LOGIN &&
-        step.getType() !== AuthStepType.POST_SESSION
+        stepType === AuthStepType.LOGIN
       ) {
         this.logStepSkip(step.getName(), 'session was restored');
         continue;
@@ -46,15 +76,20 @@ export class AuthenticationPipeline extends BasePipeline<
 
       try {
         const success = await step.execute(context, credentials);
-        // If this is the session restore step, update the session restored flag based on its result
-        if (step.getType() === AuthStepType.PRE_SESSION) {
-          this.setSessionRestored(success);
+
+        if (stepType === AuthStepType.PRE_SESSION) {
+          if (step.getName().toLowerCase().includes('session')) {
+            this.setSessionRestored(success);
+            this.logger.log(
+              `Session restore attempt: ${success ? 'successful' : 'failed'}`,
+            );
+          }
         }
 
         if (!success) {
-          // If session restore failed, continue with other steps
-          if (step.getType() === AuthStepType.PRE_SESSION) {
+          if (stepType === AuthStepType.PRE_SESSION) {
             this.logStepSkip(step.getName(), 'continuing with login steps');
+            this.resetSessionRestored();
             continue;
           }
 
@@ -71,11 +106,11 @@ export class AuthenticationPipeline extends BasePipeline<
       } catch (error) {
         this.logStepError(step.getName(), error);
 
-        // If session restore errored, continue with other steps
-        if (step.getType() === AuthStepType.PRE_SESSION) {
+        if (stepType === AuthStepType.PRE_SESSION) {
           this.logger.log(
             'Session restore errored, continuing with login steps',
           );
+          this.resetSessionRestored();
           continue;
         }
 

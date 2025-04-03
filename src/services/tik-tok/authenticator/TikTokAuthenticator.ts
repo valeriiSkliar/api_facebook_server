@@ -12,7 +12,11 @@ import { PrismaClient } from '@prisma/client';
 import {
   CookieConsentStep,
   InitializationStep,
+  LoginButtonStep,
   NavigationStep,
+  SessionRestoreStep,
+  SaveSessionStep,
+  SelectPhoneEmailLoginStep,
 } from '../steps';
 import { BaseAuthenticator } from '@src/services/auth/BaseAuthenticator';
 import { EmailService } from '../email/EmailService';
@@ -79,13 +83,17 @@ export class TikTokAuthenticator extends BaseAuthenticator {
     // Add authentication steps to the pipeline
     this.authPipeline.addStep(new InitializationStep(this.logger));
     this.authPipeline.addStep(new NavigationStep(this.logger));
+    // Добавляем шаг восстановления сессии перед другими шагами логина
+    this.authPipeline.addStep(new SessionRestoreStep(this.logger));
     this.authPipeline.addStep(new CookieConsentStep(this.logger));
-    //   .addStep(new SessionRestoreStep(this.logger, AuthStepType.PRE_SESSION))
-    // .addStep(new InitializationStep(this.logger, AuthStepType.PRE_SESSION))
+    this.authPipeline.addStep(new LoginButtonStep(this.logger));
+    this.authPipeline.addStep(new SelectPhoneEmailLoginStep(this.logger));
+
+    // Добавляем шаг сохранения сессии в конце
+    this.authPipeline.addStep(new SaveSessionStep(this.logger));
     //   .addStep(new LoginFormStep(this.logger, AuthStepType.LOGIN))
     //   .addStep(new CaptchaVerificationStep(this.logger, this.captchaSolver, AuthStepType.LOGIN))
     //   .addStep(new EmailVerificationStep(this.logger, this.emailService, AuthStepType.LOGIN))
-    //   .addStep(new SaveSessionStep(this.logger, this.sessionManager, AuthStepType.POST_SESSION));
 
     this.logger.log('Authentication pipeline initialized');
   }

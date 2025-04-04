@@ -1,13 +1,13 @@
 import { AbstractScraperStep } from '../../common/interfaces/abstract-scraper-step';
 import { ScraperContext } from '../models/facebook-scraper-context';
 import { AdData } from '../models/facebook-ad-data';
-import { RequestCaptureService } from '../../../services/RequestCaptureService';
 import { ResponseCacheService } from '../../../services/ResponseCacheService';
 import { Logger } from '@nestjs/common';
 import { z } from 'zod';
 import { plainToInstance } from 'class-transformer';
 import { validateOrReject } from 'class-validator';
 import { AdDataDto } from '@src/api/dto/facebook';
+import { RequestCaptureService } from '@src/services';
 const SnapshotSchema = z
   .object({
     body: z

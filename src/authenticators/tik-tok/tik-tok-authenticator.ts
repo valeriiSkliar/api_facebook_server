@@ -22,6 +22,7 @@ import {
   SessionRestoreStep,
   SaveSessionStep,
   SelectPhoneEmailLoginStep,
+  RequestInterceptionSetupStep,
 } from './steps';
 import { BaseAuthenticator } from '@src/authenticators/common/interfaces/base-authenticator';
 import { EmailService } from '../../services/common/email/email-service';
@@ -32,6 +33,7 @@ import { EmailVerificationStep } from './steps/email-verification-step';
 import { Session } from '@src/core/common/models/session';
 import { AuthCredentials } from '@src/authenticators/common/models/auth-credentials';
 import { AuthenticationPipeline } from '../common/pipelines/authentication-pipeline';
+import { NaturalScrollingStep } from './steps/natural-scrolling-step';
 /**
  * TikTok authenticator implementation that extends BaseAuthenticator
  * Handles the authentication process for TikTok
@@ -106,6 +108,8 @@ export class TikTokAuthenticator extends BaseAuthenticator {
     this.authPipeline.addStep(
       new EmailVerificationStep(this.logger, this.emailService),
     );
+    this.authPipeline.addStep(new RequestInterceptionSetupStep(this.logger));
+    this.authPipeline.addStep(new NaturalScrollingStep(this.logger));
     this.authPipeline.addStep(new SaveSessionStep(this.logger));
 
     this.logger.log('Authentication pipeline initialized');

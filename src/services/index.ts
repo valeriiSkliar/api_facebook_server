@@ -7,3 +7,4 @@ export * from '../core/browser/helpers';
 export * from './common/email';
 export * from './common/captcha-solver';
 export * from './auth';
+export * from './integrated-request-capture-service';

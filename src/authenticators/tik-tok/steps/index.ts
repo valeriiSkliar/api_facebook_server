@@ -5,3 +5,6 @@ export * from './login-button-step';
 export * from './session-restore-step';
 export * from './save-session-step';
 export * from './select-phone-email-login';
+export * from './request-interception-setup-step';
+export * from './natural-scrolling-step';
+export * from './captcha-verification-step';

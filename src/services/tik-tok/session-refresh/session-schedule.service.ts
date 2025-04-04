@@ -17,13 +17,19 @@ export class SessionScheduleService {
   constructor(
     private sessionRefreshService: SessionRefreshService,
     private prisma: PrismaService,
-  ) {}
+  ) {
+    this.logger.log('SessionScheduleService initialized');
+    console.log('SessionScheduleService initialized - direct console output');
+  }
 
   /**
    * Check sessions every 30 seconds and refresh if needed
    */
-  @Cron(CronExpression.EVERY_30_MINUTES)
+  @Cron(CronExpression.EVERY_30_SECONDS)
   async checkAndRefreshSessions() {
+    console.log('checkAndRefreshSessions called - direct console output');
+    this.logger.log('checkAndRefreshSessions method called');
+
     // Проверяем, не запущен ли уже процесс обновления
     if (this.isRefreshing) {
       const timeSinceLastRefresh = Date.now() - this.lastRefreshTime;

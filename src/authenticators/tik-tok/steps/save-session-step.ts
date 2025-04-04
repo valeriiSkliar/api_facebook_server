@@ -1,9 +1,12 @@
-import { AuthStepType, IAuthenticationStep } from '@src/interfaces';
 import { Logger } from '@nestjs/common';
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import { AuthenticatorContext } from '@src/authenticators/common/models/authenticator-context';
 import { AuthCredentials } from '@src/authenticators/common/models/auth-credentials';
+import {
+  AuthStepType,
+  IAuthenticationStep,
+} from '@src/scrapers/common/interfaces';
 /**
  * Step responsible for saving the current session state after successful authentication
  * Must be executed as a POST_SESSION step after successful login

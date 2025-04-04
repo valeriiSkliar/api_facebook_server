@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { Logger } from '@nestjs/common';
 
-import { TikTokAuthenticator } from '@src/authenticators/tik-tok/TikTokAuthenticator';
+import { TikTokAuthenticator } from '@src/authenticators/tik-tok/tik-tok-authenticator';
 import { SadCaptchaSolverService } from '@src/services/common/captcha-solver/sad-captcha-solver-service';
-import { FileSystemSessionManager } from '@src/services/tik-tok/session-refresh/FileSystemSessionManager';
-import { EmailService } from '@src/services/common/email/EmailService';
+import { FileSystemSessionManager } from '@src/services/tik-tok/session-refresh/file-system-session-manager';
+import { EmailService } from '@src/services/common/email/email-service';
 import { BrowserPoolService } from '@core/browser/browser-pool/browser-pool-service';
 import { TabManager } from '@src/core/browser/tab-manager/tab-manager';
 import { PrismaClient } from '@prisma/client';

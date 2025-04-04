@@ -1,8 +1,8 @@
-import { AbstractScraperStep } from '../../scrapers/common/interfaces/abstract-scraper-step';
-import { ScraperContext } from '../../scrapers/facebook/models/facebook-scraper-context';
-import { AdData } from '../../scrapers/facebook/models/facebook-ad-data';
-import { RequestCaptureService } from '../../services/RequestCaptureService';
-import { ResponseCacheService } from '../../services/ResponseCacheService';
+import { AbstractScraperStep } from '../../common/interfaces/abstract-scraper-step';
+import { ScraperContext } from '../models/facebook-scraper-context';
+import { AdData } from '../models/facebook-ad-data';
+import { RequestCaptureService } from '../../../services/RequestCaptureService';
+import { ResponseCacheService } from '../../../services/ResponseCacheService';
 import { Logger } from '@nestjs/common';
 import { z } from 'zod';
 import { plainToInstance } from 'class-transformer';

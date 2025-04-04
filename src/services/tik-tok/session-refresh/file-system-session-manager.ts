@@ -4,7 +4,7 @@
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import { Logger } from '@nestjs/common';
-import { ISessionManager } from '@src/interfaces/tik-tok';
+import { ISessionManager } from '@src/scrapers/common/interfaces';
 import { AuthCredentials } from '@src/authenticators/common/models/auth-credentials';
 import { Session } from '@src/core/common/models/session';
 /**

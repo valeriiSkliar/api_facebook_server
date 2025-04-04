@@ -12,7 +12,10 @@ import { Logger } from '@nestjs/common';
 
 import { Env } from '@src/config';
 
-import { EmailVerificationCodeType, IEmailService } from '@src/interfaces';
+import {
+  EmailVerificationCodeType,
+  IEmailService,
+} from '@src/scrapers/common/interfaces';
 import { extractVerificationCode } from '@src/common';
 import { EmailConnectionDetails } from '@src/authenticators/common/models/email-account';
 import { EmailAccount } from '@src/authenticators/common/models/email-account';

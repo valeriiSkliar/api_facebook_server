@@ -1,5 +1,8 @@
 import { Logger } from '@nestjs/common';
-import { AuthStepType, IAuthenticationStep } from '@src/interfaces';
+import {
+  AuthStepType,
+  IAuthenticationStep,
+} from '@src/scrapers/common/interfaces';
 import { AuthenticatorContext } from '@src/authenticators/common/models/authenticator-context';
 
 export class CookieConsentStep implements IAuthenticationStep {

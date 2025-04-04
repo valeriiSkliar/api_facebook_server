@@ -1,4 +1,7 @@
-import { AuthStepType, IAuthenticationStep } from '@src/interfaces';
+import {
+  AuthStepType,
+  IAuthenticationStep,
+} from '@src/scrapers/common/interfaces';
 import { Logger } from '@nestjs/common';
 import { SessionRestoreService } from '../../../services/tik-tok/session-refresh/SessionRestoreService';
 import * as fs from 'fs-extra';

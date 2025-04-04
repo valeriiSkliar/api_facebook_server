@@ -1,8 +1,11 @@
-import { IAuthenticationStep, AuthStepType } from '@src/interfaces';
 import { BasePipeline } from '@src/interfaces';
 import { AuthenticatorContext } from '../models/authenticator-context';
 import { AuthResult } from '../models/auth-result';
 import { AuthCredentials } from '../models/auth-credentials';
+import {
+  AuthStepType,
+  IAuthenticationStep,
+} from '@src/scrapers/common/interfaces';
 
 export class AuthenticationPipeline extends BasePipeline<
   IAuthenticationStep,

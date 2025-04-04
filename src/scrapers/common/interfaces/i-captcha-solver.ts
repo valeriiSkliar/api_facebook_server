@@ -1,5 +1,5 @@
 import { Page } from 'playwright';
-import { CaptchaDetectionResult } from '@src/interfaces/tik-tok';
+import { CaptchaDetectionResult } from './i-captcha-detection-result';
 
 /**
  * Interface for captcha solving services

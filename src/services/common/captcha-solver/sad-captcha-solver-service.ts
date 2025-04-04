@@ -9,11 +9,12 @@ import { Page } from 'playwright';
 import axios from 'axios';
 import * as fs from 'fs';
 import path from 'path';
-import {
-  ICaptchaSolver,
-  CaptchaDetectionResult,
-} from '@src/interfaces/tik-tok';
+
 import { BrowserHelperService } from '@src/core/browser/helpers';
+import {
+  CaptchaDetectionResult,
+  ICaptchaSolver,
+} from '@src/scrapers/common/interfaces';
 
 interface SadCaptchaResponse {
   pointOneProportionX: number;

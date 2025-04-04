@@ -1,8 +1,8 @@
 import { Logger } from '@nestjs/common';
 
 import { Locator } from 'playwright';
-import { AuthStepType } from '@src/interfaces';
-import { IAuthenticationStep } from '@src/interfaces';
+import { AuthStepType } from '@src/scrapers/common/interfaces';
+import { IAuthenticationStep } from '@src/scrapers/common/interfaces';
 import { BrowserHelperService } from '@src/core/browser/helpers';
 import { AuthenticatorContext } from '@src/authenticators/common/models/authenticator-context';
 import { AuthCredentials } from '@src/authenticators/common/models/auth-credentials';

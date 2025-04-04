@@ -1,6 +1,7 @@
-import { AuthStepType, IAuthenticationStep } from '@src/interfaces';
 import { Logger } from '@nestjs/common';
 import { AuthenticatorContext } from '@src/authenticators/common/models/authenticator-context';
+import { AuthStepType } from '@src/scrapers/common/interfaces';
+import { IAuthenticationStep } from '@src/scrapers/common/interfaces';
 
 export class InitializationStep implements IAuthenticationStep {
   private readonly logger: Logger;

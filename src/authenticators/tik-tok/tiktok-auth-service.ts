@@ -5,7 +5,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 import { PrismaService } from '@src/database';
 import { Injectable, Logger } from '@nestjs/common';
-import { TikTokAuthenticator } from './TikTokAuthenticator';
+import { TikTokAuthenticator } from './tik-tok-authenticator';
 import { AuthCredentials } from '@src/authenticators/common/models/auth-credentials';
 import { Env } from '@src/config';
 // import { EmailAccount } from '@src/models/tik-tok/email-account';

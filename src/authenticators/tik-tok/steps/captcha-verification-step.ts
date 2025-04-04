@@ -2,10 +2,11 @@ import { Page } from 'playwright';
 import { Logger } from '@nestjs/common';
 
 import { Env } from '@src/config';
-import { AuthStepType } from '@src/interfaces';
-import { ICaptchaSolver } from '@src/interfaces';
-import { IAuthenticationStep } from '@src/interfaces';
+
 import { AuthenticatorContext } from '@src/authenticators/common/models/authenticator-context';
+import { AuthStepType } from '@src/scrapers/common/interfaces';
+import { ICaptchaSolver } from '@src/scrapers/common/interfaces';
+import { IAuthenticationStep } from '@src/scrapers/common/interfaces';
 
 export class CaptchaVerificationStep implements IAuthenticationStep {
   private readonly logger: Logger;

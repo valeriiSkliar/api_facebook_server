@@ -1,10 +1,10 @@
 import { Logger, Inject } from '@nestjs/common';
 import { IScraperStep } from '../interfaces/i-scraper-step';
-import { InitializationStep } from '../../../implementations/steps/InitializationStep';
-import { InterceptionSetupStep } from '../../../implementations/steps/InterceptionSetupStep';
-import { PaginationStep } from '../../../implementations/steps/PaginationStep';
-import { StorageStep } from '../../../implementations/steps/StorageStep';
-import { NavigationStep } from '../../../implementations/steps/NavigationStep';
+import { InitializationStep } from '../../facebook/steps/initialization-step';
+import { InterceptionSetupStep } from '../../facebook/steps/interception-setup-step';
+import { PaginationStep } from '../../facebook/steps/pagination-step';
+import { StorageStep } from '../../facebook/steps/storage-step';
+import { NavigationStep } from '../../facebook/steps/navigation-step';
 
 export class StepFactory {
   constructor(@Inject(Logger) private readonly logger: Logger) {}

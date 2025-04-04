@@ -9,8 +9,10 @@ import { Page } from 'playwright';
 import { BrowserHelperService } from '@src/services';
 import { BrowserPoolService } from '@core/browser/browser-pool/browser-pool-service';
 import { TabManager } from '@src/core/browser/tab-manager/tab-manager';
-import { AuthenticationPipeline } from '@src/implementations';
-import { ICaptchaSolver, ISessionManager } from '@src/interfaces';
+import {
+  ICaptchaSolver,
+  ISessionManager,
+} from '@src/scrapers/common/interfaces';
 import { PrismaClient } from '@prisma/client';
 import {
   CookieConsentStep,
@@ -22,13 +24,14 @@ import {
   SelectPhoneEmailLoginStep,
 } from './steps';
 import { BaseAuthenticator } from '@src/authenticators/common/interfaces/base-authenticator';
-import { EmailService } from '../../services/common/email/EmailService';
+import { EmailService } from '../../services/common/email/email-service';
 import { FillLoginFormStep } from './steps/fill-login-form-step';
 import { SubmitLoginFormStep } from './steps/submit-login-form-step';
 import { CaptchaVerificationStep } from './steps/captcha-verification-step';
 import { EmailVerificationStep } from './steps/email-verification-step';
 import { Session } from '@src/core/common/models/session';
 import { AuthCredentials } from '@src/authenticators/common/models/auth-credentials';
+import { AuthenticationPipeline } from '../common/pipelines/authentication-pipeline';
 /**
  * TikTok authenticator implementation that extends BaseAuthenticator
  * Handles the authentication process for TikTok

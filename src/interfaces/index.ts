@@ -1,4 +1,3 @@
-export * from './tik-tok';
 export * from '../scrapers/common/interfaces/abstract-filter-step';
 export * from '../scrapers/common/interfaces/abstract-scraper-step';
 export * from '../core/interfaces/cached-response';

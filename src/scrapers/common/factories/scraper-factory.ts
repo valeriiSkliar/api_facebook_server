@@ -1,11 +1,11 @@
 import { Logger } from '@nestjs/common';
 import { ScraperContext } from '@src/scrapers/facebook/models/facebook-scraper-context';
 import { AdLibraryQuery } from '@src/scrapers/facebook/models/facebook-ad-lib-query';
-import { FilterRegistry } from '../../../implementations/filters/FilterRegistry';
+import { FilterRegistry } from '../../facebook/filters/FilterRegistry';
 import { StepFactory } from './step-factory';
 import { ScraperOptions } from '@src/scrapers/facebook/models/facebook-scraper-options';
 import { Injectable } from '@nestjs/common';
-import { ScraperPipeline } from '@src/implementations';
+import { ScraperPipeline } from '../pipeline';
 
 @Injectable()
 export class ScraperFactory {

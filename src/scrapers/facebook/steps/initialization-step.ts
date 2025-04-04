@@ -1,6 +1,9 @@
 import { ScraperContext } from '@src/scrapers/facebook/models/facebook-scraper-context';
 import { launchPlaywright } from 'crawlee';
-import { AbstractScraperStep, AuthStepType } from '@src/interfaces';
+import {
+  AbstractScraperStep,
+  AuthStepType,
+} from '@src/scrapers/common/interfaces';
 
 // steps/InitializationStep.ts
 export class InitializationStep extends AbstractScraperStep {

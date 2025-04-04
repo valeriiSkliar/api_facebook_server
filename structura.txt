@@ -17,6 +17,11 @@ src/
 │   │   └── redis/               # Redis сервисы
 │   └── interfaces/              # Общие интерфейсы
 │
+|── authenticators               # Аутентификаторы
+│   |── common/                  # Общие аутентификаторы
+│   |── tiktok/                  # Аутентификатор для TikTok
+│   └── facebook/                # Аутентификатор для Facebook
+│
 ├── scrapers/                    # Парсеры (общая логика)
 │   ├── common/                  # Общие компоненты для всех парсеров
 │   │   ├── pipeline/            # Базовая реализация pipeline

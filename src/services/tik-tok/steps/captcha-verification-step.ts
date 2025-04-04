@@ -1,7 +1,7 @@
 import { Page } from 'playwright';
 import { Logger } from '@nestjs/common';
 
-import { Env } from '@lib/Env';
+import { Env } from '@src/config';
 import { AuthStepType } from '@src/interfaces';
 import { ICaptchaSolver } from '@src/interfaces';
 import { IAuthenticationStep } from '@src/interfaces';

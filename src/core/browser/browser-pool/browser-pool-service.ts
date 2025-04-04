@@ -16,7 +16,7 @@ import { BrowserLifecycleManager } from './browser-lifecycle-manager';
 import { BrowserStorageService } from './browser-storage-service';
 import { BrowserMetricsService } from './browser-metrics-service';
 import { TabManager, BrowserTab } from './tab-manager';
-import { Env } from '@lib/Env';
+import { Env } from '@src/config';
 
 @Injectable()
 export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {

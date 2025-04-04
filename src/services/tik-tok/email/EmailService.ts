@@ -10,10 +10,10 @@ import {
 import { PrismaClient } from '@prisma/client';
 import { Logger } from '@nestjs/common';
 
-import { Env } from '@lib/Env';
+import { Env } from '@src/config';
 
 import { EmailVerificationCodeType, IEmailService } from '@src/interfaces';
-import { extractVerificationCode } from '@src/common/utiles/verificationCodeExtractor';
+import { extractVerificationCode } from '@src/common';
 import { EmailAccount, EmailConnectionDetails } from '@src/models';
 
 export class EmailService implements IEmailService {

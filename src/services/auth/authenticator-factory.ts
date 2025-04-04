@@ -9,7 +9,7 @@ import { EmailService } from '@src/services/tik-tok/email/EmailService';
 import { BrowserPoolService } from '@core/browser/browser-pool/browser-pool-service';
 import { TabManager } from '@core/browser/browser-pool/tab-manager';
 import { PrismaClient } from '@prisma/client';
-import { Env } from '@lib/Env';
+import { Env } from '@src/config';
 import { IAuthenticator, IAuthenticatorFactory } from '@src/interfaces';
 
 @Injectable()

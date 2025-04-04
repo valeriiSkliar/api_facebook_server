@@ -18,8 +18,8 @@ import {
 } from '../../services/request-manager-service';
 import { UpdateRequestStatusDto } from '../dto/common/update-request-status.dto';
 import { AuthenticatedRequest } from '../../interfaces/auth.interface';
-import { AdData } from '../../models/AdData';
-import { ScraperResult } from '../../models/ScraperResult';
+import { AdData } from '../../models/facebook-ad-data';
+import { ScraperResult } from '../../models/scraper-result';
 import { CreateRequestDto } from '../dto/common';
 
 // Interface for potential error structures stored in response_data

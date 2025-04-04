@@ -1,4 +1,4 @@
-import { ProxyConfig } from '@src/models/tik-tok/ProxyConfig';
+import { ProxyConfig } from '@src/models/tik-tok/proxy-config';
 
 /**
  * Authentication credentials model

@@ -1,9 +1,9 @@
 import { Logger } from '@nestjs/common';
-import { ScraperContext } from '@src/models/ScraperContext';
-import { AdLibraryQuery } from '@src/models/AdLibraryQuery';
-import { FilterRegistry } from '../filters/FilterRegistry';
-import { StepFactory } from './StepFactory';
-import { ScraperOptions } from '@src/models/ScraperOptions';
+import { ScraperContext } from '@src/models/scraper-context';
+import { AdLibraryQuery } from '@src/models/facebook-ad-lib-query';
+import { FilterRegistry } from '../../../implementations/filters/FilterRegistry';
+import { StepFactory } from './step-factory';
+import { ScraperOptions } from '@src/models/scraper-options';
 import { Injectable } from '@nestjs/common';
 import { ScraperPipeline } from '@src/implementations';
 

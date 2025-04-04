@@ -1,8 +1,8 @@
 import { Page } from 'playwright';
 import { Browser } from 'playwright';
-import { AdData } from './AdData';
-import { AdLibraryQuery } from './AdLibraryQuery';
-import { ScraperOptions } from './ScraperOptions';
+import { AdData } from './facebook-ad-data';
+import { AdLibraryQuery } from './facebook-ad-lib-query';
+import { ScraperOptions } from './scraper-options';
 
 export interface ScraperContext {
   query: AdLibraryQuery;

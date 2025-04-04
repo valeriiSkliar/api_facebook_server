@@ -1,4 +1,4 @@
-import { ProxyConfig } from './ProxyConfig';
+import { ProxyConfig } from './proxy-config';
 
 /**
  * Session model

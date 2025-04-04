@@ -2,8 +2,8 @@ import { Module, Logger } from '@nestjs/common';
 import { ScraperController } from '../controllers/scraper-controller';
 import { FacebookAdScraperService } from '../../services/FacebookAdScraperService';
 import { SearchParameterService } from '../../services/SearchParameterService';
-import { ScraperFactory } from '../../implementations/factories/ScraperFactory';
-import { StepFactory } from '../../implementations/factories/StepFactory';
+import { ScraperFactory } from '../../scrapers/common/factories/scraper-factory';
+import { StepFactory } from '../../scrapers/common/factories/step-factory';
 import { CoreModule } from '../../core/core.module';
 
 @Module({

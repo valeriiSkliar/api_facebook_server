@@ -5,9 +5,9 @@ import {
   RequestMetadata,
   RequestStatus,
 } from '@src/services/request-manager-service';
-import { ScraperFactory } from '@src/implementations/factories/ScraperFactory';
+import { ScraperFactory } from '@src/scrapers/common/factories/scraper-factory';
 import { ScraperRegistry } from '@src/services/ScraperRegistry';
-import { AdLibraryQuery } from '@src/models/AdLibraryQuery';
+import { AdLibraryQuery } from '@src/models/facebook-ad-lib-query';
 import { BrowserPoolService } from '@core/browser/browser-pool/browser-pool-service';
 
 @Injectable()

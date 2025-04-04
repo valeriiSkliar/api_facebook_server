@@ -1,4 +1,4 @@
-import { AdData } from './AdData';
+import { AdData } from './facebook-ad-data';
 
 export interface ScraperResult {
   /**

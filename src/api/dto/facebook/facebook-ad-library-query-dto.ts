@@ -14,7 +14,7 @@ import { IsDateString, ArrayMinSize } from 'class-validator';
 import {
   AdLibraryQuery,
   AdLibraryFilters,
-} from '../../../models/AdLibraryQuery';
+} from '../../../models/facebook-ad-lib-query';
 
 export class DateRangeDto {
   @IsOptional()

@@ -1,4 +1,4 @@
-import { ScraperContext } from '@src/models/ScraperContext';
+import { ScraperContext } from '@src/models/scraper-context';
 import { IPipelineStep } from '../../../core/interfaces/I-pipeline';
 
 export interface IScraperStep extends IPipelineStep<ScraperContext> {

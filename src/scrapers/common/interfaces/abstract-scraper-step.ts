@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { Logger } from '@nestjs/common';
-import { ScraperContext } from '@src/models/ScraperContext';
+import { ScraperContext } from '@src/models/scraper-context';
 import { IScraperStep } from './i-scraper-step';
 
 export abstract class AbstractScraperStep implements IScraperStep {

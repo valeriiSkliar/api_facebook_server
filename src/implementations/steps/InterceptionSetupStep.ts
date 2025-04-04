@@ -1,6 +1,6 @@
 import { AbstractScraperStep } from '../../scrapers/common/interfaces/abstract-scraper-step';
-import { ScraperContext } from '../../models/ScraperContext';
-import { AdData } from '../../models/AdData';
+import { ScraperContext } from '../../models/scraper-context';
+import { AdData } from '../../models/facebook-ad-data';
 import { RequestCaptureService } from '../../services/RequestCaptureService';
 import { ResponseCacheService } from '../../services/ResponseCacheService';
 import { Logger } from '@nestjs/common';

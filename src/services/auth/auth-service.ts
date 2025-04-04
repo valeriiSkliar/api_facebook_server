@@ -1,7 +1,7 @@
 // src/services/auth/AuthService.ts
 import { Injectable, Logger, Inject } from '@nestjs/common';
 import { IAuthenticatorFactory } from '@src/interfaces';
-import { AuthCredentials } from '@src/models/tik-tok/AuthCredentials';
+import { AuthCredentials } from '@src/models/tik-tok/auth-credentials';
 
 /**
  * High-level service for authentication operations

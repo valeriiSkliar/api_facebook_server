@@ -6,7 +6,7 @@
 import { PrismaService } from '@src/database';
 import { Injectable, Logger } from '@nestjs/common';
 import { TikTokAuthenticator } from './TikTokAuthenticator';
-import { AuthCredentials } from '@src/models/tik-tok/AuthCredentials';
+import { AuthCredentials } from '@src/models/tik-tok/auth-credentials';
 import { Env } from '@src/config';
 // import { EmailAccount } from '@src/models/tik-tok/email-account';
 import * as fs from 'fs-extra';

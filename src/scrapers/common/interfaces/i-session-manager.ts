@@ -1,5 +1,5 @@
-import { AuthCredentials } from '@src/models/tik-tok/AuthCredentials';
-import { Session } from '@src/models/tik-tok/Session';
+import { AuthCredentials } from '@src/models/tik-tok/auth-credentials';
+import { Session } from '@src/models/tik-tok/session';
 
 /**
  * Interface for session management

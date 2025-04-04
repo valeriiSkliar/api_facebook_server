@@ -1,6 +1,6 @@
 import { AbstractScraperStep } from '@src/scrapers/common/interfaces/abstract-scraper-step';
-import { ScraperContext } from '@src/models/ScraperContext';
-import { AdLibraryQuery } from '@src/models/AdLibraryQuery';
+import { ScraperContext } from '@src/models/scraper-context';
+import { AdLibraryQuery } from '@src/models/facebook-ad-lib-query';
 
 // steps/NavigationStep.ts
 export class NavigationStep extends AbstractScraperStep {

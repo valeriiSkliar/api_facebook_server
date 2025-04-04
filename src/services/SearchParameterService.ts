@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { AdLibraryQuery } from '../models/AdLibraryQuery';
+import { AdLibraryQuery } from '../models/facebook-ad-lib-query';
 
 @Injectable()
 export class SearchParameterService {

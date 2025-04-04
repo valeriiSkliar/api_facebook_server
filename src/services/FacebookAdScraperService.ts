@@ -3,10 +3,10 @@
 /* eslint-disable @typescript-eslint/require-await */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 import { Injectable, Logger } from '@nestjs/common';
-import { ScraperFactory } from '../implementations/factories/ScraperFactory';
-import { AdLibraryQuery } from '../models/AdLibraryQuery';
-import { ScraperOptions } from '../models/ScraperOptions';
-import { ScraperResult } from '../models/ScraperResult';
+import { ScraperFactory } from '../scrapers/common/factories/scraper-factory';
+import { AdLibraryQuery } from '../models/facebook-ad-lib-query';
+import { ScraperOptions } from '../models/scraper-options';
+import { ScraperResult } from '../models/scraper-result';
 import { BrowserPoolService } from '@core/browser/browser-pool/browser-pool-service';
 import { Browser, Page } from 'playwright';
 

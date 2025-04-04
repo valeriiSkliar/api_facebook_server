@@ -1,4 +1,4 @@
-import { ScraperContext } from '@src/models/ScraperContext';
+import { ScraperContext } from '@src/models/scraper-context';
 import { launchPlaywright } from 'crawlee';
 import { AbstractScraperStep, AuthStepType } from '@src/interfaces';
 

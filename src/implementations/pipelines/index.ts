@@ -1,2 +1,2 @@
 export * from './AuthenticationPipeline';
-export * from './ScraperPipeline';
+export * from '../../scrapers/common/pipeline/scraper-pipeline';

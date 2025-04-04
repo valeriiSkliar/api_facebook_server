@@ -1,6 +1,6 @@
 import { Logger } from '@nestjs/common';
 import { AbstractFilterStep } from '@src/scrapers/common/interfaces/abstract-filter-step';
-import { ScraperContext } from '@src/models/ScraperContext';
+import { ScraperContext } from '@src/models/scraper-context';
 
 export class CountryFilterStep extends AbstractFilterStep {
   constructor(logger: Logger) {

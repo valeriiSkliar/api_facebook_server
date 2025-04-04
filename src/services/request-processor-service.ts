@@ -11,7 +11,7 @@ import {
 } from './request-manager-service';
 import { BrowserPoolService } from '@core/browser/browser-pool/browser-pool-service';
 import { FacebookAdScraperService } from './FacebookAdScraperService';
-import { AdLibraryQuery } from '@src/models/AdLibraryQuery';
+import { AdLibraryQuery } from '@src/models/facebook-ad-lib-query';
 import { Browser } from 'playwright';
 import { TabManager } from '@core/browser/browser-pool/tab-manager';
 import { BrowserLifecycleManager } from '@core/browser/browser-pool/browser-lifecycle-manager';

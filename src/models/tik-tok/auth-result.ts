@@ -1,4 +1,4 @@
-import { Session } from './Session';
+import { Session } from './session';
 
 /**
  * Authentication result model

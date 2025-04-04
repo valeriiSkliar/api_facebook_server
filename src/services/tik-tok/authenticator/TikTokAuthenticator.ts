@@ -22,7 +22,7 @@ import {
   SaveSessionStep,
   SelectPhoneEmailLoginStep,
 } from '../steps';
-import { BaseAuthenticator } from '@src/services/auth/BaseAuthenticator';
+import { BaseAuthenticator } from '@src/authenticators/common/intefaces/base-authenticator';
 import { EmailService } from '../email/EmailService';
 import { FillLoginFormStep } from '../steps/fill-login-form-step';
 import { SubmitLoginFormStep } from '../steps/submit-login-form-step';

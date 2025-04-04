@@ -1,5 +1,5 @@
 import { AbstractScraperStep } from '@src/scrapers/common/interfaces/abstract-scraper-step';
-import { ScraperContext } from '@src/models/ScraperContext';
+import { ScraperContext } from '@src/models/scraper-context';
 
 export class PaginationStep extends AbstractScraperStep {
   shouldExecute(context: ScraperContext): boolean {

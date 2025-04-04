@@ -17,9 +17,9 @@ import {
   RequestStatus,
 } from '../../services/request-manager/request-manager-service';
 import { UpdateRequestStatusDto } from '../dto/common/update-request-status.dto';
-import { AuthenticatedRequest } from '../../interfaces/auth.interface';
-import { AdData } from '../../models/facebook-ad-data';
-import { ScraperResult } from '../../models/scraper-result';
+import { AuthenticatedRequest } from '../../authenticators/common/interfaces/auth.interface';
+import { AdData } from '../../scrapers/facebook/models/facebook-ad-data';
+import { ScraperResult } from '../../scrapers/facebook/models/facebook-scraper-result';
 import { CreateRequestDto } from '../dto/common';
 
 // Interface for potential error structures stored in response_data

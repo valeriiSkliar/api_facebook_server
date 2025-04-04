@@ -6,7 +6,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { RequestManagerService } from '../request-manager/request-manager-service';
 import { BrowserPoolService } from '@core/browser/browser-pool/browser-pool-service';
 import { CacheService } from '@core/cache';
-import { TabManager } from '@core/browser/browser-pool/tab-manager';
+import { TabManager } from '@src/core/browser/tab-manager/tab-manager';
 
 @Injectable()
 export class RequestScheduler {

@@ -1,5 +1,6 @@
-import { AuthCredentials, AuthenticatorContext } from '@src/models';
+import { AuthenticatorContext } from '@src/authenticators/common/models/authenticator-context';
 import { IPipelineStep } from '../../../core/interfaces/I-pipeline';
+import { AuthCredentials } from '@src/authenticators/common/models/auth-credentials';
 
 export enum AuthStepType {
   PRE_SESSION = 'pre_session', // Steps that run before session restore

@@ -4,12 +4,12 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 import { PrismaService } from '@src/database';
 import { Injectable, Logger } from '@nestjs/common';
-import { AuthCredentials } from '@src/models/tik-tok/auth-credentials';
+import { AuthCredentials } from '@src/authenticators/common/models/auth-credentials';
 import { Log } from 'crawlee';
 import { Env } from '@src/config';
 import * as fs from 'fs-extra';
 import * as path from 'path';
-import { AuthService } from '@src/services/session-manager/auth/auth-service';
+import { AuthService } from '@src/services/auth/auth-service';
 
 @Injectable()
 export class SessionRefreshService {

@@ -1,6 +1,6 @@
 import { Logger } from '@nestjs/common';
-import { ScraperContext } from '@src/models/scraper-context';
-import { ScraperResult } from '@src/models/scraper-result';
+import { ScraperContext } from '@src/scrapers/facebook/models/facebook-scraper-context';
+import { ScraperResult } from '@src/scrapers/facebook/models/facebook-scraper-result';
 import { BasePipeline } from '@src/interfaces';
 import { IScraperStep } from '@src/scrapers/common/interfaces';
 

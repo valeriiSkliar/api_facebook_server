@@ -4,9 +4,9 @@
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import { Logger } from '@nestjs/common';
-import { AuthCredentials, Session } from '@src/models/tik-tok';
 import { ISessionManager } from '@src/interfaces/tik-tok';
-
+import { AuthCredentials } from '@src/authenticators/common/models/auth-credentials';
+import { Session } from '@src/core/common/models/session';
 /**
  * File system based session manager implementation
  * Stores and retrieves session data from the file system

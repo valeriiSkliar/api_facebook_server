@@ -1,4 +1,4 @@
-import { ScraperContext } from '@src/models/scraper-context';
+import { ScraperContext } from '@src/scrapers/facebook/models/facebook-scraper-context';
 import { AbstractScraperStep } from './abstract-scraper-step';
 import { Logger } from '@nestjs/common';
 

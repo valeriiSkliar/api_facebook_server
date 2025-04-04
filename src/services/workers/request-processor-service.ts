@@ -11,10 +11,10 @@ import {
 } from '../request-manager/request-manager-service';
 import { BrowserPoolService } from '@core/browser/browser-pool/browser-pool-service';
 import { FacebookAdScraperService } from '../FacebookAdScraperService';
-import { AdLibraryQuery } from '@src/models/facebook-ad-lib-query';
+import { AdLibraryQuery } from '@src/scrapers/facebook/models/facebook-ad-lib-query';
 import { Browser } from 'playwright';
-import { TabManager } from '@core/browser/browser-pool/tab-manager';
-import { BrowserLifecycleManager } from '@core/browser/browser-pool/browser-lifecycle-manager';
+import { TabManager } from '@src/core/browser/tab-manager/tab-manager';
+import { BrowserLifecycleManager } from '@src/core/browser/lifecycle/browser-lifecycle-manager';
 
 @Injectable()
 export class RequestProcessorService {

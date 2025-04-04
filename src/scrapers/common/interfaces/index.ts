@@ -2,7 +2,7 @@ export * from './abstract-filter-step';
 export * from './abstract-scraper-step';
 export * from './email-types';
 export * from './i-authentication-step';
-export * from './i-authenticator-factory';
+export * from '../../../authenticators/common/interfaces/i-authenticator-factory';
 export * from './i-authenticator';
 export * from './i-captcha-detection-result';
 export * from './i-captcha-solver';

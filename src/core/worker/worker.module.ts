@@ -8,7 +8,7 @@ import { ScraperFactory } from '@src/scrapers/common/factories/scraper-factory';
 import { StepFactory } from '@src/scrapers/common/factories/step-factory';
 import { FacebookAdScraperService } from '@src/services/FacebookAdScraperService';
 import { SearchParameterService } from '@src/services/SearchParameterService';
-import { TabManager } from '@core/browser/browser-pool/tab-manager';
+import { TabManager } from '@src/core/browser/tab-manager/tab-manager';
 import { RedisModule } from '@core/storage/redis/redis.module';
 import { RequestManagerModule } from '@src/services/request-manager';
 

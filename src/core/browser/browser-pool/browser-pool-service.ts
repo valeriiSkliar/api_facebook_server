@@ -12,10 +12,10 @@ import {
   BrowserPoolConfig,
   BrowserCallback,
 } from './types';
-import { BrowserLifecycleManager } from './browser-lifecycle-manager';
+import { BrowserLifecycleManager } from '../lifecycle/browser-lifecycle-manager';
 import { BrowserStorageService } from './browser-storage-service';
 import { BrowserMetricsService } from './browser-metrics-service';
-import { TabManager, BrowserTab } from './tab-manager';
+import { TabManager, BrowserTab } from '../tab-manager/tab-manager';
 import { Env } from '@src/config';
 
 @Injectable()

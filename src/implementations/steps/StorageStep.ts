@@ -2,7 +2,7 @@
 import fs from 'fs';
 import path from 'path';
 import { AbstractScraperStep } from '@src/scrapers/common/interfaces/abstract-scraper-step';
-import { ScraperContext } from '@src/models/scraper-context';
+import { ScraperContext } from '@src/scrapers/facebook/models/facebook-scraper-context';
 
 export class StorageStep extends AbstractScraperStep {
   async execute(context: ScraperContext): Promise<boolean> {

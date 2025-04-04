@@ -4,9 +4,9 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 import { Injectable, Logger } from '@nestjs/common';
 import { ScraperFactory } from '../scrapers/common/factories/scraper-factory';
-import { AdLibraryQuery } from '../models/facebook-ad-lib-query';
-import { ScraperOptions } from '../models/scraper-options';
-import { ScraperResult } from '../models/scraper-result';
+import { AdLibraryQuery } from '../scrapers/facebook/models/facebook-ad-lib-query';
+import { ScraperOptions } from '../scrapers/facebook/models/facebook-scraper-options';
+import { ScraperResult } from '../scrapers/facebook/models/facebook-scraper-result';
 import { BrowserPoolService } from '@core/browser/browser-pool/browser-pool-service';
 import { Browser, Page } from 'playwright';
 

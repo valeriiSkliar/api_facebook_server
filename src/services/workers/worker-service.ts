@@ -9,7 +9,7 @@ import {
 import { RequestStatus } from '../request-manager/request-manager-service';
 import { ScraperFactory } from '@src/scrapers/common/factories/scraper-factory';
 import { ScraperRegistry } from '../ScraperRegistry';
-import { AdLibraryQuery } from '@src/models/facebook-ad-lib-query';
+import { AdLibraryQuery } from '@src/scrapers/facebook/models/facebook-ad-lib-query';
 import { BrowserPoolService } from '@core/browser/browser-pool/browser-pool-service';
 
 @Injectable()

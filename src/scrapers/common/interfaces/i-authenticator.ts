@@ -1,6 +1,6 @@
 // import { Page } from 'playwright';
 // import { Page } from 'playwright';
-import { AuthCredentials } from '@src/models/tik-tok/auth-credentials';
+import { AuthCredentials } from '@src/authenticators/common/models/auth-credentials';
 // import { AuthResult } from '../models';
 
 /**

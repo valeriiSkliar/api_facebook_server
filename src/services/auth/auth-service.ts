@@ -89,73 +89,40 @@ export class AuthService {
   }
 
   /**
-   * Refresh an existing session
-   * @param credentials Optional credentials to use if refresh fails
+   * Refreshes an existing session
+   * @param credentials Authentication credentials containing session information
    * @returns Promise resolving to boolean indicating success
    */
-  async refreshSession(credentials?: AuthCredentials): Promise<boolean> {
-    // Если уже идет процесс аутентификации и это тот же email - пропускаем
-    if (
-      credentials &&
-      this.isAuthenticating &&
-      this.lastAuthEmail === credentials.email
-    ) {
-      const timeSinceLastAuth = Date.now() - this.lastAuthTime;
-      // Если прошло менее 10 секунд с предыдущей попытки аутентификации, пропускаем
-      if (timeSinceLastAuth < 10000) {
-        this.logger.warn('Parallel session refresh detected and prevented', {
-          email: credentials.email,
-          timeSinceLastAuth: `${timeSinceLastAuth}ms`,
-        });
-        return false;
-      }
-    }
-
-    const authenticator = this.authenticatorFactory.createAuthenticator(
-      this.logger,
-    );
-
+  async refreshSession(credentials: AuthCredentials): Promise<boolean> {
     try {
-      // Try refreshing first
-      const refreshed = await authenticator.refreshSession();
+      const logger = new Logger(`${AuthService.name}[${credentials.email}]`);
+      logger.log('Refreshing session', {
+        email: credentials.email,
+        sessionPath: credentials.sessionPath,
+        sessionId: credentials.sessionId,
+      });
 
-      // If refresh failed and credentials are provided, try full auth
-      if (!refreshed && credentials) {
-        this.logger.log(
-          'Session refresh failed, attempting full authentication',
+      // Создаем аутентификатор через фабрику
+      const authenticator = this.authenticatorFactory.createAuthenticator(
+        this.logger,
+      );
+
+      // Если есть ID сессии, выводим информационное сообщение
+      if (credentials.sessionId) {
+        logger.log(
+          `Using session ID ${credentials.sessionId} for request interception`,
         );
-        // Пропускаем полную аутентификацию, если она уже идет
-        if (this.isAuthenticating && this.lastAuthEmail === credentials.email) {
-          this.logger.warn(
-            'Skipping authentication as it is already in progress',
-            { email: credentials.email },
-          );
-          return false;
-        }
-
-        // Устанавливаем флаг и данные текущей аутентификации
-        this.isAuthenticating = true;
-        this.lastAuthEmail = credentials.email;
-        this.lastAuthTime = Date.now();
-
-        try {
-          await authenticator.runAuthenticator(credentials);
-          const result = await authenticator.verifySession();
-          return result;
-        } finally {
-          // Сбрасываем флаг аутентификации
-          this.isAuthenticating = false;
-        }
       }
 
-      return refreshed;
+      await authenticator.runAuthenticator(credentials);
+
+      logger.log('Session refresh successful');
+      return true;
     } catch (error) {
       this.logger.error('Session refresh failed', {
         error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
       });
-
-      // Сбрасываем флаг аутентификации на случай ошибки
-      this.isAuthenticating = false;
       return false;
     }
   }

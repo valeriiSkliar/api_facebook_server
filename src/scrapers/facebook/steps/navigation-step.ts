@@ -2,7 +2,6 @@ import { AbstractScraperStep } from '@src/scrapers/common/interfaces/abstract-sc
 import { ScraperContext } from '@src/scrapers/facebook/models/facebook-scraper-context';
 import { AdLibraryQuery } from '@src/scrapers/facebook/models/facebook-ad-lib-query';
 
-// steps/NavigationStep.ts
 export class NavigationStep extends AbstractScraperStep {
   async execute(context: ScraperContext): Promise<boolean> {
     if (!context.state.page) {

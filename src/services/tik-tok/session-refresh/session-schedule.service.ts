@@ -80,7 +80,7 @@ export class SessionScheduleService implements OnModuleInit {
   /**
    * Check sessions every 30 seconds and refresh if needed
    */
-  @Cron(CronExpression.EVERY_10_MINUTES)
+  @Cron(CronExpression.EVERY_30_SECONDS)
   async checkAndRefreshSessions() {
     console.log('checkAndRefreshSessions called - direct console output');
     this.logger.log('checkAndRefreshSessions method called');
@@ -109,6 +109,28 @@ export class SessionScheduleService implements OnModuleInit {
 
       this.logger.log('Scheduled session check started');
 
+      // Проверка активных сессий в базе данных
+      const activeSession = await this.prisma.session.findFirst({
+        where: {
+          status: 'ACTIVE',
+          is_valid: true,
+          last_activity_timestamp: {
+            gt: new Date(Date.now() - 60 * 60 * 1000), // Обновлено не более часа назад
+          },
+        },
+        orderBy: {
+          last_activity_timestamp: 'desc',
+        },
+      });
+
+      if (!activeSession) {
+        this.logger.log('No valid active session found in database');
+      } else {
+        this.logger.log(
+          `Found active session: ID ${activeSession.id}, email: ${activeSession.email}`,
+        );
+      }
+
       // Check if we have any valid API configs
       const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
       const validApiConfig = await this.prisma.apiConfiguration.findFirst({
@@ -134,7 +156,11 @@ export class SessionScheduleService implements OnModuleInit {
           this.logger.warn('Scheduled session refresh failed');
         }
       } else {
-        this.logger.log('Valid API config found, no refresh needed');
+        this.logger.log('Valid API config found, no refresh needed', {
+          apiConfigId: validApiConfig.id,
+          apiVersion: validApiConfig.api_version,
+          updatedAt: validApiConfig.updated_at,
+        });
       }
     } catch (error: unknown) {
       const errorMessage =

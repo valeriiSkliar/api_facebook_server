@@ -78,8 +78,9 @@ export class SessionRefreshService {
         return await this.createNewSession();
       }
 
-      // Обновляем текущий email
+      // Обновляем текущий email и ID сессии
       this.currentRefreshEmail = activeSession.email;
+      const sessionId = activeSession.id;
 
       // Create the session storage path if it doesn't exist
       const sessionStoragePath =
@@ -87,12 +88,15 @@ export class SessionRefreshService {
       await fs.ensureDir(sessionStoragePath);
 
       // Run the authenticator to refresh the session
-      this.logger.log(`Refreshing session for email: ${activeSession.email}`);
+      this.logger.log(
+        `Refreshing session for email: ${activeSession.email} (ID: ${sessionId})`,
+      );
 
       const credentials: AuthCredentials = {
         email: activeSession.email,
         password: Env.TIKTOK_PASSWORD,
         sessionPath: activeSession.storage_path,
+        sessionId: sessionId, // Передаем ID сессии в учетные данные
       };
 
       // Use the high-level AuthService to refresh the session
@@ -108,7 +112,7 @@ export class SessionRefreshService {
         });
 
         this.logger.log(
-          `Session refresh completed for: ${activeSession.email}`,
+          `Session refresh completed for: ${activeSession.email} (ID: ${sessionId})`,
         );
       } else {
         this.logger.warn(`Session refresh failed for: ${activeSession.email}`);

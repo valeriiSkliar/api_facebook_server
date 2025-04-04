@@ -34,6 +34,7 @@ import { Session } from '@src/core/common/models/session';
 import { AuthCredentials } from '@src/authenticators/common/models/auth-credentials';
 import { AuthenticationPipeline } from '../common/pipelines/authentication-pipeline';
 import { NaturalScrollingStep } from './steps/natural-scrolling-step';
+// import { IntegratedRequestCaptureService } from '@src/services/integrated-request-capture-service';
 /**
  * TikTok authenticator implementation that extends BaseAuthenticator
  * Handles the authentication process for TikTok
@@ -93,6 +94,16 @@ export class TikTokAuthenticator extends BaseAuthenticator {
    * Initialize authentication pipeline with all required steps
    */
   private initializeAuthPipeline(): void {
+    // Initialize NaturalScrollingStep first so we can reference it
+    const naturalScrollingStep = new NaturalScrollingStep(this.logger);
+
+    // Create RequestInterceptionSetupStep with reference to NaturalScrollingStep
+    const requestInterceptionStep = new RequestInterceptionSetupStep(
+      this.logger,
+      undefined,
+      naturalScrollingStep,
+    );
+
     // Add authentication steps to the pipeline
     this.authPipeline.addStep(new InitializationStep(this.logger));
     this.authPipeline.addStep(new NavigationStep(this.logger));
@@ -108,8 +119,8 @@ export class TikTokAuthenticator extends BaseAuthenticator {
     this.authPipeline.addStep(
       new EmailVerificationStep(this.logger, this.emailService),
     );
-    this.authPipeline.addStep(new RequestInterceptionSetupStep(this.logger));
-    this.authPipeline.addStep(new NaturalScrollingStep(this.logger));
+    this.authPipeline.addStep(requestInterceptionStep);
+    this.authPipeline.addStep(naturalScrollingStep);
     this.authPipeline.addStep(new SaveSessionStep(this.logger));
 
     this.logger.log('Authentication pipeline initialized');
@@ -158,11 +169,13 @@ export class TikTokAuthenticator extends BaseAuthenticator {
         throw new Error(`No page found for tab ${tabId}`);
       }
 
-      // Установка страницы и браузера в контекст перед выполнением пайплайна
+      // Устанавливаем страницу и браузера в контекст перед выполнением пайплайна
       this.context.state.page = page;
       // Добавляем browserId и tabId в контекст для отслеживания
       this.context.state.browserId = browserId;
       this.context.state.tabId = tabId;
+      // Сохраняем учетные данные в контексте
+      this.context.credentials = credentials;
 
       try {
         const browser =
@@ -193,11 +206,28 @@ export class TikTokAuthenticator extends BaseAuthenticator {
 
       // Сохранение сессии в базу данных при успешной аутентификации
       if (result.success) {
-        await this.saveSessionToDatabase(
+        const sessionId = await this.saveSessionToDatabase(
           credentials.email,
           credentials.sessionPath ||
             `${this.sessionStoragePath}/tiktok_${credentials.email.replace(/[@.]/g, '_')}.json`,
         );
+
+        // Устанавливаем sessionId для перехвата запросов, если сессия была успешно сохранена
+        if (sessionId) {
+          // Находим шаг перехвата запросов в пайплайне и устанавливаем sessionId
+          const requestInterceptionStep = this.authPipeline['steps'].find(
+            (step) => step.getName() === 'Request Interception Setup',
+          );
+          if (requestInterceptionStep) {
+            // Явное приведение к известному типу шага
+            const typedStep =
+              requestInterceptionStep as RequestInterceptionSetupStep;
+            typedStep.setSessionId(sessionId);
+            this.logger.log(
+              `Session ID ${sessionId} set for request interception`,
+            );
+          }
+        }
       }
     } catch (error) {
       this.logger.error('Error during authentication process:', {
@@ -234,7 +264,7 @@ export class TikTokAuthenticator extends BaseAuthenticator {
   private async saveSessionToDatabase(
     email: string,
     storagePath: string,
-  ): Promise<void> {
+  ): Promise<number | undefined> {
     try {
       // Update or create session record in database
       const existingSession = await this.prisma.session.findFirst({
@@ -252,8 +282,9 @@ export class TikTokAuthenticator extends BaseAuthenticator {
           },
         });
         this.logger.log('Updated existing session in database', { email });
+        return existingSession.id;
       } else {
-        await this.prisma.session.create({
+        const newSession = await this.prisma.session.create({
           data: {
             email,
             is_valid: true,
@@ -266,12 +297,14 @@ export class TikTokAuthenticator extends BaseAuthenticator {
           },
         });
         this.logger.log('Created new session in database', { email });
+        return newSession.id;
       }
     } catch (error) {
       this.logger.error('Error saving session to database:', {
         email,
         error: error instanceof Error ? error.message : String(error),
       });
+      return undefined;
     }
   }
 
@@ -349,21 +382,22 @@ export class TikTokAuthenticator extends BaseAuthenticator {
    * @returns Promise resolving to boolean indicating success
    */
   async refreshSession(): Promise<boolean> {
-    if (!this.currentSession) {
-      this.logger.log('No active session to refresh');
-      return false;
-    }
+    return await this.verifySession();
+    // if (!this.currentSession) {
+    //   this.logger.log('No active session to refresh');
+    //   return false;
+    // }
 
-    this.logger.log('Refreshing TikTok session', {
-      sessionId: this.currentSession.id,
-    });
+    // this.logger.log('Refreshing TikTok session', {
+    //   sessionId: this.currentSession.id,
+    // });
 
-    // Implementation similar to verifySession but with additional steps
-    // to extend the session validity, e.g., perform some authenticated action
+    // // Implementation similar to verifySession but with additional steps
+    // // to extend the session validity, e.g., perform some authenticated action
 
-    return new Promise((resolve) => {
-      resolve(false);
-    }); // Placeholder - implement actual refresh logic
+    // return new Promise((resolve) => {
+    //   resolve(false);
+    // }); // Placeholder - implement actual refresh logic
   }
 
   /**

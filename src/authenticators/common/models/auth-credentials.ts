@@ -24,4 +24,9 @@ export interface AuthCredentials {
    * Optional path to the session file for session restoration
    */
   sessionPath?: string;
+
+  /**
+   * Optional session ID for existing database session
+   */
+  sessionId?: number;
 }

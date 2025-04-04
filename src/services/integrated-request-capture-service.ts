@@ -48,6 +48,10 @@ export class IntegratedRequestCaptureService {
   // Default API endpoints to intercept
   private static DEFAULT_ENDPOINTS = [
     '**/creative_radar_api/v1/top_ads/v2/list**',
+    '**/creative_radar_api/v1/**',
+    '**/business/creativecenter/api/**',
+    '**/business/creativecenter/inspiration/**',
+    '**/business/api/creative_radar/**',
   ];
 
   constructor(
@@ -61,6 +65,12 @@ export class IntegratedRequestCaptureService {
     if (this.log) {
       this.browserHelperService.setLogger(this.log);
     }
+
+    this.log?.debug('IntegratedRequestCaptureService initialized', {
+      sessionId,
+      endpoints: IntegratedRequestCaptureService.DEFAULT_ENDPOINTS,
+      capturesDir: IntegratedRequestCaptureService.CAPTURES_DIR,
+    });
   }
 
   /**
@@ -85,6 +95,11 @@ export class IntegratedRequestCaptureService {
       postData: request.postData() || undefined,
       timestamp: new Date().toISOString(),
     };
+
+    this.log?.debug('Capturing request', {
+      url: request.url(),
+      method: request.method(),
+    });
 
     const filename = `${Date.now()}_${Math.random().toString(36).substring(7)}.json`;
     const filepath = `${IntegratedRequestCaptureService.CAPTURES_DIR}/${filename}`;
@@ -128,10 +143,11 @@ export class IntegratedRequestCaptureService {
       });
     }
 
-    this.log?.debug('Request captured and saved', {
+    this.log?.log('Request captured and saved', {
       url: request.url(),
       filepath,
       apiConfigId: apiConfig.id,
+      sessionId: this.sessionId,
     });
   }
 
@@ -153,11 +169,18 @@ export class IntegratedRequestCaptureService {
     // Reset first request flag when setting up interception
     this.isFirstRequest = true;
 
-    // Set up interception for the default endpoint
-    await page.route(
-      IntegratedRequestCaptureService.DEFAULT_ENDPOINTS[0],
-      async (route, request) => {
+    log?.log('Setting up request interception', {
+      sessionId: this.sessionId,
+      urls: IntegratedRequestCaptureService.DEFAULT_ENDPOINTS,
+    });
+
+    // Set up interception for all default endpoints
+    for (const endpoint of IntegratedRequestCaptureService.DEFAULT_ENDPOINTS) {
+      log?.debug(`Adding route handler for ${endpoint}`);
+
+      await page.route(endpoint, async (route, request) => {
         try {
+          log?.debug(`Intercepted request: ${request.url()}`);
           await this.captureRequest(request);
 
           if (this.isFirstRequest) {
@@ -174,10 +197,15 @@ export class IntegratedRequestCaptureService {
         } catch (error) {
           log?.error('Error processing request:', {
             error: (error as Error).message,
+            url: request.url(),
           });
           await route.continue();
         }
-      },
-    );
+      });
+    }
+
+    log?.log('Request interception setup completed', {
+      endpointsCount: IntegratedRequestCaptureService.DEFAULT_ENDPOINTS.length,
+    });
   }
 }

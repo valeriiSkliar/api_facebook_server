@@ -9,7 +9,7 @@ import {
   ICaptchaSolver,
   CaptchaDetectionResult,
 } from '@src/interfaces/tik-tok';
-import { BrowserHelperService } from '@src/services/common';
+import { BrowserHelperService } from '@src/core/browser/helpers';
 
 interface SadCaptchaResponse {
   pointOneProportionX: number;

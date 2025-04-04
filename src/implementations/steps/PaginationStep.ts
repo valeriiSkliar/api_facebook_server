@@ -1,4 +1,4 @@
-import { AbstractScraperStep } from '@src/interfaces/AbstractScraperStep';
+import { AbstractScraperStep } from '@src/scrapers/common/interfaces/abstract-scraper-step';
 import { ScraperContext } from '@src/models/ScraperContext';
 
 export class PaginationStep extends AbstractScraperStep {

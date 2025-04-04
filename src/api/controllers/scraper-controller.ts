@@ -7,14 +7,14 @@ import {
   Get,
   Logger,
 } from '@nestjs/common';
-import { FacebookAdScraperService } from '../../../services/FacebookAdScraperService';
-import { SearchParameterService } from '../../../services/SearchParameterService';
+import { FacebookAdScraperService } from '../../services/FacebookAdScraperService';
+import { SearchParameterService } from '../../services/SearchParameterService';
 import { plainToInstance } from 'class-transformer';
 import {
   FacebookScraperRequestDto,
   FacebookScraperResponseDto,
   FacebookScraperResultDto,
-} from '../dto';
+} from '../dto/facebook';
 
 @Controller('scraper')
 export class ScraperController {

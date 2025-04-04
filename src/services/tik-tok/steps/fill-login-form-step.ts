@@ -3,7 +3,7 @@ import { Logger } from '@nestjs/common';
 import { Locator } from 'playwright';
 import { AuthStepType } from '@src/interfaces';
 import { IAuthenticationStep } from '@src/interfaces';
-import { BrowserHelperService } from '@src/services/common';
+import { BrowserHelperService } from '@src/core/browser/helpers';
 import { AuthCredentials, AuthenticatorContext } from '@src/models';
 
 export class FillLoginFormStep implements IAuthenticationStep {

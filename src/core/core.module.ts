@@ -4,7 +4,7 @@ import { QueueModule } from './queue/queue.module';
 import { CacheModule } from './cache/cache.module';
 import { WorkerModule } from './worker/worker.module';
 import { FileStorageModule } from './storage/file-storage/file-storage.module';
-import { PrismaModule } from './storage/prisma/prisma.module';
+import { PrismaModule } from '../database/prisma.module';
 import { RedisModule } from './storage/redis/redis.module';
 
 @Module({

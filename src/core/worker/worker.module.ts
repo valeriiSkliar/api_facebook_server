@@ -1,8 +1,8 @@
-import { Module, Logger, forwardRef } from '@nestjs/common';
+import { Module, Logger } from '@nestjs/common';
 import { WorkerService } from './worker.service';
 import { QueueModule } from '@core/queue/queue.module';
 import { BrowserPoolModule } from '@core/browser/browser-pool/browser-pool.module';
-import { PrismaModule } from '@core/storage/prisma';
+import { PrismaModule } from '@src/database';
 import { ScraperRegistry } from '@src/services/ScraperRegistry';
 import { ScraperFactory } from '@src/implementations/factories/ScraperFactory';
 import { StepFactory } from '@src/implementations/factories/StepFactory';
@@ -10,7 +10,7 @@ import { FacebookAdScraperService } from '@src/services/FacebookAdScraperService
 import { SearchParameterService } from '@src/services/SearchParameterService';
 import { TabManager } from '@core/browser/browser-pool/tab-manager';
 import { RedisModule } from '@core/storage/redis/redis.module';
-import { CommonApiModule } from '@src/api/common/common-api.module';
+import { RequestManagerModule } from '@src/services/request-manager';
 
 @Module({
   imports: [
@@ -18,7 +18,7 @@ import { CommonApiModule } from '@src/api/common/common-api.module';
     BrowserPoolModule,
     PrismaModule,
     RedisModule,
-    forwardRef(() => CommonApiModule),
+    RequestManagerModule,
   ],
   providers: [
     WorkerService,

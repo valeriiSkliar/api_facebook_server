@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
-import { PrismaService } from '@core/storage/prisma';
+import { PrismaService } from '@src/database';
 import { Injectable, Logger } from '@nestjs/common';
 import { AuthCredentials } from '@src/models/tik-tok/AuthCredentials';
 import { Log } from 'crawlee';

@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { CacheService } from './cache.service';
 import { RedisModule } from '@core/storage/redis/redis.module';
-import { PrismaModule } from '@core/storage/prisma';
+import { PrismaModule } from '@src/database';
 
 @Module({
   imports: [RedisModule, PrismaModule],

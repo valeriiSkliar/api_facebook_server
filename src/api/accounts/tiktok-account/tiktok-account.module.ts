@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TiktokAccountService } from './tiktok-account.service';
-import { TiktokAccountController } from './tiktok-account.controller';
-import { PrismaModule } from '@core/storage/prisma';
+import { TiktokAccountController } from '../../controllers/tiktok-account.controller';
+import { PrismaModule } from '@src/database';
 
 @Module({
   imports: [PrismaModule],

@@ -3,7 +3,7 @@
 import { Page } from 'playwright';
 import { Logger } from '@nestjs/common';
 
-import { BrowserHelperService } from '@src/services/common';
+import { BrowserHelperService } from '@src/core/browser/helpers';
 import { AuthenticatorContext, AuthCredentials } from '@src/models';
 import { AuthStepType } from '@src/interfaces';
 import { IAuthenticationStep } from '@src/interfaces';

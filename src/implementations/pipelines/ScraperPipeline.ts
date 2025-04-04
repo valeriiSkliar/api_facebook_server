@@ -1,8 +1,8 @@
 import { Logger } from '@nestjs/common';
 import { ScraperContext } from '@src/models/ScraperContext';
 import { ScraperResult } from '@src/models/ScraperResult';
-import { IScraperStep } from '@src/interfaces/IScraperStep';
 import { BasePipeline } from '@src/interfaces';
+import { IScraperStep } from '@src/scrapers/common/interfaces';
 
 export class ScraperPipeline extends BasePipeline<
   IScraperStep,

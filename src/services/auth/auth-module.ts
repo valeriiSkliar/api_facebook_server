@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { BrowserPoolModule } from '@core/browser/browser-pool/browser-pool.module';
-import { PrismaModule } from '@core/storage/prisma';
+import { PrismaModule } from '@src/database';
 import {
   AuthService,
   SessionRefreshService,

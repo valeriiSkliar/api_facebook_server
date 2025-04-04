@@ -8,9 +8,9 @@ import {
   Param,
   Delete,
 } from '@nestjs/common';
-import { TiktokAccountService } from './tiktok-account.service';
-import { CreateTiktokAccountDto } from './dto/create-tiktok-account.dto';
-import { UpdateTiktokAccountDto } from './dto/update-tiktok-account.dto';
+import { TiktokAccountService } from '../accounts/tiktok-account/tiktok-account.service';
+import { CreateTiktokAccountDto } from '../accounts/tiktok-account/dto/create-tiktok-account.dto';
+import { UpdateTiktokAccountDto } from '../accounts/tiktok-account/dto/update-tiktok-account.dto';
 
 @Controller('tiktok-account')
 export class TiktokAccountController {

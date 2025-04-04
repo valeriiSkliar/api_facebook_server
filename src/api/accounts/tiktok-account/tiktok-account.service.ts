@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '@core/storage/prisma';
+import { PrismaService } from '@src/database';
 import { CreateTiktokAccountDto } from './dto/create-tiktok-account.dto';
 import { UpdateTiktokAccountDto } from './dto/update-tiktok-account.dto';
 import { TikTokAccount } from '@prisma/client';

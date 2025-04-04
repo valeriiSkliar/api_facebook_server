@@ -1,7 +1,7 @@
 import { Logger } from '@nestjs/common';
-import { IPipeline } from './IPipeline';
-import { IPipelineResult } from './IPipeline';
-import { IPipelineStep } from './IPipeline';
+import { IPipeline } from './I-pipeline';
+import { IPipelineResult } from './I-pipeline';
+import { IPipelineStep } from './I-pipeline';
 
 /**
  * Abstract base pipeline class that implements common pipeline behavior

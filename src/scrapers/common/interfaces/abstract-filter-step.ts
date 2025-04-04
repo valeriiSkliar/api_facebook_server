@@ -1,5 +1,5 @@
 import { ScraperContext } from '@src/models/ScraperContext';
-import { AbstractScraperStep } from './AbstractScraperStep';
+import { AbstractScraperStep } from './abstract-scraper-step';
 import { Logger } from '@nestjs/common';
 
 export abstract class AbstractFilterStep extends AbstractScraperStep {

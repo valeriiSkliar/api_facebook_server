@@ -1,7 +1,7 @@
 // src/interfaces/auth/IAuthenticatorFactory.ts
 import { Logger } from '@nestjs/common';
 import { AuthenticatorContext, AuthenticatorOptions } from '@src/models';
-import { IAuthenticator } from './IAuthenticator';
+import { IAuthenticator } from './i-authenticator';
 
 /**
  * Interface for authenticator factories

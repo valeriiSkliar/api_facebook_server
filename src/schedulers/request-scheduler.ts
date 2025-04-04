@@ -5,7 +5,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { RequestManagerService } from '../services/request-manager-service';
 import { BrowserPoolService } from '@core/browser/browser-pool/browser-pool-service';
-import { CacheService } from '../services/cache-service';
+import { CacheService } from '@core/cache';
 import { TabManager } from '@core/browser/browser-pool/tab-manager';
 
 @Injectable()

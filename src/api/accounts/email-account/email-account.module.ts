@@ -1,7 +1,7 @@
 import { Module, Logger } from '@nestjs/common';
 import { EmailAccountService } from './email-account.service';
-import { EmailAccountController } from './email-account.controller';
-import { PrismaModule } from '@core/storage/prisma';
+import { PrismaModule } from '@src/database';
+import { EmailAccountController } from '@src/api/controllers/email-account.controller';
 
 @Module({
   imports: [PrismaModule],

@@ -1,5 +1,5 @@
 import { Logger } from '@nestjs/common';
-import { AbstractFilterStep } from '@src/interfaces/AbstractFilterStep';
+import { AbstractFilterStep } from '@src/scrapers/common/interfaces/abstract-filter-step';
 
 export class FilterRegistry {
   private static instance: FilterRegistry;

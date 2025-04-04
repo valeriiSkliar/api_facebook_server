@@ -1,4 +1,4 @@
-import { AbstractScraperStep } from '@src/interfaces/AbstractScraperStep';
+import { AbstractScraperStep } from '@src/scrapers/common/interfaces/abstract-scraper-step';
 import { ScraperContext } from '@src/models/ScraperContext';
 import { AdLibraryQuery } from '@src/models/AdLibraryQuery';
 

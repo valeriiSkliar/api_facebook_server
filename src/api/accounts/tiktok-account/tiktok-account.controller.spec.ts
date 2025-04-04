@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { TiktokAccountController } from './tiktok-account.controller';
+import { TiktokAccountController } from '../../controllers/tiktok-account.controller';
 import { TiktokAccountService } from './tiktok-account.service';
 
 describe('TiktokAccountController', () => {

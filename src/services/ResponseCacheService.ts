@@ -1,5 +1,5 @@
 import { Logger } from '@nestjs/common';
-import { CachedResponse } from '../interfaces/CachedResponse';
+import { CachedResponse } from '../core/interfaces/cached-response';
 
 export class ResponseCacheService {
   private responseCache = new Map<string, CachedResponse>();

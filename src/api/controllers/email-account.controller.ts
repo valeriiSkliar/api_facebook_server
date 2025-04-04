@@ -8,10 +8,9 @@ import {
   Delete,
   Logger,
 } from '@nestjs/common';
-import { EmailAccountService } from './email-account.service';
-import { CreateEmailAccountDto } from './dto/create-email-account.dto';
-import { UpdateEmailAccountDto } from './dto/update-email-account.dto';
-
+import { EmailAccountService } from '../accounts/email-account/email-account.service';
+import { CreateEmailAccountDto } from '../accounts/email-account/dto/create-email-account.dto';
+import { UpdateEmailAccountDto } from '../accounts/email-account/dto/update-email-account.dto';
 @Controller('email-account')
 export class EmailAccountController {
   constructor(

@@ -1,5 +1,5 @@
 import { Logger, Inject } from '@nestjs/common';
-import { IScraperStep } from '../../interfaces/IScraperStep';
+import { IScraperStep } from '../../scrapers/common/interfaces/i-scraper-step';
 import { InitializationStep } from '../steps/InitializationStep';
 import { InterceptionSetupStep } from '../steps/InterceptionSetupStep';
 import { PaginationStep } from '../steps/PaginationStep';

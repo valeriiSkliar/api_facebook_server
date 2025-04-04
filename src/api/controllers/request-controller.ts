@@ -15,7 +15,7 @@ import {
 import {
   RequestManagerService,
   RequestStatus,
-} from '../../services/request-manager-service';
+} from '../../services/request-manager/request-manager-service';
 import { UpdateRequestStatusDto } from '../dto/common/update-request-status.dto';
 import { AuthenticatedRequest } from '../../interfaces/auth.interface';
 import { AdData } from '../../models/facebook-ad-data';

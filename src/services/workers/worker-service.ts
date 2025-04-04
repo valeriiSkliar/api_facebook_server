@@ -4,11 +4,11 @@ import { QueueService } from '@core/queue/queue.service';
 import {
   RequestManagerService,
   RequestMetadata,
-} from './request-manager-service';
+} from '../request-manager/request-manager-service';
 
-import { RequestStatus } from './request-manager-service';
+import { RequestStatus } from '../request-manager/request-manager-service';
 import { ScraperFactory } from '@src/scrapers/common/factories/scraper-factory';
-import { ScraperRegistry } from './ScraperRegistry';
+import { ScraperRegistry } from '../ScraperRegistry';
 import { AdLibraryQuery } from '@src/models/facebook-ad-lib-query';
 import { BrowserPoolService } from '@core/browser/browser-pool/browser-pool-service';
 

@@ -1,8 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { QueueService } from '@core/queue/queue.service';
-import { RequestProcessorService } from '../services/request-processor-service';
-import { RequestManagerService } from '../services/request-manager-service';
+import { RequestProcessorService } from '../workers/request-processor-service';
+import { RequestManagerService } from '../request-manager/request-manager-service';
 
 @Injectable()
 export class RequestProcessorScheduler {

@@ -9,7 +9,7 @@ import { Log } from 'crawlee';
 import { Env } from '@src/config';
 import * as fs from 'fs-extra';
 import * as path from 'path';
-import { AuthService } from '@src/services/auth/auth-service';
+import { AuthService } from '@src/services/session-manager/auth/auth-service';
 
 @Injectable()
 export class SessionRefreshService {

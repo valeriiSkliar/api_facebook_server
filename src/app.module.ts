@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { AppService } from './app.service';
 import { ScheduleModule } from '@nestjs/schedule';
-import { AuthModule } from './services/auth/auth-module';
+import { AuthModule } from './services/session-manager/auth/auth-module';
 import { ApiModule } from './api/api.module';
 import { CoreModule } from './core/core.module';
 

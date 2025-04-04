@@ -4,7 +4,7 @@ import {
   RequestManagerService,
   RequestMetadata,
   RequestStatus,
-} from '@src/services/request-manager-service';
+} from '@src/services/request-manager/request-manager-service';
 import { ScraperFactory } from '@src/scrapers/common/factories/scraper-factory';
 import { ScraperRegistry } from '@src/services/ScraperRegistry';
 import { AdLibraryQuery } from '@src/models/facebook-ad-lib-query';

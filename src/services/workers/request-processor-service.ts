@@ -8,9 +8,9 @@ import {
   RequestManagerService,
   RequestMetadata,
   RequestStatus,
-} from './request-manager-service';
+} from '../request-manager/request-manager-service';
 import { BrowserPoolService } from '@core/browser/browser-pool/browser-pool-service';
-import { FacebookAdScraperService } from './FacebookAdScraperService';
+import { FacebookAdScraperService } from '../FacebookAdScraperService';
 import { AdLibraryQuery } from '@src/models/facebook-ad-lib-query';
 import { Browser } from 'playwright';
 import { TabManager } from '@core/browser/browser-pool/tab-manager';

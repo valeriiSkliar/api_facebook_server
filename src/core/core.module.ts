@@ -14,7 +14,7 @@ import { RedisModule } from './storage/redis/redis.module';
     BrowserPoolModule,
     QueueModule,
     CacheModule,
-    WorkerModule,
+    // WorkerModule,
     FileStorageModule,
   ],
   exports: [
@@ -23,7 +23,7 @@ import { RedisModule } from './storage/redis/redis.module';
     BrowserPoolModule,
     QueueModule,
     CacheModule,
-    WorkerModule,
+    // WorkerModule,
     FileStorageModule,
   ],
 })

@@ -2,12 +2,12 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 import { PrismaService } from '@src/database';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { SessionRefreshService } from './session-refresh.service';
 
 @Injectable()
-export class SessionScheduleService {
+export class SessionScheduleService implements OnModuleInit {
   private readonly logger = new Logger(SessionScheduleService.name);
   // Флаг для отслеживания запущенного процесса обновления сессий
   private isRefreshing = false;
@@ -23,9 +23,64 @@ export class SessionScheduleService {
   }
 
   /**
+   * Этот метод вызывается после инициализации модуля и запускает первоначальное обновление сессии
+   */
+  async onModuleInit() {
+    this.logger.log('SessionScheduleService onModuleInit triggered');
+
+    try {
+      // Проверка наличия активной сессии или создание новой при запуске приложения
+      await this.initialSessionCheck();
+    } catch (error: unknown) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+
+      this.logger.error(
+        `Error during initial session check: ${errorMessage}`,
+        errorStack,
+      );
+    }
+  }
+
+  /**
+   * Выполняет первоначальную проверку сессий при запуске приложения
+   */
+  async initialSessionCheck() {
+    this.logger.log('Performing initial session check on application startup');
+
+    // Проверяем наличие активной сессии
+    const activeSession = await this.prisma.apiConfiguration.findFirst({
+      where: {
+        is_active: true,
+      },
+    });
+
+    if (!activeSession) {
+      this.logger.log(
+        'No valid API config found on startup, triggering session refresh',
+      );
+
+      // Запускаем процесс обновления/создания сессии
+      const refreshResult =
+        await this.sessionRefreshService.refreshActiveSession();
+
+      if (refreshResult) {
+        this.logger.log('Initial session refresh completed successfully');
+      } else {
+        this.logger.warn('Initial session refresh failed');
+      }
+    } else {
+      this.logger.log(
+        'Valid API config found on startup, no immediate refresh needed',
+      );
+    }
+  }
+
+  /**
    * Check sessions every 30 seconds and refresh if needed
    */
-  @Cron(CronExpression.EVERY_30_SECONDS)
+  @Cron(CronExpression.EVERY_10_MINUTES)
   async checkAndRefreshSessions() {
     console.log('checkAndRefreshSessions called - direct console output');
     this.logger.log('checkAndRefreshSessions method called');

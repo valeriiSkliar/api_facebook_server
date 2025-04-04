@@ -5,7 +5,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { AuthModule } from './services/auth/auth-module';
 import { ApiModule } from './api/api.module';
 import { CoreModule } from './core/core.module';
-
+import { AppController } from './app.controller';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -17,7 +17,7 @@ import { CoreModule } from './core/core.module';
     AuthModule,
     ApiModule,
   ],
-  controllers: [],
+  controllers: [AppController],
   providers: [AppService],
 })
 export class AppModule {}

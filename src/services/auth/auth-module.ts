@@ -20,6 +20,6 @@ import {
       useClass: TikTokAuthenticatorFactory,
     },
   ],
-  exports: [SessionScheduleService, SessionRefreshService],
+  exports: [SessionScheduleService, SessionRefreshService, AuthService],
 })
 export class AuthModule {}

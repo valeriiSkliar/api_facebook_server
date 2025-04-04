@@ -52,6 +52,14 @@ export class RequestController {
     @Body() createDto: CreateRequestDto,
   ) {
     try {
+      if (!req.user) {
+        this.logger.error('User not authenticated or missing in request');
+        throw new HttpException(
+          'Authentication required',
+          HttpStatus.UNAUTHORIZED,
+        );
+      }
+
       const userId = req.user.id;
       const userEmail = req.user.email;
       const request = await this.requestManager.createRequest(

@@ -1,4 +1,4 @@
-import { BasePipeline } from '@src/interfaces';
+import { BasePipeline } from '@core/interfaces';
 import { AuthenticatorContext } from '../models/authenticator-context';
 import { AuthResult } from '../models/auth-result';
 import { AuthCredentials } from '../models/auth-credentials';

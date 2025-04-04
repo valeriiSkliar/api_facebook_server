@@ -9,7 +9,10 @@ import { BrowserPoolService } from '@core/browser/browser-pool/browser-pool-serv
 import { TabManager } from '@src/core/browser/tab-manager/tab-manager';
 import { PrismaClient } from '@prisma/client';
 import { Env } from '@src/config';
-import { IAuthenticator, IAuthenticatorFactory } from '@src/interfaces';
+import {
+  IAuthenticator,
+  IAuthenticatorFactory,
+} from '@src/scrapers/common/interfaces';
 import { AuthenticatorOptions } from '@src/authenticators/common/models/authenticator-options';
 import { AuthenticatorContext } from '@src/authenticators/common/models/authenticator-context';
 

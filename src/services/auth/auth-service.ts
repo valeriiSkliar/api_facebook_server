@@ -1,6 +1,6 @@
 // src/services/auth/AuthService.ts
 import { Injectable, Logger, Inject } from '@nestjs/common';
-import { IAuthenticatorFactory } from '@src/interfaces';
+import { IAuthenticatorFactory } from '@src/scrapers/common/interfaces';
 import { AuthCredentials } from '@src/authenticators/common/models/auth-credentials';
 
 /**

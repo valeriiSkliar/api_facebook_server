@@ -1,6 +1,6 @@
 // src/services/auth/BaseAuthenticator.ts
 import { Logger } from '@nestjs/common';
-import { IAuthenticator } from '@src/interfaces';
+import { IAuthenticator } from '@src/scrapers/common/interfaces';
 import { AuthenticatorContext } from '../models/authenticator-context';
 import { AuthenticatorOptions } from '../models/authenticator-options';
 import { AuthCredentials } from '../models/auth-credentials';

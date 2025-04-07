@@ -182,7 +182,12 @@ export class BrowserLifecycleManager {
       );
 
       if (tab && page && !page.isClosed()) {
+        // Log before setting active page
+        this.logger.debug(
+          `[createTab] Attempting to associate Page with tab ${tab.id} in activePages.`,
+        );
         this.activePages.set(tab.id, page);
+        // Log after setting active page
         this.logger.log(`Associated Page object with tab ${tab.id}`);
 
         // Update browser instance
@@ -429,6 +434,18 @@ export class BrowserLifecycleManager {
     }
     this.logger.warn(`Page object not found in activePages for tab ${tabId}.`);
     return null;
+  }
+
+  /**
+   * Check if the Page object for a given tab ID is ready (exists and is not closed).
+   * @param tabId - ID of the tab to check.
+   * @returns True if the page is ready, false otherwise.
+   */
+  isPageReady(tabId: string): boolean {
+    const page = this.activePages.get(tabId);
+    const isReady = !!page && !page.isClosed();
+    this.logger.debug(`Checking page readiness for tab ${tabId}: ${isReady}`);
+    return isReady;
   }
 
   /**

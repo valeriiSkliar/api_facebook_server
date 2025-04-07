@@ -9,6 +9,7 @@ import { BrowserPoolService } from '@core/browser/browser-pool/browser-pool-serv
 import { Prisma, Request } from '@prisma/client';
 import { QueueService } from '@core/queue/queue.service';
 import { TabManager } from '@src/core/browser/tab-manager/tab-manager';
+import { BrowserLifecycleManager } from '@src/core/browser/lifecycle/browser-lifecycle-manager';
 import { CreateRequestDto } from './dto/create-request.dto';
 
 export interface RequestMetadata {
@@ -52,6 +53,7 @@ export class RequestManagerService {
     private readonly browserPoolService: BrowserPoolService,
     private readonly queueService: QueueService,
     private readonly tabManager: TabManager,
+    private readonly lifecycleManager: BrowserLifecycleManager,
   ) {}
 
   /**
@@ -151,6 +153,10 @@ export class RequestManagerService {
         },
       });
 
+      // Log before creating tab
+      this.logger.debug(
+        `[createRequest] Attempting to create tab for request ${requestId}...`,
+      );
       // Create a tab for this request in an available browser
       const tabCreation = await this.browserPoolService.createTabForRequest(
         requestId,
@@ -180,7 +186,40 @@ export class RequestManagerService {
           },
         });
 
-        // Enqueue for processing
+        // --- Check page readiness --- START ---
+        // Wait briefly to allow the page object to be fully registered
+        await new Promise((resolve) => setTimeout(resolve, 200)); // Short delay
+
+        const pageIsReady = this.lifecycleManager.isPageReady(
+          tabCreation.tabId,
+        );
+
+        if (!pageIsReady) {
+          this.logger.error(
+            `Page for tab ${tabCreation.tabId} (request ${requestId}) did not become ready in time. Cancelling request.`,
+          );
+          // Clean up: close the tab and mark the request as FAILED
+          await this.browserPoolService.closeTab(
+            tabCreation.browserId,
+            tabCreation.tabId,
+            { deleteRedisKeys: true }, // Ensure Redis keys are deleted
+          );
+          await this.updateRequestStatus(
+            requestId,
+            RequestStatus.FAILED,
+            { error: 'PageNotReady' },
+            { deleteRedisKeys: true }, // Pass deleteRedisKeys option here too
+          );
+          // Optionally throw an error to signal failure
+          throw new Error('Failed to ensure page readiness after tab creation');
+        }
+        // --- Check page readiness --- END ---
+
+        // Log before enqueueing
+        this.logger.debug(
+          `[createRequest] Page for tab ${tabCreation.tabId} is ready. Enqueueing request ${requestId}.`,
+        );
+        // Enqueue for processing ONLY if page is ready
         await this.queueService.enqueueRequest(requestId, priority);
 
         this.logger.log(

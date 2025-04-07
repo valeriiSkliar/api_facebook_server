@@ -204,7 +204,7 @@ export class TabManager {
     options?: { deleteRedisKeys?: boolean },
   ): Promise<boolean> {
     this.logger.log(`Closing tab ${tabId}`);
-    // Default deleteRedisKeys to true if options or the flag itself is undefined
+    // Check the deleteRedisKeys flag from options. Default to true if not explicitly set to false.
     const deleteRedisKeys = options?.deleteRedisKeys !== false;
 
     const tab = await this.getTab(tabId);
@@ -216,10 +216,15 @@ export class TabManager {
     // Remove from memory
     this.tabs.delete(tabId);
 
-    // Conditionally remove from Redis
+    // Conditionally remove from Redis based on the flag
     if (deleteRedisKeys) {
       await this.redisService.del(`${this.TAB_PREFIX}${tabId}`);
-      await this.redisService.del(`${this.REQUEST_TAB_PREFIX}${tab.requestId}`);
+      // Only attempt to delete request-tab mapping if requestId exists
+      if (tab.requestId) {
+        await this.redisService.del(
+          `${this.REQUEST_TAB_PREFIX}${tab.requestId}`,
+        );
+      }
       this.logger.log(
         `Deleted Redis keys for tab ${tabId} (request ${tab.requestId})`,
       );

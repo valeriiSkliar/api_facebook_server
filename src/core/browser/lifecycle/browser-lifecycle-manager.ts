@@ -190,6 +190,34 @@ export class BrowserLifecycleManager {
         // Log after setting active page
         this.logger.log(`Associated Page object with tab ${tab.id}`);
 
+        // Add event listeners to the page
+        if (page) {
+          page.on('close', () => {
+            this.logger.warn(
+              `[Event] Playwright page for tab ${tab?.id} (request: ${tab?.requestId}, browser: ${instance.id}) emitted 'close'. Removing from activePages.`,
+            );
+            // Additionally: remove the page from activePages if it closed unexpectedly
+            if (tab?.id) {
+              this.activePages.delete(tab.id);
+              this.logger.debug(
+                `[Event] Removed page for closed tab ${tab.id} from activePages.`,
+              );
+            }
+          });
+          page.on('crash', () => {
+            this.logger.error(
+              `[Event] Playwright page for tab ${tab?.id} (request: ${tab?.requestId}, browser: ${instance.id}) emitted 'crash'. Removing from activePages.`,
+            );
+            // Additionally: remove the page from activePages
+            if (tab?.id) {
+              this.activePages.delete(tab.id);
+              this.logger.debug(
+                `[Event] Removed page for crashed tab ${tab.id} from activePages.`,
+              );
+            }
+          });
+        }
+
         // Update browser instance
         instance.openTabs++;
         instance.tabIds.push(tab.id);
@@ -289,6 +317,33 @@ export class BrowserLifecycleManager {
       if (tab && page && !page.isClosed()) {
         this.activePages.set(tab.id, page);
         this.logger.log(`Associated Page object with system tab ${tab.id}`);
+
+        // --- Add event listeners for system tab --- START
+        if (page) {
+          page.on('close', () => {
+            this.logger.warn(
+              `[Event] Playwright page for SYSTEM tab ${tab?.id} (request ID: ${tab?.requestId}, browser: ${instance.id}) emitted 'close'. Removing from activePages.`,
+            );
+            if (tab?.id) {
+              this.activePages.delete(tab.id);
+              this.logger.debug(
+                `[Event] Removed page for closed SYSTEM tab ${tab.id} from activePages.`,
+              );
+            }
+          });
+          page.on('crash', () => {
+            this.logger.error(
+              `[Event] Playwright page for SYSTEM tab ${tab?.id} (request ID: ${tab?.requestId}, browser: ${instance.id}) emitted 'crash'. Removing from activePages.`,
+            );
+            if (tab?.id) {
+              this.activePages.delete(tab.id);
+              this.logger.debug(
+                `[Event] Removed page for crashed SYSTEM tab ${tab.id} from activePages.`,
+              );
+            }
+          });
+        }
+        // --- Add event listeners for system tab --- END
 
         // Update browser instance
         instance.openTabs++;

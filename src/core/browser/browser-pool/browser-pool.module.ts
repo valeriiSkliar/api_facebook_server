@@ -1,6 +1,6 @@
 // src/services/browser-pool/browser-pool.module.ts
 
-import { Module } from '@nestjs/common';
+import { Module, Global } from '@nestjs/common';
 import { BrowserPoolService } from './browser-pool-service';
 import { BrowserLifecycleManager } from '../lifecycle/browser-lifecycle-manager';
 import { BrowserStorageService } from './browser-storage-service';
@@ -8,6 +8,7 @@ import { BrowserMetricsService } from './browser-metrics-service';
 import { RedisModule } from '@core/storage/redis/redis.module';
 import { TabManager } from '../tab-manager/tab-manager';
 
+@Global()
 @Module({
   imports: [RedisModule],
   providers: [

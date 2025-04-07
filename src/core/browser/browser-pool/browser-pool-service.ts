@@ -531,108 +531,124 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Clean up expired browser instances
+   * Clean up browsers that have exceeded their TTL
    */
   async cleanupExpiredBrowsers(): Promise<number> {
-    try {
-      let cleanedCount = 0;
-      const now = new Date();
+    const now = new Date();
+    let cleanedCount = 0;
 
-      // Get all active browsers
-      const browsers = Array.from(this.activeBrowsers.values());
+    this.logger.debug(`Running cleanup of expired browsers...`);
 
-      // Check each browser for expiration
-      for (const browser of browsers) {
-        if (browser.expiresAt < now) {
-          // Browser has expired, close it
-          this.logger.log(`Cleaning up expired browser ${browser.id}`);
+    const browsersToCheck = Array.from(this.activeBrowsers.values());
+    this.logger.debug(`Checking ${browsersToCheck.length} active browsers.`);
 
-          try {
-            // Change state and close browser
-            browser.state = BrowserState.CLOSING;
-            await this.lifecycleManager.closeBrowser(browser);
+    for (const browser of browsersToCheck) {
+      if (!browser.expiresAt || !(browser.expiresAt instanceof Date)) {
+        this.logger.warn(
+          `Browser ${browser.id.substring(0, 8)} has invalid expiresAt. Skipping.`,
+        );
+        continue;
+      }
 
-            // Remove from memory and Redis
-            this.activeBrowsers.delete(browser.id);
+      // We know expiresAt is a Date here due to the check above
+      const expiresAtStr = browser.expiresAt.toISOString();
+      this.logger.debug(
+        `Checking browser ${browser.id.substring(0, 8)}: expiresAt=${expiresAtStr}, now=${now.toISOString()}`,
+      );
+
+      if (browser.expiresAt < now) {
+        this.logger.log(
+          `Browser ${browser.id.substring(0, 8)} has expired (expiresAt: ${browser.expiresAt.toISOString()}). Closing...`,
+        );
+        try {
+          this.logger.debug(
+            `Calling lifecycleManager.closeBrowser for ${browser.id.substring(0, 8)}`,
+          );
+          const closeResult = await this.lifecycleManager.closeBrowser(browser);
+          if (closeResult.success) {
             await this.storageService.deleteBrowser(browser.id);
-
-            // Record metrics
-            this.metricsService.recordBrowserClosure();
-
+            this.activeBrowsers.delete(browser.id);
             cleanedCount++;
-          } catch (error) {
+            this.logger.log(
+              `Successfully closed expired browser ${browser.id.substring(0, 8)}.`,
+            );
+          } else {
             this.logger.error(
-              `Error closing expired browser ${browser.id}:`,
-              error,
+              `Failed to close expired browser ${browser.id.substring(0, 8)}: ${closeResult.error?.message}`,
             );
           }
+        } catch (error) {
+          this.logger.error(
+            `Error during closing expired browser ${browser.id.substring(0, 8)}:`,
+            error,
+          );
         }
+      } else {
+        this.logger.debug(
+          `Browser ${browser.id.substring(0, 8)} is still valid.`,
+        );
       }
-
-      // Also clean up expired tabs
-      const expiredTabsCount = await this.tabManager.cleanupExpiredTabs();
-      if (expiredTabsCount > 0) {
-        this.logger.log(`Cleaned up ${expiredTabsCount} expired tabs`);
-      }
-
-      if (cleanedCount > 0) {
-        this.logger.log(`Cleaned up ${cleanedCount} expired browsers`);
-      }
-
-      return cleanedCount;
-    } catch (error) {
-      this.logger.error('Error cleaning up expired browsers:', error);
-      return 0;
     }
+
+    this.logger.log(
+      `Expired browser cleanup finished. Closed ${cleanedCount}.`,
+    );
+    return cleanedCount;
   }
 
   /**
-   * Perform health checks on all browsers
+   * Perform health checks on active browsers
    */
   async performHealthChecks(): Promise<number> {
-    try {
-      let unhealthyCount = 0;
+    let unhealthyCount = 0;
+    const now = new Date();
+    this.logger.debug(`Running health checks on active browsers...`);
 
-      // Get all active browsers
-      const browsers = Array.from(this.activeBrowsers.values());
+    const browsersToCheck = Array.from(this.activeBrowsers.values());
+    this.logger.debug(`Checking ${browsersToCheck.length} active browsers.`);
 
-      for (const browser of browsers) {
-        // Skip browsers that are already closing
-        if (browser.state === BrowserState.CLOSING) {
-          continue;
-        }
-
-        const isHealthy =
-          await this.lifecycleManager.checkBrowserHealth(browser);
-
-        if (!isHealthy) {
-          this.logger.warn(
-            `Browser ${browser.id} failed health check, closing`,
-          );
-
-          // Close all tabs first
-          for (const tabId of browser.tabIds) {
-            await this.closeTab(browser.id, tabId);
-          }
-
-          // Close unhealthy browser
-          await this.releaseBrowser(browser.id);
-
-          unhealthyCount++;
-        }
-      }
-
-      if (unhealthyCount > 0) {
-        this.logger.log(
-          `Found and closed ${unhealthyCount} unhealthy browsers`,
+    for (const browser of browsersToCheck) {
+      this.logger.debug(
+        `Performing health check for browser ${browser.id.substring(0, 8)}...`,
+      );
+      let isHealthy: boolean = false;
+      try {
+        isHealthy = await this.lifecycleManager.checkBrowserHealth(browser);
+        this.logger.debug(
+          `Health check for browser ${browser.id.substring(0, 8)} result: ${isHealthy ? 'Healthy' : 'Unhealthy'}`,
         );
+      } catch (error) {
+        this.logger.error(
+          `Error during health check for browser ${browser.id.substring(0, 8)}:`,
+          error,
+        );
+        isHealthy = false; // Consider it unhealthy if check fails
       }
 
-      return unhealthyCount;
-    } catch (error) {
-      this.logger.error('Error performing health checks:', error);
-      return 0;
+      browser.healthCheck = now;
+      browser.healthStatus = isHealthy;
+
+      // Update in Redis (important to keep state consistent)
+      await this.storageService.saveBrowser(browser, this.config.browserTTL);
+
+      if (!isHealthy) {
+        unhealthyCount++;
+        this.logger.warn(
+          `Browser ${browser.id.substring(0, 8)} is unhealthy. Releasing...`,
+        );
+        this.logger.debug(
+          `Calling releaseBrowser for unhealthy browser ${browser.id.substring(0, 8)}`,
+        );
+        await this.releaseBrowser(browser.id);
+      } else {
+        this.logger.debug(`Browser ${browser.id.substring(0, 8)} is healthy.`);
+      }
     }
+
+    this.logger.log(
+      `Health checks finished. Found ${unhealthyCount} unhealthy browsers.`,
+    );
+    return unhealthyCount;
   }
 
   /**

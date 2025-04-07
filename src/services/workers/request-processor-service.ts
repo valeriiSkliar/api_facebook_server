@@ -114,13 +114,23 @@ export class RequestProcessorService {
     } catch (error: unknown) {
       this.logger.error(`Error processing request ${requestId}`, error);
 
+      const errorMessage = (error as Error).message;
+      const isPageNotFoundError =
+        errorMessage.includes('Page not found or closed') ||
+        errorMessage.includes('Page object not found');
+
+      // Determine if Redis keys should be deleted
+      const deleteRedisKeys = !isPageNotFoundError; // Don't delete keys for page not found error to allow retry
+
       // Update request status to FAILED
       await this.requestManager.updateRequestStatus(
         requestId,
         RequestStatus.FAILED,
-        { error: (error as Error).message },
+        { error: errorMessage },
+        { deleteRedisKeys, isRetryablePageError: isPageNotFoundError }, // Pass options
       );
 
+      // Rethrow the error to let the queue handler know about the failure
       throw error;
     }
   }

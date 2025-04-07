@@ -329,7 +329,7 @@ export class RequestManagerService {
     requestId: string,
     status: RequestStatus,
     result?: any,
-    options?: { deleteRedisKeys?: boolean },
+    options?: { deleteRedisKeys?: boolean; isRetryablePageError?: boolean },
   ): Promise<RequestMetadata | null> {
     try {
       const request = await this.getRequest(requestId);
@@ -353,13 +353,17 @@ export class RequestManagerService {
 
         // Close the tab if it exists, passing options
         if (request.tabId && request.browserId) {
+          // Only delete keys if not a retryable page error
+          const shouldDeleteKeys =
+            options?.deleteRedisKeys !== false &&
+            !options?.isRetryablePageError;
           await this.browserPoolService.closeTab(
             request.browserId,
             request.tabId,
-            options,
+            { deleteRedisKeys: shouldDeleteKeys }, // Pass calculated flag
           );
           this.logger.log(
-            `Closed tab ${request.tabId} for request ${requestId} with options: ${JSON.stringify(options)}`,
+            `Closed tab ${request.tabId} for request ${requestId} with deleteRedisKeys: ${shouldDeleteKeys}`,
           );
         }
       }
@@ -556,68 +560,94 @@ export class RequestManagerService {
   }
 
   /**
-   * Check for expired requests and clean them up
+   * Cleanup expired requests (e.g., those older than 24 hours)
    */
   async cleanupExpiredRequests(): Promise<number> {
-    try {
-      const now = new Date();
-      const threshold = new Date(now.getTime() - 15 * 60 * 1000); // 15 minutes ago
+    const now = new Date();
+    let cleanedCount = 0;
 
-      // Find requests with no activity for 15+ minutes
-      const expiredRequests = await this.prismaService.request.findMany({
-        where: {
-          status: {
-            in: [
-              RequestStatus.PENDING.toString(),
-              RequestStatus.PROCESSING.toString(),
-            ],
-          },
-          updated_at: {
-            lt: threshold,
-          },
-        },
-      });
+    this.logger.debug('Running cleanup of expired requests...');
 
-      let count = 0;
+    // It might be inefficient to get ALL keys if there are many.
+    // Consider using SCAN or limiting the initial fetch if performance becomes an issue.
+    const allRequestKeys = await this.redisService.keys(
+      `${this.REQUEST_PREFIX}*`,
+    );
 
-      // Mark each as expired and close tabs
-      for (const request of expiredRequests) {
-        // Get request metadata to find tab ID
-        const requestMetadata = await this.getRequest(
-          request.external_request_id,
-        );
+    this.logger.debug(`Found ${allRequestKeys.length} request keys in Redis.`);
 
-        // Close the tab if it exists
-        if (requestMetadata?.tabId && requestMetadata?.browserId) {
-          this.logger.debug(
-            `Attempting to close tab ${requestMetadata.tabId} for inactive request ${request.external_request_id}`,
+    for (const key of allRequestKeys) {
+      const requestId = key.substring(this.REQUEST_PREFIX.length);
+      try {
+        const requestMeta = await this.redisService.get<RequestMetadata>(key);
+
+        if (!requestMeta) {
+          this.logger.warn(
+            `Metadata for request key ${key} not found, skipping.`,
           );
-          await this.browserPoolService.closeTab(
-            requestMetadata.browserId,
-            requestMetadata.tabId,
-          );
-          this.logger.log(
-            `Closed tab ${requestMetadata.tabId} for expired request ${request.external_request_id}`,
-          );
+          continue;
         }
 
-        // Update request status to expired
+        // Ensure dates are Date objects
+        const createdAt = new Date(requestMeta.createdAt);
+        const updatedAt = requestMeta.lastActivityAt
+          ? new Date(requestMeta.lastActivityAt)
+          : createdAt;
+
+        // Check if request is expired based on last activity
+        const expiryThreshold = new Date(
+          updatedAt.getTime() + this.REQUEST_EXPIRY * 1000,
+        );
+
         this.logger.debug(
-          `Attempting to mark request ${request.external_request_id} as expired due to inactivity`,
-        );
-        await this.updateRequestStatus(
-          request.external_request_id,
-          RequestStatus.EXPIRED,
+          `Checking request ${requestId}: lastActivityAt=${updatedAt.toISOString()}, now=${now.toISOString()}, expiryThreshold=${expiryThreshold.toISOString()}`,
         );
 
-        count++;
+        if (
+          now > expiryThreshold &&
+          requestMeta.status !== RequestStatus.COMPLETED &&
+          requestMeta.status !== RequestStatus.FAILED &&
+          requestMeta.status !== RequestStatus.EXPIRED
+        ) {
+          this.logger.log(
+            `Request ${requestId} is expired (last activity: ${updatedAt.toISOString()}). Updating status to EXPIRED.`,
+          );
+
+          try {
+            this.logger.debug(
+              `Calling updateRequestStatus for expired request ${requestId}`,
+            );
+            await this.updateRequestStatus(
+              requestId,
+              RequestStatus.EXPIRED,
+              { reason: 'Request timed out due to inactivity' },
+              { deleteRedisKeys: true }, // Ensure cleanup happens
+            );
+            cleanedCount++;
+            this.logger.log(
+              `Successfully marked request ${requestId} as EXPIRED.`,
+            );
+          } catch (updateError) {
+            this.logger.error(
+              `Error updating status for expired request ${requestId}:`,
+              updateError,
+            );
+          }
+        } else {
+          this.logger.debug(`Request ${requestId} is still valid.`);
+        }
+      } catch (error) {
+        this.logger.error(
+          `Error processing request key ${key} during cleanup:`,
+          error,
+        );
       }
-
-      return count;
-    } catch (error) {
-      this.logger.error('Error cleaning up expired requests', error);
-      throw error;
     }
+
+    this.logger.log(
+      `Expired request cleanup finished. Marked ${cleanedCount}.`,
+    );
+    return cleanedCount;
   }
 
   /**

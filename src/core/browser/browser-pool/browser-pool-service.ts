@@ -305,7 +305,11 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
   /**
    * Close a tab
    */
-  async closeTab(browserId: string, tabId: string): Promise<boolean> {
+  async closeTab(
+    browserId: string,
+    tabId: string,
+    options?: { deleteRedisKeys?: boolean },
+  ): Promise<boolean> {
     try {
       const browser = this.activeBrowsers.get(browserId);
 
@@ -316,8 +320,12 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
         return false;
       }
 
-      // Use lifecycle manager to close the tab
-      const success = await this.lifecycleManager.closeTab(browser, tabId);
+      // Use lifecycle manager to close the tab, passing options
+      const success = await this.lifecycleManager.closeTab(
+        browser,
+        tabId,
+        options,
+      );
 
       if (success) {
         // Update browser in Redis

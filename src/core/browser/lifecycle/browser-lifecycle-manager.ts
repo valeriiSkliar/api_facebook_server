@@ -347,54 +347,46 @@ export class BrowserLifecycleManager {
   }
 
   /**
-   * Close a tab and release its resources
+   * Close a tab in a browser
    * @param instance - Browser instance
-   * @param tabId - ID of the tab to close
+   * @param tabId - Tab ID to close
+   * @param options - Options for closing, e.g., whether to delete Redis keys
    */
-  async closeTab(instance: BrowserInstance, tabId: string): Promise<boolean> {
-    if (!instance || !instance.browser) {
-      this.logger.error(
-        `Invalid browser instance ${instance?.id} when trying to close tab ${tabId}`,
-      );
+  async closeTab(
+    instance: BrowserInstance,
+    tabId: string,
+    options?: { deleteRedisKeys?: boolean },
+  ): Promise<boolean> {
+    if (!instance) {
+      this.logger.error(`Invalid browser instance when closing tab ${tabId}`);
       return false;
     }
 
-    const page = this.activePages.get(tabId);
-    let pageClosedSuccessfully = false;
+    try {
+      this.logger.log(`Closing tab ${tabId} in browser ${instance.id}`);
 
-    if (page) {
-      if (!page.isClosed()) {
-        try {
-          await page.close();
-          this.logger.log(`Playwright page for tab ${tabId} closed.`);
-          pageClosedSuccessfully = true;
-        } catch (closeError) {
-          this.logger.error(
-            `Error closing Playwright page for tab ${tabId}:`,
-            closeError,
+      // Close the page if it exists and is open
+      const page = this.activePages.get(tabId);
+      if (page && !page.isClosed()) {
+        await page
+          .close()
+          .catch((e) =>
+            this.logger.error(`Error closing page ${tabId}: ${String(e)}`),
           );
-        }
+        this.logger.log(`Closed page associated with tab ${tabId}`);
       } else {
         this.logger.warn(
-          `Playwright page object for tab ${tabId} was already closed.`,
+          `Page for tab ${tabId} not found in activePages or already closed.`,
         );
-        pageClosedSuccessfully = true;
       }
-    } else {
-      this.logger.warn(
-        `Playwright page object not found in activePages for tab ${tabId} during closure.`,
-      );
-      pageClosedSuccessfully = true;
-    }
 
-    if (pageClosedSuccessfully) {
+      // Remove page from activePages map regardless of close success
       this.activePages.delete(tabId);
-      this.logger.log(`Removed page mapping for tab ${tabId}`);
-    }
 
-    const tabManagerCloseSuccess = await this.tabManager.closeTab(tabId);
+      // Use TabManager to close the tab metadata, passing options
+      const success = await this.tabManager.closeTab(tabId, options);
 
-    if (tabManagerCloseSuccess) {
+      // Update browser instance state
       instance.openTabs = Math.max(0, instance.openTabs - 1);
       instance.tabIds = instance.tabIds.filter((id) => id !== tabId);
       instance.lastUsedAt = new Date();
@@ -407,10 +399,11 @@ export class BrowserLifecycleManager {
       this.logger.log(
         `Closed tab metadata for ${tabId} in browser ${instance.id}. Open tabs: ${instance.openTabs}`,
       );
-      return true;
-    } else {
-      this.logger.warn(
-        `Failed to close tab metadata in TabManager for tab ${tabId}. Browser state might be inconsistent.`,
+      return success;
+    } catch (error) {
+      this.logger.error(
+        `Error closing tab ${tabId} in browser ${instance.id}:`,
+        error,
       );
       return false;
     }

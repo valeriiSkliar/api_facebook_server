@@ -290,6 +290,7 @@ export class RequestManagerService {
     requestId: string,
     status: RequestStatus,
     result?: any,
+    options?: { deleteRedisKeys?: boolean },
   ): Promise<RequestMetadata | null> {
     try {
       const request = await this.getRequest(requestId);
@@ -311,14 +312,15 @@ export class RequestManagerService {
       ) {
         request.processedAt = now;
 
-        // Close the tab if it exists
+        // Close the tab if it exists, passing options
         if (request.tabId && request.browserId) {
           await this.browserPoolService.closeTab(
             request.browserId,
             request.tabId,
+            options,
           );
           this.logger.log(
-            `Closed tab ${request.tabId} for completed request ${requestId}`,
+            `Closed tab ${request.tabId} for request ${requestId} with options: ${JSON.stringify(options)}`,
           );
         }
       }

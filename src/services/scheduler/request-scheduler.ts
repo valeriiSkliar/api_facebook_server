@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { RequestManagerService } from '../request-manager/request-manager-service';
+import { RequestManagerService } from '@src/api/requests/request-manager-service';
 import { BrowserPoolService } from '@core/browser/browser-pool/browser-pool-service';
 import { CacheService } from '@core/cache';
 import { TabManager } from '@src/core/browser/tab-manager/tab-manager';

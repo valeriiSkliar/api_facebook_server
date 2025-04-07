@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { QueueService } from '@core/queue/queue.service';
 import { RequestProcessorService } from '../workers/request-processor-service';
-import { RequestManagerService } from '../request-manager/request-manager-service';
+import { RequestManagerService } from '@src/api/requests/request-manager-service';
 
 @Injectable()
 export class RequestProcessorScheduler {

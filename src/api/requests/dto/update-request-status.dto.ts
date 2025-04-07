@@ -1,4 +1,4 @@
-import { RequestStatus } from '../../../services/request-manager/request-manager-service';
+import { RequestStatus } from '@src/api/requests/request-manager-service';
 import { IsEnum, IsOptional } from 'class-validator';
 
 export class UpdateRequestStatusDto {

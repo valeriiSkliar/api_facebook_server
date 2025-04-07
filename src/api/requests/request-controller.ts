@@ -15,12 +15,12 @@ import {
 import {
   RequestManagerService,
   RequestStatus,
-} from '../../services/request-manager/request-manager-service';
-import { UpdateRequestStatusDto } from '../dto/common/update-request-status.dto';
+} from '@src/api/requests/request-manager-service';
+import { UpdateRequestStatusDto } from './dto/update-request-status.dto';
 import { AuthenticatedRequest } from '../../authenticators/common/interfaces/auth.interface';
 import { AdData } from '../../scrapers/facebook/models/facebook-ad-data';
 import { ScraperResult } from '../../scrapers/facebook/models/facebook-scraper-result';
-import { CreateRequestDto } from '../dto/common';
+import { CreateRequestDto } from './dto/create-request.dto';
 
 // Interface for potential error structures stored in response_data
 interface ErrorData {

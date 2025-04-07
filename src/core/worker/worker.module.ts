@@ -10,7 +10,7 @@ import { FacebookAdScraperService } from '@src/services/FacebookAdScraperService
 import { SearchParameterService } from '@src/services/SearchParameterService';
 import { TabManager } from '@src/core/browser/tab-manager/tab-manager';
 import { RedisModule } from '@core/storage/redis/redis.module';
-import { RequestManagerModule } from '@src/services/request-manager';
+import { RequestManagerModule } from '@src/api/requests/requests.module';
 
 @Module({
   imports: [

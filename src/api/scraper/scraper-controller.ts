@@ -14,7 +14,7 @@ import {
   FacebookScraperRequestDto,
   FacebookScraperResponseDto,
   FacebookScraperResultDto,
-} from '../dto/facebook';
+} from '@src/api/facebook/dto';
 
 @Controller('scraper')
 export class ScraperController {

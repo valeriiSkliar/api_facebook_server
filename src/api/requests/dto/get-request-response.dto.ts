@@ -1,4 +1,4 @@
-import { AdDataDto } from '../facebook';
+import { AdDataDto } from '@src/api/facebook/dto';
 import { Type } from 'class-transformer';
 import {
   IsString,

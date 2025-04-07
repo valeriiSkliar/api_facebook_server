@@ -8,7 +8,7 @@ import {
   RequestManagerService,
   RequestMetadata,
   RequestStatus,
-} from '../request-manager/request-manager-service';
+} from '@src/api/requests/request-manager-service';
 import { BrowserPoolService } from '@core/browser/browser-pool/browser-pool-service';
 import { FacebookAdScraperService } from '../FacebookAdScraperService';
 import { AdLibraryQuery } from '@src/scrapers/facebook/models/facebook-ad-lib-query';

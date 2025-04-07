@@ -9,7 +9,7 @@ import { BrowserPoolService } from '@core/browser/browser-pool/browser-pool-serv
 import { Prisma, Request } from '@prisma/client';
 import { QueueService } from '@core/queue/queue.service';
 import { TabManager } from '@src/core/browser/tab-manager/tab-manager';
-import { CreateRequestDto } from '@src/api/dto/common';
+import { CreateRequestDto } from './dto/create-request.dto';
 
 export interface RequestMetadata {
   id: string;

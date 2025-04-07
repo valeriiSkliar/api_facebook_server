@@ -1,5 +1,5 @@
 import { Module, Logger } from '@nestjs/common';
-import { ScraperController } from '../controllers/scraper-controller';
+import { ScraperController } from '../scraper/scraper-controller';
 import { FacebookAdScraperService } from '../../services/FacebookAdScraperService';
 import { SearchParameterService } from '../../services/SearchParameterService';
 import { ScraperFactory } from '../../scrapers/common/factories/scraper-factory';

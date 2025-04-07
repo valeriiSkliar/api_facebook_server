@@ -12,7 +12,7 @@ import {
 
 // import { ScraperOptions } from '@src/models/ScraperOptions';
 import { Type } from 'class-transformer';
-import { AdLibraryQuery } from '../../../scrapers/facebook/models/facebook-ad-lib-query';
+import { AdLibraryQuery } from '@src/scrapers/facebook/models/facebook-ad-lib-query';
 
 // export class ScraperOptionsDto implements Partial<ScraperOptions> {
 //   @IsObject()

@@ -4,9 +4,9 @@ import { QueueService } from '@core/queue/queue.service';
 import {
   RequestManagerService,
   RequestMetadata,
-} from '../request-manager/request-manager-service';
+} from '@src/api/requests/request-manager-service';
 
-import { RequestStatus } from '../request-manager/request-manager-service';
+import { RequestStatus } from '@src/api/requests/request-manager-service';
 import { ScraperFactory } from '@src/scrapers/common/factories/scraper-factory';
 import { ScraperRegistry } from '../ScraperRegistry';
 import { AdLibraryQuery } from '@src/scrapers/facebook/models/facebook-ad-lib-query';

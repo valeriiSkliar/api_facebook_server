@@ -158,6 +158,9 @@ export class BrowserLifecycleManager {
       return null;
     }
 
+    let page: Page | null = null;
+    let tab: BrowserTab | null = null;
+
     try {
       // Check if browser has capacity
       if (instance.openTabs >= this.MAX_TABS_PER_BROWSER) {
@@ -168,38 +171,74 @@ export class BrowserLifecycleManager {
       }
 
       // Create a new page in the browser
-      const page = await instance.browser.newPage();
+      page = await instance.browser.newPage();
 
       // Create the tab in TabManager
-      const tab = await this.tabManager.createTab(
+      tab = await this.tabManager.createTab(
         instance.id,
         requestId,
         userId,
         userEmail,
-        // page,
       );
 
-      // Update browser instance
-      instance.openTabs++;
-      instance.tabIds.push(tab.id);
-      instance.lastUsedAt = new Date();
+      if (tab && page && !page.isClosed()) {
+        this.activePages.set(tab.id, page);
+        this.logger.log(`Associated Page object with tab ${tab.id}`);
 
-      // Update browser state if this is the first tab
-      if (instance.openTabs === 1) {
-        instance.state = BrowserState.IN_USE;
-      }
+        // Update browser instance
+        instance.openTabs++;
+        instance.tabIds.push(tab.id);
+        instance.lastUsedAt = new Date();
 
-      this.logger.log(
-        `Created tab ${tab.id} in browser ${instance.id} for request ${tab.requestId}`,
-      );
+        // Update browser state if this is the first tab
+        if (instance.openTabs === 1) {
+          instance.state = BrowserState.IN_USE;
+        }
 
-      if (tab && page) {
-        this.activePages.set(tab.id, page); // Сохраняем страницу в карту
+        this.logger.log(
+          `Created tab ${tab.id} in browser ${instance.id} for request ${tab.requestId}`,
+        );
         return { tab, page };
+      } else {
+        this.logger.error(
+          `Failed to create valid page or tab for browser ${instance.id}. Page closed: ${page?.isClosed()}. Tab created: ${!!tab}`,
+        );
+        if (page && !page.isClosed())
+          await page
+            .close()
+            .catch((e) =>
+              this.logger.error(
+                `Error closing page during failed tab creation: ${e}`,
+              ),
+            );
+        if (tab)
+          await this.tabManager
+            .closeTab(tab.id)
+            .catch((e) =>
+              this.logger.error(
+                `Error closing tab metadata during failed tab creation: ${e}`,
+              ),
+            );
+        return null;
       }
-      return null;
     } catch (error) {
       this.logger.error(`Error creating tab in browser ${instance.id}:`, error);
+      if (page && !page.isClosed())
+        await page
+          .close()
+          .catch((e) =>
+            this.logger.error(
+              `Error closing page after failed tab creation: ${e}`,
+            ),
+          );
+      if (tab)
+        await this.tabManager
+          .closeTab(tab.id)
+          .catch((e) =>
+            this.logger.error(
+              `Error closing tab metadata after failed tab creation: ${e}`,
+            ),
+          );
       return null;
     }
   }
@@ -220,103 +259,182 @@ export class BrowserLifecycleManager {
       return null;
     }
 
+    let page: Page | null = null;
+    let tab: BrowserTab | null = null;
+
     try {
+      // Check if browser has capacity (optional, system tabs might have different rules)
+      if (instance.openTabs >= this.MAX_TABS_PER_BROWSER) {
+        this.logger.warn(
+          `Browser ${instance.id} has reached maximum tab capacity when creating system tab`,
+        );
+        return null;
+      }
+
       // Create a new page in the browser
-      const page = await instance.browser.newPage();
+      page = await instance.browser.newPage();
 
       // Create the tab in TabManager with system identifiers
-      const tab = await this.tabManager.createSystemTab(
+      tab = await this.tabManager.createSystemTab(
         instance.id,
         sessionId,
         userEmail,
       );
 
-      // Update browser instance
-      instance.openTabs++;
-      instance.tabIds.push(tab.id);
-      instance.lastUsedAt = new Date();
-
-      // Update browser state if this is the first tab
-      if (instance.openTabs === 1) {
-        instance.state = BrowserState.IN_USE;
-      }
-
-      this.logger.log(`Created system tab ${tab.id} in browser ${instance.id}`);
-
-      if (tab && page) {
+      if (tab && page && !page.isClosed()) {
         this.activePages.set(tab.id, page);
+        this.logger.log(`Associated Page object with system tab ${tab.id}`);
+
+        // Update browser instance
+        instance.openTabs++;
+        instance.tabIds.push(tab.id);
+        instance.lastUsedAt = new Date();
+
+        // Update browser state if this is the first tab
+        if (instance.openTabs === 1) {
+          instance.state = BrowserState.IN_USE;
+        }
+
+        this.logger.log(
+          `Created system tab ${tab.id} in browser ${instance.id}`,
+        );
         return { tab, page };
+      } else {
+        this.logger.error(
+          `Failed to create valid page or system tab for browser ${instance.id}. Page closed: ${page?.isClosed()}. Tab created: ${!!tab}`,
+        );
+        if (page && !page.isClosed())
+          await page
+            .close()
+            .catch((e) =>
+              this.logger.error(
+                `Error closing page during failed system tab creation: ${e}`,
+              ),
+            );
+        if (tab)
+          await this.tabManager
+            .closeTab(tab.id)
+            .catch((e) =>
+              this.logger.error(
+                `Error closing tab metadata during failed system tab creation: ${e}`,
+              ),
+            );
+        return null;
       }
-      return null;
     } catch (error) {
       this.logger.error(
         `Error creating system tab in browser ${instance.id}:`,
         error,
       );
+      if (page && !page.isClosed())
+        await page
+          .close()
+          .catch((e) =>
+            this.logger.error(
+              `Error closing page after failed system tab creation: ${e}`,
+            ),
+          );
+      if (tab)
+        await this.tabManager
+          .closeTab(tab.id)
+          .catch((e) =>
+            this.logger.error(
+              `Error closing tab metadata after failed system tab creation: ${e}`,
+            ),
+          );
       return null;
     }
   }
 
   /**
-   * Close a tab in a browser
+   * Close a tab and release its resources
    * @param instance - Browser instance
-   * @param tabId - Tab ID
+   * @param tabId - ID of the tab to close
    */
   async closeTab(instance: BrowserInstance, tabId: string): Promise<boolean> {
-    if (!instance) {
-      this.logger.error(`Invalid browser instance when closing tab ${tabId}`);
+    if (!instance || !instance.browser) {
+      this.logger.error(
+        `Invalid browser instance ${instance?.id} when trying to close tab ${tabId}`,
+      );
       return false;
     }
 
-    try {
-      // Close the tab using TabManager
-      const success = await this.tabManager.closeTab(tabId);
+    const page = this.activePages.get(tabId);
+    let pageClosedSuccessfully = false;
 
-      if (success) {
-        // Update browser instance
-        instance.openTabs = Math.max(0, instance.openTabs - 1);
-        instance.tabIds = instance.tabIds.filter((id) => id !== tabId);
-
-        // Update browser state if no tabs are open
-        if (instance.openTabs === 0) {
-          instance.state = BrowserState.AVAILABLE;
+    if (page) {
+      if (!page.isClosed()) {
+        try {
+          await page.close();
+          this.logger.log(`Playwright page for tab ${tabId} closed.`);
+          pageClosedSuccessfully = true;
+        } catch (closeError) {
+          this.logger.error(
+            `Error closing Playwright page for tab ${tabId}:`,
+            closeError,
+          );
         }
-        const page = this.activePages.get(tabId);
-        if (page && !page.isClosed()) {
-          try {
-            await page.close(); // Закрываем саму страницу Playwright
-            this.logger.log(`Playwright page for tab ${tabId} closed.`);
-          } catch (closeError) {
-            this.logger.error(
-              `Error closing Playwright page for tab ${tabId}:`,
-              closeError,
-            );
-          }
-        }
-        this.activePages.delete(tabId); // Удаляем из карты
-
-        this.logger.log(`Closed tab ${tabId} in browser ${instance.id}`);
+      } else {
+        this.logger.warn(
+          `Playwright page object for tab ${tabId} was already closed.`,
+        );
+        pageClosedSuccessfully = true;
       }
+    } else {
+      this.logger.warn(
+        `Playwright page object not found in activePages for tab ${tabId} during closure.`,
+      );
+      pageClosedSuccessfully = true;
+    }
 
-      return success;
-    } catch (error) {
-      this.logger.error(
-        `Error closing tab ${tabId} in browser ${instance.id}:`,
-        error,
+    if (pageClosedSuccessfully) {
+      this.activePages.delete(tabId);
+      this.logger.log(`Removed page mapping for tab ${tabId}`);
+    }
+
+    const tabManagerCloseSuccess = await this.tabManager.closeTab(tabId);
+
+    if (tabManagerCloseSuccess) {
+      instance.openTabs = Math.max(0, instance.openTabs - 1);
+      instance.tabIds = instance.tabIds.filter((id) => id !== tabId);
+      instance.lastUsedAt = new Date();
+      if (instance.openTabs === 0) {
+        instance.state = BrowserState.AVAILABLE;
+        this.logger.log(
+          `Browser ${instance.id} is now available (0 tabs open).`,
+        );
+      }
+      this.logger.log(
+        `Closed tab metadata for ${tabId} in browser ${instance.id}. Open tabs: ${instance.openTabs}`,
+      );
+      return true;
+    } else {
+      this.logger.warn(
+        `Failed to close tab metadata in TabManager for tab ${tabId}. Browser state might be inconsistent.`,
       );
       return false;
     }
   }
 
   /**
-   * Gets the page associated with a tab ID
+   * Get the Page object associated with a tab ID
+   * @param tabId - ID of the tab
    */
   getPageForTab(tabId: string): Page | null {
     const page = this.activePages.get(tabId);
-    if (page && !page.isClosed()) {
-      return page;
+    if (page) {
+      if (!page.isClosed()) {
+        this.logger.debug(`Page found for tab ${tabId}. Is closed: false`);
+        return page;
+      } else {
+        this.logger.warn(
+          `Page found for tab ${tabId}, but it is already closed.`,
+        );
+        this.activePages.delete(tabId);
+        return null;
+      }
     }
-    this.logger.warn(`Page for tab ${tabId} not found or already closed.`);
+    this.logger.warn(`Page object not found in activePages for tab ${tabId}.`);
     return null;
   }
 

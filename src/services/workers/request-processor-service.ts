@@ -60,26 +60,36 @@ export class RequestProcessorService {
           }
           const tabId = tabInfo.id;
           const browserId = tabInfo.browserId;
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-          // result = await this.processFacebookScraper(request);
+
+          if (!browserId) {
+            // Handle case where tab exists but browserId is missing (shouldn't normally happen if tab is active)
+            throw new Error(
+              `Browser ID not found for tab ${tabId} associated with request ${requestId}.`,
+            );
+          }
+
           result = await this.browserPool.executeInBrowser(
             browserId,
             async ({ browser }) => {
-              // Получаем browser от пула
-              // --- Получаем Page ---
               const page = this.lifecycleManager.getPageForTab(tabId);
-              if (!page) {
-                throw new Error(`Page object not found for tab ${tabId}.`);
+              if (!page || page.isClosed()) {
+                this.logger.error(
+                  `Page object for tab ${tabId} is invalid (Not found or closed). Request ${requestId}`,
+                );
+                throw new Error(`Page not found or closed for tab ${tabId}`);
               }
 
-              // --- Вызываем скрапер, передавая browser и page ---
+              this.logger.debug(
+                `Executing scraper in page for tab ${tabId}, browser ${browserId}`,
+              );
+
               return await this.facebookAdScraperService.executeScraperWithBrowserAndPage(
-                this.buildFacebookQuery(request), // Ваша логика построения query
-                request.parameters, // Опции скрапинга
+                this.buildFacebookQuery(request),
+                request.parameters,
                 browser,
-                page, // Передаем полученную страницу
+                page,
                 browserId,
-                requestId, // Передаем requestId для возможной доп. логики
+                requestId,
               );
             },
           );

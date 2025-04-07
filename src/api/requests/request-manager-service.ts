@@ -548,6 +548,9 @@ export class RequestManagerService {
 
         // Close the tab if it exists
         if (requestMetadata?.tabId && requestMetadata?.browserId) {
+          this.logger.debug(
+            `Attempting to close tab ${requestMetadata.tabId} for inactive request ${request.external_request_id}`,
+          );
           await this.browserPoolService.closeTab(
             requestMetadata.browserId,
             requestMetadata.tabId,
@@ -558,6 +561,9 @@ export class RequestManagerService {
         }
 
         // Update request status to expired
+        this.logger.debug(
+          `Attempting to mark request ${request.external_request_id} as expired due to inactivity`,
+        );
         await this.updateRequestStatus(
           request.external_request_id,
           RequestStatus.EXPIRED,

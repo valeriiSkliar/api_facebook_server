@@ -2,36 +2,24 @@ import { Module, Logger } from '@nestjs/common';
 import { WorkerService } from './worker.service';
 import { QueueModule } from '@core/queue/queue.module';
 import { BrowserPoolModule } from '@core/browser/browser-pool/browser-pool.module';
-import { PrismaModule } from '@src/database';
+import { RequestManagerModule } from '@src/api/requests/requests.module';
 import { ScraperRegistry } from '@src/services/ScraperRegistry';
 import { ScraperFactory } from '@src/scrapers/common/factories/scraper-factory';
 import { StepFactory } from '@src/scrapers/common/factories/step-factory';
-import { FacebookAdScraperService } from '@src/services/FacebookAdScraperService';
-import { SearchParameterService } from '@src/services/SearchParameterService';
-import { TabManager } from '@src/core/browser/tab-manager/tab-manager';
-import { RedisModule } from '@core/storage/redis/redis.module';
-import { RequestManagerModule } from '@src/api/requests/requests.module';
-
+import { FacebookApiModule } from '@src/api/facebook/facebook.module';
 @Module({
   imports: [
     QueueModule,
     BrowserPoolModule,
-    PrismaModule,
-    RedisModule,
     RequestManagerModule,
+    FacebookApiModule,
   ],
   providers: [
+    Logger,
     WorkerService,
     ScraperRegistry,
     ScraperFactory,
     StepFactory,
-    FacebookAdScraperService,
-    SearchParameterService,
-    TabManager,
-    {
-      provide: Logger,
-      useValue: new Logger('WorkerModule'),
-    },
   ],
   exports: [WorkerService],
 })

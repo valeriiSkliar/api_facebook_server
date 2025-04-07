@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
 import { Injectable, Logger } from '@nestjs/common';
 import { RedisService } from '@core/storage/redis/redis.service';
 
@@ -45,4 +47,45 @@ export class QueueService {
       return null;
     }
   }
+
+  /**
+  //  * Получить текущий размер очереди.
+  //  * @returns Количество элементов в очереди.
+  //  */
+  // async getQueueSize(): Promise<number> {
+  //   try {
+  //     return await this.redisService.zCard(this.QUEUE_KEY);
+  //   } catch (error) {
+  //     this.logger.error('Failed to get queue size', error);
+  //     return 0;
+  //   }
+  // }
+
+  // /**
+  //  * Очистить всю очередь (использовать с осторожностью!).
+  //  */
+  // async clearQueue(): Promise<void> {
+  //   try {
+  //     await this.redisService.del(this.QUEUE_KEY);
+  //     this.logger.log(`Queue ${this.QUEUE_KEY} cleared.`);
+  //   } catch (error) {
+  //     this.logger.error('Failed to clear queue', error);
+  //   }
+  // }
+
+  // /**
+  //  * Посмотреть элементы в очереди без извлечения.
+  //  * @param start Начальный индекс (0 - первый элемент)
+  //  * @param stop Конечный индекс (-1 - последний элемент)
+  //  * @returns Массив ID запросов.
+  //  */
+  // async peekQueue(start: number = 0, stop: number = -1): Promise<string[]> {
+  //   try {
+  //     // Получаем элементы из отсортированного множества по рангу (индексу)
+  //     return await this.redisService.zRange(this.QUEUE_KEY, start, stop);
+  //   } catch (error) {
+  //     this.logger.error('Failed to peek queue', error);
+  //     return [];
+  //   }
+  // }
 }

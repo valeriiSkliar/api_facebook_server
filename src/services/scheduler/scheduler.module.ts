@@ -1,26 +1,21 @@
 import { Module } from '@nestjs/common';
-import { RequestProcessorScheduler } from './request-processor-scheduler';
-import { RequestManagerModule } from '@src/api/requests/requests.module';
-import { QueueModule } from '@src/core/queue/queue.module';
-import { BrowserPoolModule } from '@src/core/browser/browser-pool/browser-pool.module';
-import { FacebookApiModule } from '@src/api/facebook/facebook.module';
-import { RequestProcessorService } from '../workers/request-processor-service';
-import { TabManager } from '@src/core/browser/tab-manager/tab-manager';
-import { BrowserLifecycleManager } from '@src/core/browser/lifecycle/browser-lifecycle-manager';
+import { ScheduleModule } from '@nestjs/schedule';
+import { RequestScheduler } from './request-scheduler';
 
+import { QueueModule } from '@core/queue/queue.module';
+import { WorkerModule } from '@src/core/worker/worker.module';
+import { RequestManagerModule } from '@src/api/requests/requests.module';
+import { BrowserPoolModule } from '@src/core/browser/browser-pool/browser-pool.module';
+import { CacheModule } from '@core/cache/cache.module';
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
+    WorkerModule,
+    QueueModule,
     RequestManagerModule,
     BrowserPoolModule,
-    QueueModule,
-    FacebookApiModule,
+    CacheModule,
   ],
-  providers: [
-    RequestProcessorScheduler,
-    RequestProcessorService,
-    TabManager,
-    BrowserLifecycleManager,
-  ],
-  exports: [RequestProcessorScheduler],
+  providers: [RequestScheduler],
 })
 export class SchedulerModule {}

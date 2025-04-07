@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/require-await */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { QueueService } from '@core/queue/queue.service';
 import {
@@ -9,6 +11,9 @@ import { ScraperFactory } from '@src/scrapers/common/factories/scraper-factory';
 import { ScraperRegistry } from '@src/services/ScraperRegistry';
 import { AdLibraryQuery } from '@src/scrapers/facebook/models/facebook-ad-lib-query';
 import { BrowserPoolService } from '@core/browser/browser-pool/browser-pool-service';
+import { FacebookAdScraperService } from '@src/services/FacebookAdScraperService';
+import { ScraperResult } from '@src/scrapers/facebook/models/facebook-scraper-result';
+import { ScraperOptionsDto } from '@src/api/facebook/dto';
 
 @Injectable()
 export class WorkerService implements OnModuleInit {
@@ -29,7 +34,8 @@ export class WorkerService implements OnModuleInit {
     // Start worker processes when the application starts
     this.isProcessing = true;
     for (let i = 0; i < this.workerCount; i++) {
-      await this.startWorker(i);
+      // Запускаем воркеры без await, чтобы не блокировать инициализацию
+      void this.startWorker(i);
     }
   }
 
@@ -127,7 +133,10 @@ export class WorkerService implements OnModuleInit {
     }
   }
 
-  private async executeScrapingProcess(request: RequestMetadata, scraper: any) {
+  private async executeScrapingProcess(
+    request: RequestMetadata,
+    scraper: FacebookAdScraperService,
+  ): Promise<ScraperResult> {
     // Create a ScraperContext for this request
     const context = this.scraperFactory.createContext(
       this.buildQuery(request.parameters),
@@ -150,26 +159,27 @@ export class WorkerService implements OnModuleInit {
       }
     }
 
-    // Execute the scraping pipeline
-    const result = await scraper.scrapeAds(
+    // Execute the scraping pipeline using the appropriate method
+    const result: ScraperResult = await scraper.scrapeAdsWithBrowser(
       this.buildQuery(request.parameters),
       request.parameters,
+      request.browserId,
     );
 
     return result;
   }
 
-  private buildQuery(parameters: any): AdLibraryQuery {
+  private buildQuery(parameters: ScraperOptionsDto): AdLibraryQuery {
     // Map request parameters to AdLibraryQuery format
     return {
-      queryString: parameters.queryString || '',
-      countries: parameters.countries || ['ALL'],
-      activeStatus: parameters.activeStatus || 'active',
-      adType: parameters.adType || 'all',
-      isTargetedCountry: parameters.isTargetedCountry || false,
-      mediaType: parameters.mediaType || 'all',
-      searchType: parameters.searchType || 'keyword_unordered',
-      filters: parameters.filters || {},
+      queryString: parameters.query?.queryString || '',
+      countries: parameters.query?.countries || ['ALL'],
+      activeStatus: parameters.query?.activeStatus || 'active',
+      adType: parameters.query?.adType || 'all',
+      isTargetedCountry: parameters.query?.isTargetedCountry || false,
+      mediaType: parameters.query?.mediaType || 'all',
+      searchType: parameters.query?.searchType || 'keyword_unordered',
+      filters: parameters.query?.filters || {},
     };
   }
 

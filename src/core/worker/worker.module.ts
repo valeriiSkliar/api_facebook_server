@@ -3,7 +3,7 @@ import { WorkerService } from './worker.service';
 import { QueueModule } from '@core/queue/queue.module';
 import { BrowserPoolModule } from '@core/browser/browser-pool/browser-pool.module';
 import { RequestManagerModule } from '@src/api/requests/requests.module';
-import { ScraperRegistry } from '@src/services/ScraperRegistry';
+import { ScraperRegistry } from '@src/services/scraper.registry';
 import { ScraperFactory } from '@src/scrapers/common/factories/scraper-factory';
 import { StepFactory } from '@src/scrapers/common/factories/step-factory';
 import { FacebookApiModule } from '@src/api/facebook/facebook.module';

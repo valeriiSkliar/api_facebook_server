@@ -8,7 +8,7 @@ import {
   RequestStatus,
 } from '@src/api/requests/request-manager-service';
 import { ScraperFactory } from '@src/scrapers/common/factories/scraper-factory';
-import { ScraperRegistry } from '@src/services/ScraperRegistry';
+import { ScraperRegistry } from '@src/services/scraper.registry';
 import { AdLibraryQuery } from '@src/scrapers/facebook/models/facebook-ad-lib-query';
 import { BrowserPoolService } from '@core/browser/browser-pool/browser-pool-service';
 import { FacebookAdScraperService } from '@src/services/FacebookAdScraperService';

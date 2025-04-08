@@ -6,10 +6,9 @@ import {
   IsOptional,
   IsEnum,
 } from 'class-validator';
-import { Type } from 'class-transformer';
-import { FacebookScraperOptionsDto } from '@src/api/facebook/dto';
+import { ScraperOptions } from '@src/scrapers/common/interfaces/scraper-options.interface';
 
-export class CreateRequestDto {
+export class CreateRequestDto<T = any> {
   @IsString()
   @IsEnum(['facebook_scraper', 'tiktok_scraper'], {
     message: 'requestType must be one of: facebook_scraper, tiktok_scraper',
@@ -18,8 +17,7 @@ export class CreateRequestDto {
 
   @IsNotEmpty()
   @ValidateNested()
-  @Type(() => FacebookScraperOptionsDto)
-  parameters: FacebookScraperOptionsDto;
+  parameters: ScraperOptions<T>;
 
   @IsOptional()
   @IsNumber()

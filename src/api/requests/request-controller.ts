@@ -47,9 +47,9 @@ export class RequestController {
   constructor(private readonly requestManager: RequestManagerService) {}
 
   @Post()
-  async createRequest(
+  async createRequest<T>(
     @Request() req: AuthenticatedRequest,
-    @Body() createDto: CreateRequestDto,
+    @Body() createDto: CreateRequestDto<T>,
   ) {
     try {
       if (!req.user) {

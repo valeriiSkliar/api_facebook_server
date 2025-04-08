@@ -8,14 +8,11 @@ import { TiktokLibraryQuery } from './models/tiktok-library-query';
 import { TiktokQueryTransformer } from './transformers/tiktok-query.transformer';
 import { TiktokScraperOptionsDto } from './dto/tiktok-scraper-options.dto';
 import { TikTokScraperFactory } from './factories/tiktok-scraper.factory';
-import { ScraperOptions } from '@src/scrapers/common/interfaces/scraper-options.interface';
 import { BaseScraperResult } from '../common/interfaces/base-scraper-result';
 import { AdData } from '../facebook/models/facebook-ad-data';
 
 @Injectable()
-export class TiktokApiScraper
-  implements IScraper<ScraperOptions<TiktokLibraryQuery>>
-{
+export class TiktokApiScraper implements IScraper<TiktokLibraryQuery, AdData> {
   private readonly logger = new Logger(TiktokApiScraper.name);
 
   constructor(
@@ -35,7 +32,7 @@ export class TiktokApiScraper
       query,
       request.parameters as Partial<TiktokScraperOptionsDto>,
     );
-    // const result = await scraper.execute(context);
+    const result = await scraper.execute(context);
 
     // this.logger.log('Scraping TikTok ads...', request);
     // this.logger.log('Query: ', query);

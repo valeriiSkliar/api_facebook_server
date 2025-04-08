@@ -2,10 +2,11 @@ import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
 import { IScraper } from './interfaces';
 import { FacebookBrowserScraper } from '../facebook/facebook-browser.scraper';
 import { TiktokApiScraper } from '../tiktok/tiktok-api.scraper';
+import { AdData } from '../facebook/models/facebook-ad-data';
 
 @Injectable()
 export class ScraperRegistry {
-  private readonly scrapers: Map<string, IScraper> = new Map();
+  private readonly scrapers: Map<string, IScraper<unknown, AdData>> = new Map();
   private readonly logger = new Logger(ScraperRegistry.name);
 
   constructor(
@@ -28,12 +29,12 @@ export class ScraperRegistry {
     }
   }
 
-  private register(type: string, instance: IScraper): void {
+  private register(type: string, instance: IScraper<unknown, AdData>): void {
     this.scrapers.set(type, instance);
     this.logger.log(`Registered scraper: ${type}`);
   }
 
-  public getScraper(type: string): IScraper {
+  public getScraper(type: string): IScraper<unknown, AdData> {
     const scraper = this.scrapers.get(type);
     if (!scraper) {
       throw new Error(`Scraper not found for type: ${type}`);

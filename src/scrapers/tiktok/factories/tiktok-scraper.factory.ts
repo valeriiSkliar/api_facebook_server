@@ -1,13 +1,18 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ScraperPipeline } from '../../common/pipeline';
+// import { ScraperPipeline } from '../../common/pipeline';
 import { TiktokStepFactory } from './tiktok-step.factory';
 import {
   BaseScraperOptions,
   ScraperOptions,
 } from '@src/scrapers/common/interfaces/scraper-options.interface';
 import { TiktokLibraryQuery } from '../models/tiktok-library-query';
-import { IScraperContext } from '@src/scrapers/common/interfaces/scraper-context.interface';
-import { TikTokScraperOptions } from '../types/tiktok-scraper-options';
+import { BaseScraperContext } from '@src/scrapers/common/interfaces/base-scraper-context';
+import {
+  GenericScraperPipeline,
+  IBaseScraperContext,
+  IGenericScraperStep,
+} from '@src/scrapers/common/pipeline/generic-scraper-pipeline';
+import { IPipelineResult } from '@src/core/interfaces';
 @Injectable()
 export class TikTokScraperFactory {
   constructor(
@@ -18,8 +23,12 @@ export class TikTokScraperFactory {
   createScraper(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     options?: Partial<ScraperOptions<TiktokLibraryQuery>>,
-  ): ScraperPipeline {
-    const pipeline = new ScraperPipeline(this.logger);
+  ): GenericScraperPipeline<
+    IGenericScraperStep<IBaseScraperContext>,
+    IBaseScraperContext,
+    IPipelineResult
+  > {
+    const pipeline = new GenericScraperPipeline(this.logger);
 
     // Add core steps
     pipeline.addStep(this.stepFactory.createInitializationStep());
@@ -36,14 +45,19 @@ export class TikTokScraperFactory {
   createContext(
     query: TiktokLibraryQuery,
     options: Partial<BaseScraperOptions>,
-  ): IScraperContext<TiktokLibraryQuery, TikTokScraperOptions, unknown> {
+  ): BaseScraperContext<TiktokLibraryQuery, BaseScraperOptions> {
     return {
       query,
       options: {
         ...options,
-        query,
       },
-      state: {},
+      state: {
+        adsCollected: [],
+        errors: [],
+        forceStop: false,
+        hasMoreResults: true,
+        currentPage: 0,
+      },
     };
   }
   // private mergeWithDefaultOptions(

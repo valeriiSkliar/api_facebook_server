@@ -1,9 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ScraperPipeline } from '../../common/pipeline';
-import { TikTokScraperContext } from '../types/tiktok-scraper-context';
-import { TikTokQuery } from '../types/tiktok-query';
 import { TiktokStepFactory } from './tiktok-step.factory';
-import { TiktokScraperOptionsDto } from '../dto/tiktok-scraper-options.dto';
+import {
+  BaseScraperOptions,
+  ScraperOptions,
+} from '@src/scrapers/common/interfaces/scraper-options.interface';
+import { TiktokLibraryQuery } from '../models/tiktok-library-query';
+import { IScraperContext } from '@src/scrapers/common/interfaces/scraper-context.interface';
+import { TikTokScraperOptions } from '../types/tiktok-scraper-options';
 @Injectable()
 export class TikTokScraperFactory {
   constructor(
@@ -11,8 +15,10 @@ export class TikTokScraperFactory {
     private readonly stepFactory: TiktokStepFactory,
   ) {}
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  createScraper(options?: Partial<TiktokScraperOptionsDto>): ScraperPipeline {
+  createScraper(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    options?: Partial<ScraperOptions<TiktokLibraryQuery>>,
+  ): ScraperPipeline {
     const pipeline = new ScraperPipeline(this.logger);
 
     // Add core steps
@@ -28,42 +34,38 @@ export class TikTokScraperFactory {
   }
 
   createContext(
-    query: TikTokQuery,
-    options: Partial<TiktokScraperOptionsDto>,
-  ): TikTokScraperContext {
+    query: TiktokLibraryQuery,
+    options: Partial<BaseScraperOptions>,
+  ): IScraperContext<TiktokLibraryQuery, TikTokScraperOptions, unknown> {
     return {
       query,
-      options,
-      state: {
-        adsCollected: [],
-        hasMoreResults: true,
-        currentPage: 0,
-        errors: [],
-        forceStop: false,
+      options: {
+        ...options,
+        query,
       },
+      state: {},
     };
   }
+  // private mergeWithDefaultOptions(
+  //   options?: Partial<TiktokScraperOptionsDto>,
+  // ): TiktokScraperOptionsDto {
+  //   const defaultOptions: TiktokScraperOptionsDto = {
+  //     behavior: {
+  //       applyFilters: false,
+  //       maxPages: 10,
+  //       waitForResults: true,
+  //       waitTimeout: 30000,
+  //     },
+  //     storage: {
+  //       enabled: true,
+  //       format: 'json',
+  //       outputPath: './data/tiktok',
+  //     },
+  //   };
 
-  private mergeWithDefaultOptions(
-    options?: Partial<TiktokScraperOptionsDto>,
-  ): TiktokScraperOptionsDto {
-    const defaultOptions: TiktokScraperOptionsDto = {
-      behavior: {
-        applyFilters: false,
-        maxPages: 10,
-        waitForResults: true,
-        waitTimeout: 30000,
-      },
-      storage: {
-        enabled: true,
-        format: 'json',
-        outputPath: './data/tiktok',
-      },
-    };
-
-    return {
-      ...defaultOptions,
-      ...options,
-    };
-  }
+  //   return {
+  //     ...defaultOptions,
+  //     ...options,
+  //   };
+  // }
 }

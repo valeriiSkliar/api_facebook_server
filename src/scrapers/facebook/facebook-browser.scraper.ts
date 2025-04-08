@@ -6,10 +6,12 @@ import { IScraper } from '../common/interfaces';
 import { BrowserPoolService } from '@src/core';
 import { FacebookAdScraperService } from '@src/services';
 import { RequestMetadata } from '@src/api/requests/request-manager-service';
-import { ScraperResult } from './models/facebook-scraper-result';
+// import { ScraperResult } from './models/facebook-scraper-result';
 import { AdLibraryQuery } from './models/facebook-ad-lib-query';
 import { ScraperOptions } from './models/facebook-scraper-options';
 import { FacebookScraperOptionsDto } from '@src/api/facebook/dto';
+import { BaseScraperResult } from '../common/interfaces/base-scraper-result';
+import { AdData } from './models/facebook-ad-data';
 
 @Injectable()
 export class FacebookBrowserScraper implements IScraper {
@@ -23,7 +25,7 @@ export class FacebookBrowserScraper implements IScraper {
 
   async scrape(
     request: RequestMetadata<FacebookScraperOptionsDto>,
-  ): Promise<ScraperResult> {
+  ): Promise<BaseScraperResult<AdData>> {
     let browserId: string | null = null;
     let tabId: string | null = null;
 

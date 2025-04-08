@@ -35,4 +35,14 @@ export interface ScraperResult {
    * Whether to include the ads in the response
    */
   includeAdsInResponse?: boolean;
+
+  /**
+   * Whether there are more results to fetch
+   */
+  hasMoreResults?: boolean;
+
+  /**
+   * Current page number
+   */
+  currentPage?: number;
 }

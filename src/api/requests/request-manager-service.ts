@@ -9,7 +9,7 @@ import { Prisma, Request } from '@prisma/client';
 import { QueueService } from '@core/queue/queue.service';
 import { CreateRequestDto } from './dto/create-request.dto';
 
-export interface RequestMetadata<T = any> {
+export interface RequestMetadata<T = unknown> {
   id: string;
   user_id: string;
   user_email: string;

@@ -1,5 +1,5 @@
 import { RequestMetadata } from '@src/api/requests/request-manager-service';
-import { ScraperResult } from '@src/scrapers/facebook/models/facebook-scraper-result';
+import { BaseScraperResult } from './base-scraper-result';
 
 // /**
 //  * Определяет структуру результата работы скрапера.
@@ -21,11 +21,11 @@ import { ScraperResult } from '@src/scrapers/facebook/models/facebook-scraper-re
  * Интерфейс для реализации скрапера.
  */
 
-export interface IScraper<T = any> {
+export interface IScraper<T = unknown, R = unknown> {
   /**
    * Основной метод для запуска процесса скрапинга.
    * @param request - Метаданные запроса, содержащие параметры и тип.
    * @returns Promise, разрешающийся результатом скрапинга.
    */
-  scrape(request: RequestMetadata<T>): Promise<ScraperResult>;
+  scrape(request: RequestMetadata<T>): Promise<BaseScraperResult<R>>;
 }

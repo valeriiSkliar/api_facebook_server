@@ -10,6 +10,8 @@ import {
 import { ScraperRegistry } from '@src/scrapers/common/scraper.registry';
 import { IScraper } from '@src/scrapers/common/interfaces';
 import { ScraperResult } from '@src/scrapers/facebook/models/facebook-scraper-result';
+import { BaseScraperResult } from '@src/scrapers/common/interfaces/base-scraper-result';
+// import { AdData } from '@src/scrapers/facebook/models/facebook-ad-data';
 
 @Injectable()
 export class RequestProcessorService {
@@ -52,7 +54,8 @@ export class RequestProcessorService {
       );
 
       // Execute the scrape method
-      const scrapeResult: ScraperResult = await scraper.scrape(request);
+      const scrapeResult: BaseScraperResult<unknown> =
+        await scraper.scrape(request);
 
       // Determine final status based on scrape result
       finalStatus = scrapeResult.success

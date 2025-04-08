@@ -1,14 +1,15 @@
-import { BrowserOptionsDto, StorageOptionsDto } from '@src/api/facebook/dto';
-
-import { NetworkOptionsDto } from '@src/api/facebook/dto';
-
 import { IsBoolean, IsOptional } from 'class-validator';
 
 import { Type } from 'class-transformer';
 import { TiktokLibraryQueryDto } from './tiktok-library-query.dto';
 import { ValidateNested } from 'class-validator';
-import { BehaviorOptionsDto } from '@src/api/facebook/dto';
 import { ScraperOptions } from '@src/scrapers/common/interfaces/scraper-options.interface';
+import {
+  StorageOptionsDto,
+  BehaviorOptionsDto,
+  BrowserOptionsDto,
+  NetworkOptionsDto,
+} from '@src/scrapers/common/dto';
 
 export class TiktokScraperOptionsDto
   implements ScraperOptions<TiktokLibraryQueryDto>
@@ -40,5 +41,5 @@ export class TiktokScraperOptionsDto
   @IsOptional()
   @ValidateNested()
   @Type(() => TiktokLibraryQueryDto)
-  query?: TiktokLibraryQueryDto;
+  query: TiktokLibraryQueryDto;
 }

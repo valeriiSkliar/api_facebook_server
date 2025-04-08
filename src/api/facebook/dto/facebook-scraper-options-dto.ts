@@ -4,91 +4,16 @@ import {
   IsOptional,
   IsString,
   ValidateNested,
-  IsNumber,
-  Min,
   IsEnum,
   IsArray,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { AdLibraryQuery } from '@src/scrapers/facebook/models/facebook-ad-lib-query';
 import { ScraperOptions } from '@src/scrapers/common/interfaces/scraper-options.interface';
-
-export class StorageOptionsDto {
-  @IsOptional()
-  @IsBoolean()
-  enabled?: boolean;
-
-  @IsOptional()
-  @IsString()
-  format?: string;
-
-  @IsOptional()
-  @IsString()
-  outputPath?: string;
-}
-
-export class ViewportDto {
-  @IsNumber()
-  @Min(200)
-  width: number;
-
-  @IsNumber()
-  @Min(200)
-  height: number;
-}
-
-export class BrowserOptionsDto {
-  @IsOptional()
-  @IsBoolean()
-  headless?: boolean;
-
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => ViewportDto)
-  viewport?: ViewportDto;
-}
-
-export class NetworkOptionsDto {
-  @IsOptional()
-  @IsNumber()
-  @Min(1000)
-  timeout?: number;
-
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  retries?: number;
-}
-
-export class BehaviorOptionsDto {
-  @IsOptional()
-  @IsNumber()
-  @Min(1)
-  maxAdsToCollect?: number;
-
-  @IsOptional()
-  @IsBoolean()
-  applyFilters?: boolean;
-
-  @IsOptional()
-  @IsNumber()
-  @Min(1)
-  maxPages?: number;
-
-  @IsOptional()
-  @IsBoolean()
-  waitForResults?: boolean;
-
-  @IsOptional()
-  @IsNumber()
-  @Min(1000)
-  waitTimeout?: number;
-
-  @IsOptional()
-  @IsNumber()
-  @Min(1000)
-  cleanUpTimeout?: number;
-}
+import { StorageOptionsDto } from '@src/scrapers/common/dto/storage-options';
+import { BrowserOptionsDto } from '@src/scrapers/common/dto/browser-options';
+import { NetworkOptionsDto } from '@src/scrapers/common/dto/network-options';
+import { BehaviorOptionsDto } from '@src/scrapers/common/dto/behavior-options';
 
 export class ScraperAdLibraryQueryDto implements Partial<AdLibraryQuery> {
   @IsString()
@@ -153,5 +78,5 @@ export class FacebookScraperOptionsDto
   @IsOptional()
   @ValidateNested()
   @Type(() => ScraperAdLibraryQueryDto)
-  query?: ScraperAdLibraryQueryDto;
+  query: ScraperAdLibraryQueryDto;
 }

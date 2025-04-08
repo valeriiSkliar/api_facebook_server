@@ -11,24 +11,21 @@ import {
   TiktokLibraryCountryCode,
 } from '../models/tiktok-library-query';
 import { TiktokLibraryQueryDto } from '../dto/tiktok-library-query.dto';
-import { TiktokScraperOptionsDto } from '../dto/tiktok-scraper-options.dto';
 
 @Injectable()
 export class TiktokQueryTransformer {
-  transform(parameters: TiktokScraperOptionsDto): TiktokLibraryQuery {
+  transform(parameters: TiktokLibraryQuery): TiktokLibraryQuery {
     const queryDto = plainToClass(TiktokLibraryQueryDto, {
-      queryString: parameters.query?.queryString || '',
-      period: parameters.query?.period || TiktokLibraryPeriod.DAY,
-      orderBy: parameters.query?.orderBy || TiktokLibraryOrderBy.LIKE,
-      countryCode: parameters.query?.countryCode || [
+      queryString: parameters.queryString || '',
+      period: parameters.period || TiktokLibraryPeriod.DAY,
+      orderBy: parameters.orderBy || TiktokLibraryOrderBy.LIKE,
+      countryCode: parameters.countryCode || [
         TiktokLibraryCountryCode.UNITED_STATES,
       ],
-      languages: parameters.query?.languages || [],
-      adFormat: parameters.query?.adFormat || TiktokLibraryAdFormat.SPARK_ADS,
-      like: parameters.query?.like || TiktokLibraryLike.FROM_1_TO_20,
-      adLanguages: parameters.query?.adLanguages || [
-        TiktokLibraryAdLanguage.ENGLISH,
-      ],
+      languages: parameters.languages || [],
+      adFormat: parameters.adFormat || TiktokLibraryAdFormat.SPARK_ADS,
+      like: parameters.like || TiktokLibraryLike.FROM_1_TO_20,
+      adLanguages: parameters.adLanguages || [TiktokLibraryAdLanguage.ENGLISH],
     } as Partial<TiktokLibraryQueryDto>);
 
     const errors = validateSync(queryDto);

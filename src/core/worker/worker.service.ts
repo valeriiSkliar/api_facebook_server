@@ -15,9 +15,11 @@ import {
 } from '@src/api/requests/request-manager-service';
 import { ScraperRegistry } from '@src/scrapers/common/scraper.registry';
 import { AdLibraryQuery } from '@src/scrapers/facebook/models/facebook-ad-lib-query';
-import { ScraperResult } from '@src/scrapers/facebook/models/facebook-scraper-result';
+// import { ScraperResult } from '@src/scrapers/facebook/models/facebook-scraper-result';
 import { FacebookScraperOptionsDto } from '@src/api/facebook/dto';
 import { IScraper } from '@src/scrapers/common/interfaces';
+import { AdData } from '@src/scrapers/facebook/models/facebook-ad-data';
+import { BaseScraperResult } from '@src/scrapers/common/interfaces/base-scraper-result';
 
 @Injectable()
 export class WorkerService implements OnModuleInit {
@@ -142,31 +144,9 @@ export class WorkerService implements OnModuleInit {
   private async executeScrapingProcess(
     request: RequestMetadata,
     scraper: IScraper,
-  ): Promise<ScraperResult> {
-    // Create a ScraperContext for this request
-    // const context = this.scraperFactory.createContext(
-    //   this.buildQuery(request.parameters),
-    //   request.parameters,
-    // );
-
-    // // If we have an active browser from BrowserPoolService, use it
-    // if (request.browserId) {
-    //   // Get browser instance
-    //   const browserInstance = await this.browserPoolService.getBrowser(
-    //     request.browserId,
-    //   );
-
-    //   if (browserInstance && browserInstance.browser) {
-    //     // Use the existing browser in our context
-    //     context.state.browser = browserInstance.browser;
-
-    //     // Create a new page in the existing browser
-    //     context.state.page = await browserInstance.browser.newPage();
-    //   }
-    // }
-
+  ): Promise<BaseScraperResult<AdData>> {
     // Execute the scraping pipeline using the appropriate method
-    const result: ScraperResult = await scraper.scrape(request);
+    const result: BaseScraperResult<AdData> = await scraper.scrape(request);
 
     return result;
   }

@@ -7,6 +7,8 @@ import { ApiModule } from './api/api.module';
 import { CoreModule } from './core/core.module';
 import { AppController } from './app.controller';
 import { SchedulerModule } from './services/scheduler/scheduler.module';
+import { ScraperModule } from './scrapers/scraper.module';
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -18,6 +20,7 @@ import { SchedulerModule } from './services/scheduler/scheduler.module';
     AuthModule,
     ApiModule,
     SchedulerModule,
+    ScraperModule,
   ],
   controllers: [AppController],
   providers: [AppService],

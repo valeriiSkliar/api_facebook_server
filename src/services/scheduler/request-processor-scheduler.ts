@@ -96,7 +96,7 @@ export class RequestProcessorScheduler {
           requestId,
           RequestStatus.PENDING, // Keep it pending for retry
           { note: 'Re-enqueued due to temporary page issue' },
-          { isRetryablePageError: true }, // Flag to prevent key deletion
+          // { isRetryablePageError: true }, // Flag to prevent key deletion
         );
         // Do NOT mark as FAILED here, let it retry
       } else if (errorMessage.includes('Tab not found for request')) {

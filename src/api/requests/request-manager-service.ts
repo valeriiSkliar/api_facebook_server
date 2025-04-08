@@ -5,11 +5,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { v4 as uuidv4 } from 'uuid';
 import { RedisService } from '@core/storage/redis/redis.service';
 import { PrismaService } from '@src/database';
-import { BrowserPoolService } from '@core/browser/browser-pool/browser-pool-service';
 import { Prisma, Request } from '@prisma/client';
 import { QueueService } from '@core/queue/queue.service';
-import { TabManager } from '@src/core/browser/tab-manager/tab-manager';
-import { BrowserLifecycleManager } from '@src/core/browser/lifecycle/browser-lifecycle-manager';
 import { CreateRequestDto } from './dto/create-request.dto';
 
 export interface RequestMetadata {
@@ -22,8 +19,6 @@ export interface RequestMetadata {
   createdAt: Date;
   processedAt?: Date;
   expiresAt: Date;
-  browserId?: string;
-  tabId?: string; // Added to track the tab ID
   lastActivityAt: Date;
   priorityLevel: number;
   retryCount: number;
@@ -50,10 +45,7 @@ export class RequestManagerService {
   constructor(
     private readonly redisService: RedisService,
     private readonly prismaService: PrismaService,
-    private readonly browserPoolService: BrowserPoolService,
     private readonly queueService: QueueService,
-    private readonly tabManager: TabManager,
-    private readonly lifecycleManager: BrowserLifecycleManager,
   ) {}
 
   /**
@@ -94,7 +86,7 @@ export class RequestManagerService {
     parameters: CreateRequestDto['parameters'],
     priority: number = 1,
     webhookUrl?: string,
-  ): Promise<RequestMetadata> {
+  ): Promise<{ id: string; status: RequestStatus }> {
     try {
       const requestId = uuidv4();
 
@@ -153,85 +145,15 @@ export class RequestManagerService {
         },
       });
 
-      // Log before creating tab
-      this.logger.debug(
-        `[createRequest] Attempting to create tab for request ${requestId}...`,
-      );
-      // Create a tab for this request in an available browser
-      const tabCreation = await this.browserPoolService.createTabForRequest(
-        requestId,
-        userId,
-        userEmail,
-        // parameters,
-      );
+      // Log before enqueueing - no tab creation needed
+      this.logger.debug(`[createRequest] Enqueueing request ${requestId}...`);
+      // Enqueue for processing
+      await this.queueService.enqueueRequest(requestId, priority);
 
-      if (tabCreation) {
-        // Update request metadata with browser and tab IDs
-        requestMetadata.browserId = tabCreation.browserId;
-        requestMetadata.tabId = tabCreation.tabId;
-        requestMetadata.status = RequestStatus.PROCESSING;
+      this.logger.log(`Enqueued request ${requestId}`);
 
-        // Update in Redis
-        await this.redisService.set(
-          requestRedisKey,
-          requestMetadata,
-          this.REQUEST_EXPIRY,
-        );
-
-        // Update in database
-        await this.prismaService.request.updateMany({
-          where: { external_request_id: requestId },
-          data: {
-            status: RequestStatus.PROCESSING.toString(),
-          },
-        });
-
-        // --- Check page readiness --- START ---
-        // Wait briefly to allow the page object to be fully registered
-        await new Promise((resolve) => setTimeout(resolve, 200)); // Short delay
-
-        const pageIsReady = this.lifecycleManager.isPageReady(
-          tabCreation.tabId,
-        );
-
-        if (!pageIsReady) {
-          this.logger.error(
-            `Page for tab ${tabCreation.tabId} (request ${requestId}) did not become ready in time. Cancelling request.`,
-          );
-          // Clean up: close the tab and mark the request as FAILED
-          await this.browserPoolService.closeTab(
-            tabCreation.browserId,
-            tabCreation.tabId,
-            { deleteRedisKeys: true }, // Ensure Redis keys are deleted
-          );
-          await this.updateRequestStatus(
-            requestId,
-            RequestStatus.FAILED,
-            { error: 'PageNotReady' },
-            { deleteRedisKeys: true }, // Pass deleteRedisKeys option here too
-          );
-          // Optionally throw an error to signal failure
-          throw new Error('Failed to ensure page readiness after tab creation');
-        }
-        // --- Check page readiness --- END ---
-
-        // Log before enqueueing
-        this.logger.debug(
-          `[createRequest] Page for tab ${tabCreation.tabId} is ready. Enqueueing request ${requestId}.`,
-        );
-        // Enqueue for processing ONLY if page is ready
-        await this.queueService.enqueueRequest(requestId, priority);
-
-        this.logger.log(
-          `Created tab ${tabCreation.tabId} in browser ${tabCreation.browserId} for request ${requestId}`,
-        );
-      } else {
-        this.logger.warn(
-          `Could not create tab for request ${requestId} - will retry later`,
-        );
-      }
-
-      return requestMetadata;
+      // Return only id and status as requested
+      return { id: requestId, status: RequestStatus.PENDING };
     } catch (error) {
       this.logger.error('Error creating request', error);
       throw error;
@@ -276,13 +198,6 @@ export class RequestManagerService {
         retryCount: dbRequest.retry_count,
         webhookUrl: dbRequest.webhook_url || undefined,
       };
-
-      // Try to get tab info if available
-      const tab = await this.tabManager.getTabByRequest(requestId);
-      if (tab) {
-        requestMetadata.tabId = tab.id;
-        requestMetadata.browserId = tab.browserId;
-      }
 
       // Cache in Redis for future lookups
       await this.redisService.set(
@@ -329,7 +244,6 @@ export class RequestManagerService {
     requestId: string,
     status: RequestStatus,
     result?: any,
-    options?: { deleteRedisKeys?: boolean; isRetryablePageError?: boolean },
   ): Promise<RequestMetadata | null> {
     try {
       const request = await this.getRequest(requestId);
@@ -350,22 +264,6 @@ export class RequestManagerService {
         status === RequestStatus.EXPIRED
       ) {
         request.processedAt = now;
-
-        // Close the tab if it exists, passing options
-        if (request.tabId && request.browserId) {
-          // Only delete keys if not a retryable page error
-          const shouldDeleteKeys =
-            options?.deleteRedisKeys !== false &&
-            !options?.isRetryablePageError;
-          await this.browserPoolService.closeTab(
-            request.browserId,
-            request.tabId,
-            { deleteRedisKeys: shouldDeleteKeys }, // Pass calculated flag
-          );
-          this.logger.log(
-            `Closed tab ${request.tabId} for request ${requestId} with deleteRedisKeys: ${shouldDeleteKeys}`,
-          );
-        }
       }
 
       // Get DB entity
@@ -417,6 +315,26 @@ export class RequestManagerService {
       );
 
       // Log activity
+      const redisKey = `${this.REQUEST_PREFIX}${requestId}`;
+      await this.redisService.set(redisKey, request, this.REQUEST_EXPIRY);
+
+      // Update database
+      await this.prismaService.request.updateMany({
+        where: { external_request_id: requestId },
+        data: {
+          status: status.toString(),
+          processed_at:
+            status === RequestStatus.COMPLETED ||
+            status === RequestStatus.FAILED ||
+            status === RequestStatus.CANCELLED ||
+            status === RequestStatus.EXPIRED
+              ? now
+              : undefined,
+          updated_at: now,
+        },
+      });
+
+      // Log activity
       await this.prismaService.activityLog.create({
         data: {
           timestamp: now,
@@ -454,11 +372,6 @@ export class RequestManagerService {
 
       const redisKey = `${this.REQUEST_PREFIX}${requestId}`;
       await this.redisService.set(redisKey, request, this.REQUEST_EXPIRY);
-
-      // If we have a tab ID, update its activity
-      if (request.tabId) {
-        await this.tabManager.updateTabActivity(request.tabId);
-      }
 
       // Update database
       await this.prismaService.request.updateMany({
@@ -511,12 +424,8 @@ export class RequestManagerService {
 
       // Convert to RequestMetadata format and cache in Redis
       const requests = await Promise.all(
-        dbRequests.map(async (dbRequest) => {
-          // Try to get tab info if available
-          const tab = await this.tabManager.getTabByRequest(
-            dbRequest.external_request_id,
-          );
-
+        dbRequests.map((dbRequest) => {
+          // Ensure browserId and tabId are not included
           return {
             id: dbRequest.external_request_id,
             user_id: dbRequest.user_id,
@@ -531,8 +440,6 @@ export class RequestManagerService {
             priorityLevel: dbRequest.priority,
             retryCount: dbRequest.retry_count,
             webhookUrl: dbRequest.webhook_url || undefined,
-            browserId: tab?.browserId,
-            tabId: tab?.id,
           };
         }),
       );
@@ -617,12 +524,9 @@ export class RequestManagerService {
             this.logger.debug(
               `Calling updateRequestStatus for expired request ${requestId}`,
             );
-            await this.updateRequestStatus(
-              requestId,
-              RequestStatus.EXPIRED,
-              { reason: 'Request timed out due to inactivity' },
-              { deleteRedisKeys: true }, // Ensure cleanup happens
-            );
+            await this.updateRequestStatus(requestId, RequestStatus.EXPIRED, {
+              reason: 'Request timed out due to inactivity',
+            });
             cleanedCount++;
             this.logger.log(
               `Successfully marked request ${requestId} as EXPIRED.`,

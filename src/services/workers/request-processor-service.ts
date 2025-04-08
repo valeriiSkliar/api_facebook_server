@@ -1,20 +1,15 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { Logger } from '@nestjs/common';
-
-import { Injectable } from '@nestjs/common';
+import { Logger, Injectable } from '@nestjs/common';
 import {
   RequestManagerService,
   RequestMetadata,
   RequestStatus,
 } from '@src/api/requests/request-manager-service';
-import { BrowserPoolService } from '@core/browser/browser-pool/browser-pool-service';
-import { FacebookAdScraperService } from '../FacebookAdScraperService';
-import { AdLibraryQuery } from '@src/scrapers/facebook/models/facebook-ad-lib-query';
-import { Browser } from 'playwright';
-import { TabManager } from '@src/core/browser/tab-manager/tab-manager';
-import { BrowserLifecycleManager } from '@src/core/browser/lifecycle/browser-lifecycle-manager';
+import { ScraperRegistry } from '@src/scrapers/common/scraper.registry';
+import { IScraper } from '@src/scrapers/common/interfaces';
+import { ScraperResult } from '@src/scrapers/facebook/models/facebook-scraper-result';
 
 @Injectable()
 export class RequestProcessorService {
@@ -22,203 +17,112 @@ export class RequestProcessorService {
 
   constructor(
     private readonly requestManager: RequestManagerService,
-    private readonly browserPool: BrowserPoolService,
-    private readonly tabManager: TabManager,
-    private readonly facebookAdScraperService: FacebookAdScraperService,
-    private readonly lifecycleManager: BrowserLifecycleManager,
-
-    // Include other scrapers as needed
+    private readonly scraperRegistry: ScraperRegistry,
   ) {}
 
   /**
-   * Process a request by ID
+   * Process a request by ID using the appropriate scraper from the registry.
    */
   async processRequest(requestId: string): Promise<any> {
+    let request: RequestMetadata | null = null;
+    let finalStatus: RequestStatus;
+    let result: ScraperResult | { error: string };
+
     try {
       // Get request details
-      const request = await this.requestManager.getRequest(requestId);
+      request = await this.requestManager.getRequest(requestId);
       if (!request) {
-        throw new Error(`Request ${requestId} not found`);
+        // Handle case where request might be deleted or invalid before processing starts
+        this.logger.warn(
+          `Request ${requestId} not found during processing. It might have been deleted.`,
+        );
+        return; // Exit gracefully if request doesn't exist
       }
 
-      // Record activity and update status
+      // Record activity and update status to PROCESSING
       await this.requestManager.recordActivity(requestId);
       await this.requestManager.updateRequestStatus(
         requestId,
         RequestStatus.PROCESSING,
       );
 
-      // Choose the appropriate scraper based on request type
-      let result;
-      switch (request.requestType) {
-        case 'facebook_scraper': {
-          const tabInfo = await this.tabManager.getTabByRequest(requestId);
-          if (!tabInfo) {
-            throw new Error(
-              `Tab not found for request ${requestId}. Cannot proceed.`,
-            );
-          }
-          const tabId = tabInfo.id;
-          const browserId = tabInfo.browserId;
+      // Get the scraper instance from the registry
+      const scraper: IScraper = this.scraperRegistry.getScraper(
+        request.requestType,
+      );
 
-          if (!browserId) {
-            // Handle case where tab exists but browserId is missing (shouldn't normally happen if tab is active)
-            throw new Error(
-              `Browser ID not found for tab ${tabId} associated with request ${requestId}.`,
-            );
-          }
+      // Execute the scrape method
+      const scrapeResult: ScraperResult = await scraper.scrape(request);
 
-          result = await this.browserPool.executeInBrowser(
-            browserId,
-            async ({ browser }) => {
-              const page = this.lifecycleManager.getPageForTab(tabId);
-              if (!page || page.isClosed()) {
-                this.logger.error(
-                  `Page object for tab ${tabId} is invalid (Not found or closed). Request ${requestId}`,
-                );
-                throw new Error(`Page not found or closed for tab ${tabId}`);
-              }
+      // Determine final status based on scrape result
+      finalStatus = scrapeResult.success
+        ? RequestStatus.COMPLETED
+        : RequestStatus.FAILED;
+      result = scrapeResult;
 
-              this.logger.debug(
-                `Executing scraper in page for tab ${tabId}, browser ${browserId}`,
-              );
-
-              return await this.facebookAdScraperService.executeScraperWithBrowserAndPage(
-                this.buildFacebookQuery(request),
-                request.parameters,
-                browser,
-                page,
-                browserId,
-                requestId,
-              );
-            },
-          );
-          break;
-        }
-        case 'tiktok_scraper':
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-          result = await this.processTikTokScraper(request);
-          break;
-        default:
-          throw new Error(`Unsupported request type: ${request.requestType}`);
+      // Optionally trigger webhook if URL is provided
+      if (request.webhookUrl) {
+        this.triggerWebhook(request.webhookUrl, result);
       }
-
-      // Update request with results
-      await this.requestManager.updateRequestStatus(
-        requestId,
-        RequestStatus.COMPLETED,
-        result,
-      );
-
-      return result;
     } catch (error: unknown) {
-      this.logger.error(`Error processing request ${requestId}`, error);
-
-      const errorMessage = (error as Error).message;
-      const isPageNotFoundError =
-        errorMessage.includes('Page not found or closed') ||
-        errorMessage.includes('Page object not found');
-
-      // Determine if Redis keys should be deleted
-      const deleteRedisKeys = !isPageNotFoundError; // Don't delete keys for page not found error to allow retry
-
-      // Update request status to FAILED
-      await this.requestManager.updateRequestStatus(
-        requestId,
-        RequestStatus.FAILED,
-        { error: errorMessage },
-        { deleteRedisKeys, isRetryablePageError: isPageNotFoundError }, // Pass options
+      this.logger.error(
+        `Critical error processing request ${requestId}: ${
+          (error as Error).message
+        }`,
+        (error as Error).stack,
       );
+      finalStatus = RequestStatus.FAILED;
+      result = {
+        error: `Critical processing error: ${(error as Error).message}`,
+      };
 
-      // Rethrow the error to let the queue handler know about the failure
-      throw error;
+      // Optionally trigger webhook on critical failure too
+      if (request?.webhookUrl) {
+        this.triggerWebhook(request.webhookUrl, result);
+      }
     }
-  }
 
-  private async processFacebookScraper(request: RequestMetadata): Promise<any> {
-    // If we have a browser assigned, use it
-    if (request.browserId) {
-      return await this.browserPool.executeInBrowser(
-        request.browserId,
-        async ({
-          browserId,
-          browser,
-        }: {
-          browserId: string;
-          browser: Browser;
-        }) => {
-          // Prepare the query from request parameters
-          const query = this.buildFacebookQuery(request);
-          // Directly execute with the browser instance
-          return await this.facebookAdScraperService.executeScraperWithBrowser(
-            query,
-            request.parameters,
-            browser,
-            browserId,
-          );
-        },
-      );
+    // Update request with final status and results/error
+    // Ensure request was fetched before trying to update
+    if (request) {
+      try {
+        await this.requestManager.updateRequestStatus(
+          requestId,
+          finalStatus,
+          result,
+        );
+      } catch (updateError: unknown) {
+        this.logger.error(
+          `Failed to update final status for request ${requestId} to ${finalStatus}`,
+          updateError,
+        );
+        // Decide if we need to re-throw or handle this specific error further
+      }
     } else {
-      // No browser assigned, just use the service directly
-      const query = this.buildFacebookQuery(request);
-      return await this.facebookAdScraperService.scrapeAdsWithBrowser(
-        query,
-        request.parameters,
+      this.logger.warn(
+        `Cannot update status for request ${requestId} as it was not found initially.`,
       );
     }
-  }
 
-  private buildFacebookQuery(request: RequestMetadata): AdLibraryQuery {
-    // this.logger.log('Building Facebook query', request);
-
-    // Создаем запрос с данными по умолчанию
-    const defaultQuery: AdLibraryQuery = {
-      queryString: '',
-      countries: ['ALL'],
-      activeStatus: 'active',
-      adType: 'all',
-      isTargetedCountry: false,
-      mediaType: 'all',
-      searchType: 'keyword_unordered',
-      filters: {},
-    };
-
-    // Проверяем наличие параметров запроса
-    if (!request.parameters || !request.parameters.query) {
-      return defaultQuery;
+    // If the original processing resulted in an error, rethrow it
+    // so the job queue handler knows the job failed.
+    if (finalStatus === RequestStatus.FAILED && 'error' in result) {
+      throw new Error(result.error);
     }
 
-    // Получаем query из параметров и устанавливаем значения
-    const query = request.parameters.query;
-
-    return {
-      queryString: query.queryString || defaultQuery.queryString,
-      countries: query.countries || defaultQuery.countries,
-      activeStatus:
-        (query.activeStatus as 'active' | 'inactive' | 'all') ||
-        defaultQuery.activeStatus,
-      adType:
-        (query.adType as 'political_and_issue_ads' | 'all') ||
-        defaultQuery.adType,
-      isTargetedCountry:
-        typeof query.isTargetedCountry === 'boolean'
-          ? query.isTargetedCountry
-          : defaultQuery.isTargetedCountry,
-      mediaType:
-        (query.mediaType as 'all' | 'image' | 'video') ||
-        defaultQuery.mediaType,
-      searchType:
-        (query.searchType as 'keyword_unordered' | 'keyword_exact_phrase') ||
-        defaultQuery.searchType,
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      filters: query.filters || defaultQuery.filters,
-    };
+    return result; // Return the result (success or structured error)
   }
 
-  private processTikTokScraper(request: RequestMetadata): Promise<any> {
-    this.logger.log('Processing TikTok scraper', request);
-    // Similar implementation for Instagram scraping
-    // ...
-    throw new Error('TikTok scraper not yet implemented');
+  // Placeholder for webhook triggering logic
+  private triggerWebhook(
+    url: string,
+    data: ScraperResult | { error: string },
+  ): void {
+    this.logger.log(
+      `Triggering webhook to ${url} with data: ${JSON.stringify(data).substring(0, 100)}...`,
+    );
+    // TODO: Implement actual webhook POST request logic here
+    // Consider using an HTTP client like Axios or NestJS HttpModule
+    // Handle potential errors during the webhook call (e.g., network issues, non-2xx responses)
   }
 }

@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { RequestScheduler } from './request-scheduler';
 
@@ -10,7 +10,7 @@ import { CacheModule } from '@core/cache/cache.module';
 @Module({
   imports: [
     ScheduleModule.forRoot(),
-    WorkerModule,
+    forwardRef(() => WorkerModule),
     QueueModule,
     RequestManagerModule,
     BrowserPoolModule,

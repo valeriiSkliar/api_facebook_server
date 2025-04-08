@@ -10,4 +10,4 @@ export * from './i-email-service';
 export * from './i-scraper-step';
 export * from './i-session-manager';
 export * from './i-email-verification-handler';
-export * from './i-email-verification-handler';
+export * from './i-scraper';

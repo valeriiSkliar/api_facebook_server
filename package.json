@@ -29,6 +29,7 @@
     "pm2:start": "node -e \"require('dotenv').config(); console.log('Environment variables loaded'); process.exit(0)\" && pm2 start ecosystem.config.js"
   },
   "dependencies": {
+    "@nestjs/axios": "^4.0.0",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.1",
     "@nestjs/core": "^11.0.1",
@@ -38,7 +39,7 @@
     "@prisma/client": "^6.5.0",
     "@t3-oss/env-core": "0.7.1",
     "@types/imapflow": "^1.0.20",
-    "axios": "^1.8.3",
+    "axios": "^1.8.4",
     "chalk": "^4.1.2",
     "cheerio": "^1.0.0",
     "class-transformer": "^0.5.1",

@@ -1,19 +1,23 @@
 /* eslint-disable @typescript-eslint/require-await */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleInit,
+  Inject,
+  forwardRef,
+} from '@nestjs/common';
 import { QueueService } from '@core/queue/queue.service';
 import {
   RequestManagerService,
   RequestMetadata,
   RequestStatus,
 } from '@src/api/requests/request-manager-service';
-import { ScraperFactory } from '@src/scrapers/common/factories/scraper-factory';
-import { ScraperRegistry } from '@src/services/scraper.registry';
+import { ScraperRegistry } from '@src/scrapers/common/scraper.registry';
 import { AdLibraryQuery } from '@src/scrapers/facebook/models/facebook-ad-lib-query';
-import { BrowserPoolService } from '@core/browser/browser-pool/browser-pool-service';
-import { FacebookAdScraperService } from '@src/services/FacebookAdScraperService';
 import { ScraperResult } from '@src/scrapers/facebook/models/facebook-scraper-result';
 import { ScraperOptionsDto } from '@src/api/facebook/dto';
+import { IScraper } from '@src/scrapers/common/interfaces';
 
 @Injectable()
 export class WorkerService implements OnModuleInit {
@@ -25,9 +29,8 @@ export class WorkerService implements OnModuleInit {
   constructor(
     private readonly queueService: QueueService,
     private readonly requestManager: RequestManagerService,
-    private readonly scraperFactory: ScraperFactory,
+    @Inject(forwardRef(() => ScraperRegistry))
     private readonly scraperRegistry: ScraperRegistry,
-    private readonly browserPoolService: BrowserPoolService,
   ) {}
 
   async onModuleInit() {
@@ -132,39 +135,38 @@ export class WorkerService implements OnModuleInit {
       );
     }
   }
-
+  /**
+   * @deprecated
+   * @todo: remove this method
+   */
   private async executeScrapingProcess(
     request: RequestMetadata,
-    scraper: FacebookAdScraperService,
+    scraper: IScraper,
   ): Promise<ScraperResult> {
     // Create a ScraperContext for this request
-    const context = this.scraperFactory.createContext(
-      this.buildQuery(request.parameters),
-      request.parameters,
-    );
+    // const context = this.scraperFactory.createContext(
+    //   this.buildQuery(request.parameters),
+    //   request.parameters,
+    // );
 
-    // If we have an active browser from BrowserPoolService, use it
-    if (request.browserId) {
-      // Get browser instance
-      const browserInstance = await this.browserPoolService.getBrowser(
-        request.browserId,
-      );
+    // // If we have an active browser from BrowserPoolService, use it
+    // if (request.browserId) {
+    //   // Get browser instance
+    //   const browserInstance = await this.browserPoolService.getBrowser(
+    //     request.browserId,
+    //   );
 
-      if (browserInstance && browserInstance.browser) {
-        // Use the existing browser in our context
-        context.state.browser = browserInstance.browser;
+    //   if (browserInstance && browserInstance.browser) {
+    //     // Use the existing browser in our context
+    //     context.state.browser = browserInstance.browser;
 
-        // Create a new page in the existing browser
-        context.state.page = await browserInstance.browser.newPage();
-      }
-    }
+    //     // Create a new page in the existing browser
+    //     context.state.page = await browserInstance.browser.newPage();
+    //   }
+    // }
 
     // Execute the scraping pipeline using the appropriate method
-    const result: ScraperResult = await scraper.scrapeAdsWithBrowser(
-      this.buildQuery(request.parameters),
-      request.parameters,
-      request.browserId,
-    );
+    const result: ScraperResult = await scraper.scrape(request);
 
     return result;
   }
@@ -184,13 +186,12 @@ export class WorkerService implements OnModuleInit {
   }
 
   private mapRequestTypeToScraperType(requestType: string): string {
-    const mapping: Record<string, string> = {
-      facebook_scraper: 'facebook-ads',
-      tiktok_scraper: 'tiktok-ads',
-      // Add more mappings as needed
-    };
+    this.logger.debug(`Mapping request type: ${requestType}`);
+    const availableTypes = this.scraperRegistry.getAllScraperTypes();
+    this.logger.debug(`Available scraper types: ${availableTypes.join(', ')}`);
 
-    return mapping[requestType] || requestType;
+    // No mapping needed since types match exactly
+    return requestType;
   }
 
   private async triggerWebhook(url: string, requestId: string, data: any) {

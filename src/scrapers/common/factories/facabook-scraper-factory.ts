@@ -2,16 +2,16 @@ import { Logger } from '@nestjs/common';
 import { ScraperContext } from '@src/scrapers/facebook/models/facebook-scraper-context';
 import { AdLibraryQuery } from '@src/scrapers/facebook/models/facebook-ad-lib-query';
 import { FilterRegistry } from '../../facebook/filters/FilterRegistry';
-import { StepFactory } from './step-factory';
+import { FacebookStepFactory } from './facebook-step-factory';
 import { ScraperOptions } from '@src/scrapers/facebook/models/facebook-scraper-options';
 import { Injectable } from '@nestjs/common';
 import { ScraperPipeline } from '../pipeline';
 
 @Injectable()
-export class ScraperFactory {
+export class FacebookScraperFactory {
   constructor(
     private readonly logger: Logger,
-    private readonly stepFactory: StepFactory,
+    private readonly stepFactory: FacebookStepFactory,
   ) {}
 
   createScraper(options?: Partial<ScraperOptions>): ScraperPipeline {

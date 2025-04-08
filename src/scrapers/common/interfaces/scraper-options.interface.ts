@@ -13,3 +13,8 @@ export interface ScraperOptions<T> {
   behavior?: BehaviorOptionsDto;
   query?: T;
 }
+
+export interface IScraperOptions {
+  proxy?: string;
+  timeout?: number;
+}

@@ -6,7 +6,7 @@ import { PaginationStep } from '../../facebook/steps/pagination-step';
 import { StorageStep } from '../../facebook/steps/storage-step';
 import { NavigationStep } from '../../facebook/steps/navigation-step';
 
-export class StepFactory {
+export class FacebookStepFactory {
   constructor(@Inject(Logger) private readonly logger: Logger) {}
 
   createInitializationStep(): IScraperStep {

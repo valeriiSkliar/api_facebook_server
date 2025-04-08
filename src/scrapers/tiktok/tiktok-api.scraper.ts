@@ -8,12 +8,16 @@ import { RequestMetadata } from '@src/api/requests/request-manager-service';
 import { TiktokLibraryQuery } from './models/tiktok-library-query';
 import { TiktokQueryTransformer } from './transformers/tiktok-query.transformer';
 import { TiktokScraperOptionsDto } from './dto/tiktok-scraper-options.dto';
-
+import { TikTokScraperFactory } from './factories/tiktok-scraper.factory';
+import { TikTokQuery } from './types/tiktok-query';
 @Injectable()
 export class TiktokApiScraper implements IScraper<TiktokScraperOptionsDto> {
   private readonly logger = new Logger(TiktokApiScraper.name);
 
-  constructor(private readonly queryTransformer: TiktokQueryTransformer) {}
+  constructor(
+    private readonly queryTransformer: TiktokQueryTransformer,
+    private readonly scraperFactory: TikTokScraperFactory,
+  ) {}
 
   async scrape(
     request: RequestMetadata<TiktokScraperOptionsDto>,
@@ -21,8 +25,16 @@ export class TiktokApiScraper implements IScraper<TiktokScraperOptionsDto> {
     const startTime = Date.now();
 
     const query = this.buildQuery(request.parameters);
-    this.logger.log('Scraping TikTok ads...', request);
-    this.logger.log('Query: ', query);
+
+    const scraper = this.scraperFactory.createScraper();
+    const context = this.scraperFactory.createContext(
+      query as TikTokQuery,
+      request.parameters as Partial<TiktokScraperOptionsDto>,
+    );
+    // const result = await scraper.execute(context);
+
+    // this.logger.log('Scraping TikTok ads...', request);
+    // this.logger.log('Query: ', query);
 
     return await Promise.resolve({
       success: false,

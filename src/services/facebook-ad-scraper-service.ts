@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/require-await */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 import { Injectable, Logger } from '@nestjs/common';
-import { ScraperFactory } from '../scrapers/common/factories/scraper-factory';
+import { FacebookScraperFactory } from '../scrapers/common/factories/facabook-scraper-factory';
 import { AdLibraryQuery } from '../scrapers/facebook/models/facebook-ad-lib-query';
 import { ScraperOptions } from '../scrapers/facebook/models/facebook-scraper-options';
 import { ScraperResult } from '../scrapers/facebook/models/facebook-scraper-result';
@@ -13,7 +13,7 @@ import { Browser, Page } from 'playwright';
 @Injectable()
 export class FacebookAdScraperService {
   constructor(
-    private readonly scraperFactory: ScraperFactory,
+    private readonly scraperFactory: FacebookScraperFactory,
     private readonly logger: Logger,
     private readonly browserPoolService: BrowserPoolService,
   ) {}

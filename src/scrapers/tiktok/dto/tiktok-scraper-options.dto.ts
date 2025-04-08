@@ -3,7 +3,7 @@ import { IsBoolean, IsOptional } from 'class-validator';
 import { Type } from 'class-transformer';
 import { TiktokLibraryQueryDto } from './tiktok-library-query.dto';
 import { ValidateNested } from 'class-validator';
-import { ScraperOptions } from '@src/scrapers/common/interfaces/scraper-options.interface';
+import { BaseScraperOptions } from '@src/scrapers/common/interfaces/scraper-options.interface';
 import {
   StorageOptionsDto,
   BehaviorOptionsDto,
@@ -11,9 +11,7 @@ import {
   NetworkOptionsDto,
 } from '@src/scrapers/common/dto';
 
-export class TiktokScraperOptionsDto
-  implements ScraperOptions<TiktokLibraryQueryDto>
-{
+export class TiktokScraperOptionsDto implements BaseScraperOptions {
   @IsOptional()
   @ValidateNested()
   @Type(() => StorageOptionsDto)

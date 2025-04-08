@@ -138,10 +138,7 @@ export class WorkerService implements OnModuleInit {
       );
     }
   }
-  /**
-   * @deprecated
-   * @todo: remove this method
-   */
+
   private async executeScrapingProcess(
     request: RequestMetadata<unknown>,
     scraper: IScraper<unknown, AdData>,

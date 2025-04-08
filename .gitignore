@@ -81,7 +81,7 @@ yarn-error.log*
 
 # Rules
 .cursor/rules
-
+CLAUDE.md
 data/*
 
 # Playwright

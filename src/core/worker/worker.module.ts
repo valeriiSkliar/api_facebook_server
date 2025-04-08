@@ -7,6 +7,7 @@ import { ScraperRegistry } from '@src/services/ScraperRegistry';
 import { ScraperFactory } from '@src/scrapers/common/factories/scraper-factory';
 import { StepFactory } from '@src/scrapers/common/factories/step-factory';
 import { FacebookApiModule } from '@src/api/facebook/facebook.module';
+import { TiktokAdScraperService } from '@src/scrapers/tiktok/tik-tok-ad-scraper-service';
 @Module({
   imports: [
     QueueModule,
@@ -20,6 +21,7 @@ import { FacebookApiModule } from '@src/api/facebook/facebook.module';
     ScraperRegistry,
     ScraperFactory,
     StepFactory,
+    TiktokAdScraperService,
   ],
   exports: [WorkerService],
 })

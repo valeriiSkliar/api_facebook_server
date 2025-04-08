@@ -11,10 +11,10 @@ import { ScraperOptionsDto } from '@src/api/facebook/dto';
 
 export class CreateRequestDto {
   @IsString()
-  @IsEnum(['facebook_scraper', 'instagram_scraper'], {
-    message: 'requestType must be one of: facebook_scraper, instagram_scraper',
+  @IsEnum(['facebook_scraper', 'tiktok_scraper'], {
+    message: 'requestType must be one of: facebook_scraper, tiktok_scraper',
   })
-  requestType: 'facebook_scraper' | 'instagram_scraper';
+  requestType: 'facebook_scraper' | 'tiktok_scraper';
 
   @IsNotEmpty()
   @ValidateNested()

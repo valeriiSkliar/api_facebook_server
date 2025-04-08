@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { FacebookAdScraperService } from './FacebookAdScraperService';
+import { TiktokAdScraperService } from '@src/scrapers/tiktok/tik-tok-ad-scraper-service';
 
 @Injectable()
 export class ScraperRegistry {
@@ -7,10 +8,11 @@ export class ScraperRegistry {
 
   constructor(
     private readonly facebookAdScraperService: FacebookAdScraperService,
-    // Add other scrapers as they are implemented
+    private readonly tiktokAdScraperService: TiktokAdScraperService,
   ) {
     // Register all available scrapers
     this.registerScraper('facebook-ads', facebookAdScraperService);
+    this.registerScraper('tiktok-ads', tiktokAdScraperService);
   }
 
   registerScraper(type: string, scraper: any): void {

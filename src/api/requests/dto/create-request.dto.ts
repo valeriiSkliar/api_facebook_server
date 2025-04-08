@@ -7,7 +7,7 @@ import {
   IsEnum,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { ScraperOptionsDto } from '@src/api/facebook/dto';
+import { FacebookScraperOptionsDto } from '@src/api/facebook/dto';
 
 export class CreateRequestDto {
   @IsString()
@@ -18,8 +18,8 @@ export class CreateRequestDto {
 
   @IsNotEmpty()
   @ValidateNested()
-  @Type(() => ScraperOptionsDto)
-  parameters: ScraperOptionsDto;
+  @Type(() => FacebookScraperOptionsDto)
+  parameters: FacebookScraperOptionsDto;
 
   @IsOptional()
   @IsNumber()

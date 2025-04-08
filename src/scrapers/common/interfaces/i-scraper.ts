@@ -21,11 +21,11 @@ import { ScraperResult } from '@src/scrapers/facebook/models/facebook-scraper-re
  * Интерфейс для реализации скрапера.
  */
 
-export interface IScraper {
+export interface IScraper<T = any> {
   /**
    * Основной метод для запуска процесса скрапинга.
    * @param request - Метаданные запроса, содержащие параметры и тип.
    * @returns Promise, разрешающийся результатом скрапинга.
    */
-  scrape(request: RequestMetadata): Promise<ScraperResult>;
+  scrape(request: RequestMetadata<T>): Promise<ScraperResult>;
 }

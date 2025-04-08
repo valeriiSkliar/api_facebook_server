@@ -8,7 +8,7 @@ import {
   IsEnum,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { ScraperOptionsDto } from './facebook-scraper-options-dto';
+import { FacebookScraperOptionsDto } from './facebook-scraper-options-dto';
 
 import { IsDateString, ArrayMinSize } from 'class-validator';
 import {
@@ -86,6 +86,6 @@ export class ScraperRequestDto {
 
   @IsOptional()
   @ValidateNested()
-  @Type(() => ScraperOptionsDto)
-  options?: ScraperOptionsDto;
+  @Type(() => FacebookScraperOptionsDto)
+  options?: FacebookScraperOptionsDto;
 }

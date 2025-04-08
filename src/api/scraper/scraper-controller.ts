@@ -7,7 +7,7 @@ import {
   Get,
   Logger,
 } from '@nestjs/common';
-import { FacebookAdScraperService } from '../../services/FacebookAdScraperService';
+import { FacebookAdScraperService } from '../../services/facebook-ad-scraper-service';
 import { SearchParameterService } from '../../services/SearchParameterService';
 import { plainToInstance } from 'class-transformer';
 import {

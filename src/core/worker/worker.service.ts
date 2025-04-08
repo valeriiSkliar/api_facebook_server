@@ -16,7 +16,7 @@ import {
 import { ScraperRegistry } from '@src/scrapers/common/scraper.registry';
 import { AdLibraryQuery } from '@src/scrapers/facebook/models/facebook-ad-lib-query';
 import { ScraperResult } from '@src/scrapers/facebook/models/facebook-scraper-result';
-import { ScraperOptionsDto } from '@src/api/facebook/dto';
+import { FacebookScraperOptionsDto } from '@src/api/facebook/dto';
 import { IScraper } from '@src/scrapers/common/interfaces';
 
 @Injectable()
@@ -171,7 +171,7 @@ export class WorkerService implements OnModuleInit {
     return result;
   }
 
-  private buildQuery(parameters: ScraperOptionsDto): AdLibraryQuery {
+  private buildQuery(parameters: FacebookScraperOptionsDto): AdLibraryQuery {
     // Map request parameters to AdLibraryQuery format
     return {
       queryString: parameters.query?.queryString || '',

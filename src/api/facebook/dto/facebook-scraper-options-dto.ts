@@ -9,46 +9,9 @@ import {
   IsEnum,
   IsArray,
 } from 'class-validator';
-
-// import { ScraperOptions } from '@src/models/ScraperOptions';
 import { Type } from 'class-transformer';
 import { AdLibraryQuery } from '@src/scrapers/facebook/models/facebook-ad-lib-query';
-
-// export class ScraperOptionsDto implements Partial<ScraperOptions> {
-//   @IsObject()
-//   @IsOptional()
-//   storage?: {
-//     outputPath?: string;
-//   };
-
-//   @IsBoolean()
-//   @IsOptional()
-//   includeAdsInResponse?: boolean = false;
-
-//   @IsObject()
-//   @IsOptional()
-//   browser?: {
-//     headless?: boolean;
-//     viewport?: {
-//       width: number;
-//       height: number;
-//     };
-//   };
-
-//   @IsObject()
-//   @IsOptional()
-//   network?: {
-//     timeout?: number;
-//     retries?: number;
-//   };
-
-//   @IsObject()
-//   @IsOptional()
-//   behavior?: {
-//     maxAdsToCollect?: number;
-//     applyFilters?: boolean;
-//   };
-// }
+import { ScraperOptions } from '@src/scrapers/common/interfaces/scraper-options.interface';
 
 export class StorageOptionsDto {
   @IsOptional()
@@ -160,7 +123,9 @@ export class ScraperAdLibraryQueryDto implements Partial<AdLibraryQuery> {
   filters?: any;
 }
 
-export class ScraperOptionsDto {
+export class FacebookScraperOptionsDto
+  implements ScraperOptions<ScraperAdLibraryQueryDto>
+{
   @IsOptional()
   @ValidateNested()
   @Type(() => StorageOptionsDto)

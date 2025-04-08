@@ -9,7 +9,7 @@ import { RequestMetadata } from '@src/api/requests/request-manager-service';
 import { ScraperResult } from './models/facebook-scraper-result';
 import { AdLibraryQuery } from './models/facebook-ad-lib-query';
 import { ScraperOptions } from './models/facebook-scraper-options';
-import { ScraperOptionsDto } from '@src/api/facebook/dto';
+import { FacebookScraperOptionsDto } from '@src/api/facebook/dto';
 
 @Injectable()
 export class FacebookBrowserScraper implements IScraper {
@@ -21,7 +21,9 @@ export class FacebookBrowserScraper implements IScraper {
     private readonly facebookAdScraperService: FacebookAdScraperService, // Placeholder service
   ) {}
 
-  async scrape(request: RequestMetadata): Promise<ScraperResult> {
+  async scrape(
+    request: RequestMetadata<FacebookScraperOptionsDto>,
+  ): Promise<ScraperResult> {
     let browserId: string | null = null;
     let tabId: string | null = null;
 
@@ -166,7 +168,7 @@ export class FacebookBrowserScraper implements IScraper {
     }
   }
 
-  private buildQuery(parameters: ScraperOptionsDto): AdLibraryQuery {
+  private buildQuery(parameters: FacebookScraperOptionsDto): AdLibraryQuery {
     // Map request parameters to AdLibraryQuery format
     return {
       queryString: parameters.query?.queryString || '',

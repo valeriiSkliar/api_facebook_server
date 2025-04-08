@@ -1,4 +1,4 @@
-export * from './FacebookAdScraperService';
+export * from './facebook-ad-scraper-service';
 export * from './SearchParameterService';
 export * from './RequestCaptureService';
 export * from './tik-tok/authenticator';

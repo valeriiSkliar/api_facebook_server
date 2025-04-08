@@ -13,21 +13,12 @@ export class InitializationStep extends AbstractScraperStep {
   }
 
   async execute(context: ScraperContext): Promise<boolean> {
-    this.logger.log(
-      '[TiktokInitializationStep.execute] Skipping initialization step',
-      {
-        context,
-      },
-    );
     return await Promise.resolve(true);
   }
 
-  async cleanup(context: ScraperContext): Promise<void> {
+  async cleanup(): Promise<void> {
     this.logger.log(
       '[TiktokInitializationStep.cleanup] Skipping cleanup for externally managed resources',
-      {
-        context,
-      },
     );
 
     return Promise.resolve();

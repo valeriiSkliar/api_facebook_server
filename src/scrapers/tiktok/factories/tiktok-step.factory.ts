@@ -1,13 +1,23 @@
 import { Logger, Inject } from '@nestjs/common';
 import { IScraperStep } from '@src/scrapers/common/interfaces';
-import { InitializationStep } from '@src/scrapers/facebook/steps';
+import { InitializationStep } from '../steps/initialization-step';
+import { GetApiConfigStep } from '../steps/get-api-config-step';
+import { PrismaService } from '@src/database/prisma.service';
 
 export class TiktokStepFactory {
-  constructor(@Inject(Logger) private readonly logger: Logger) {}
+  constructor(
+    @Inject(Logger) private readonly logger: Logger,
+    private readonly prisma: PrismaService,
+  ) {}
 
   createInitializationStep(): IScraperStep {
     this.logger.log('Creating InitializationStep');
     return new InitializationStep('TiktokInitializationStep', this.logger);
+  }
+
+  createGetApiConfigStep(): IScraperStep {
+    this.logger.log('Creating GetApiConfigStep');
+    return new GetApiConfigStep('GetApiConfigStep', this.logger, this.prisma);
   }
 
   // createNavigationStep(): IScraperStep {

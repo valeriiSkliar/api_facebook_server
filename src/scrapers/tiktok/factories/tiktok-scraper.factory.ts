@@ -32,6 +32,7 @@ export class TikTokScraperFactory {
 
     // Add core steps
     pipeline.addStep(this.stepFactory.createInitializationStep());
+    pipeline.addStep(this.stepFactory.createGetApiConfigStep());
     // pipeline.addStep(this.stepFactory.createNavigationStep());
     // pipeline.addStep(this.stepFactory.createInterceptionSetupStep());
 

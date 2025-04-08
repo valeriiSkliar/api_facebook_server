@@ -14,7 +14,7 @@ export class NavigationStep extends AbstractScraperStep {
     try {
       await context.state.page.goto(url, {
         // waitUntil: 'networkidle',
-        timeout: 5000,
+        timeout: 30000,
       });
 
       // Handle cookie consent if present

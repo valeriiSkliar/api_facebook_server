@@ -7,7 +7,6 @@ import { RedisService } from '@core/storage/redis/redis.service';
 import { PrismaService } from '@src/database';
 import { Prisma, Request } from '@prisma/client';
 import { QueueService } from '@core/queue/queue.service';
-import { CreateRequestDto } from './dto/create-request.dto';
 
 export interface RequestMetadata<T = unknown> {
   id: string;
@@ -77,13 +76,13 @@ export class RequestManagerService {
   }
 
   /**
-   * Create a new request and reserve a tab in a browser
+   * Create a new request with any parameter type
    */
   async createRequest(
     userId: string,
     userEmail: string,
-    requestType: CreateRequestDto['requestType'],
-    parameters: CreateRequestDto['parameters'],
+    requestType: string,
+    parameters: any,
     priority: number = 1,
     webhookUrl?: string,
   ): Promise<{ id: string; status: RequestStatus }> {

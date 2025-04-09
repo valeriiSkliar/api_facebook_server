@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 import {
   IsNotEmpty,
   IsString,
@@ -6,18 +7,23 @@ import {
   IsOptional,
   IsEnum,
 } from 'class-validator';
-import { ScraperOptions } from '@src/scrapers/common/interfaces/scraper-options.interface';
+import { Type } from 'class-transformer';
 
-export class CreateRequestDto<T = any> {
+// Define a union type of all supported scraper types
+export type ScraperType = 'facebook_scraper' | 'tiktok_scraper';
+
+// Class for creating requests
+export class CreateRequestDto {
   @IsString()
   @IsEnum(['facebook_scraper', 'tiktok_scraper'], {
     message: 'requestType must be one of: facebook_scraper, tiktok_scraper',
   })
-  requestType: 'facebook_scraper' | 'tiktok_scraper';
+  requestType: string;
 
   @IsNotEmpty()
   @ValidateNested()
-  parameters: ScraperOptions<T>;
+  @Type(() => Object as any)
+  parameters: any;
 
   @IsOptional()
   @IsNumber()

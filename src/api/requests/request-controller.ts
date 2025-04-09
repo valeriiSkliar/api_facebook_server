@@ -47,9 +47,9 @@ export class RequestController {
   constructor(private readonly requestManager: RequestManagerService) {}
 
   @Post()
-  async createRequest<T>(
+  async createRequest(
     @Request() req: AuthenticatedRequest,
-    @Body() createDto: CreateRequestDto<T>,
+    @Body() createDto: CreateRequestDto,
   ) {
     try {
       if (!req.user) {
@@ -62,6 +62,8 @@ export class RequestController {
 
       const userId = req.user.id;
       const userEmail = req.user.email;
+
+      // Handle request creation without complex generic typing
       const request = await this.requestManager.createRequest(
         userId,
         userEmail,

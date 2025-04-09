@@ -104,8 +104,7 @@ export class WorkerService implements OnModuleInit {
 
       // Get the appropriate scraper based on request type
       const scraperType = this.mapRequestTypeToScraperType(request.requestType);
-      const scraper: IScraper<unknown, AdData> =
-        this.scraperRegistry.getScraper(scraperType);
+      const scraper = this.scraperRegistry.getScraper(scraperType);
 
       if (!scraper) {
         throw new Error(`No scraper found for type ${scraperType}`);
@@ -140,9 +139,9 @@ export class WorkerService implements OnModuleInit {
   }
 
   private async executeScrapingProcess(
-    request: RequestMetadata<unknown>,
-    scraper: IScraper<unknown, AdData>,
-  ): Promise<BaseScraperResult<AdData>> {
+    request: RequestMetadata<any>,
+    scraper: IScraper<any, any>,
+  ): Promise<BaseScraperResult<any>> {
     // Execute the scraping pipeline using the appropriate method
     const result = await scraper.scrape(request);
 

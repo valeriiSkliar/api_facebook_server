@@ -71,6 +71,7 @@ export class TikTokScraperFactory extends GenericScraperFactory<
       this.stepFactory.createInitializationStep(),
       this.stepFactory.createGetApiConfigStep(),
       this.stepFactory.createApiRequestStep(),
+      this.stepFactory.createGetMatirialsIdStep(),
     ];
   }
 
@@ -103,68 +104,4 @@ export class TikTokScraperFactory extends GenericScraperFactory<
   ) {
     super(logger);
   }
-
-  // createScraper(
-  //   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  //   options?: Partial<ScraperOptions<TiktokLibraryQuery>>,
-  // ): GenericScraperPipeline<
-  //   IGenericScraperStep<IBaseScraperContext>,
-  //   IBaseScraperContext,
-  //   IPipelineResult
-  // > {
-  //   const pipeline = new GenericScraperPipeline(this.logger);
-
-  //   // Add core steps
-  //   // pipeline.addStep(this.stepFactory.createInitializationStep());
-  //   // pipeline.addStep(this.stepFactory.createGetApiConfigStep());
-  //   // pipeline.addStep(this.stepFactory.createNavigationStep());
-  //   // pipeline.addStep(this.stepFactory.createInterceptionSetupStep());
-
-  //   // // Add pagination and storage steps
-  //   // pipeline.addStep(this.stepFactory.createPaginationStep());
-  //   // pipeline.addStep(this.stepFactory.createStorageStep());
-
-  //   return pipeline;
-  // }
-
-  // createContext(
-  //   query: TiktokLibraryQuery,
-  //   options: Partial<BaseScraperOptions>,
-  // ): BaseScraperContextInterface<TiktokLibraryQuery, BaseScraperOptions> {
-  //   return {
-  //     query,
-  //     options: {
-  //       ...options,
-  //     },
-  //     state: {
-  //       adsCollected: [],
-  //       errors: [],
-  //       forceStop: false,
-  //       hasMoreResults: true,
-  //       currentPage: 0,
-  //     },
-  //   };
-  // }
-  // private mergeWithDefaultOptions(
-  //   options?: Partial<TiktokScraperOptionsDto>,
-  // ): TiktokScraperOptionsDto {
-  //   const defaultOptions: TiktokScraperOptionsDto = {
-  //     behavior: {
-  //       applyFilters: false,
-  //       maxPages: 10,
-  //       waitForResults: true,
-  //       waitTimeout: 30000,
-  //     },
-  //     storage: {
-  //       enabled: true,
-  //       format: 'json',
-  //       outputPath: './data/tiktok',
-  //     },
-  //   };
-
-  //   return {
-  //     ...defaultOptions,
-  //     ...options,
-  //   };
-  // }
 }

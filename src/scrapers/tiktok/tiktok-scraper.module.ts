@@ -5,8 +5,9 @@ import { TikTokScraperFactory } from './factories/tiktok-scraper.factory';
 import { TiktokStepFactory } from './factories/tiktok-step.factory';
 import { InitializationStep as TiktokInitializationStep } from './steps/initialization-step';
 import { PrismaModule } from '@src/database';
+import { HttpModule } from '@nestjs/axios';
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, HttpModule],
   providers: [
     Logger,
     TiktokApiScraper,

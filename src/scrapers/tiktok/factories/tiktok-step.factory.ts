@@ -4,10 +4,14 @@ import { GetApiConfigStep } from '../steps/get-api-config-step';
 import { PrismaService } from '@src/database/prisma.service';
 import { TiktokScraperStep } from '../steps/tiktok-scraper-step';
 import { ApiRequestStep } from '../steps/api-request-step';
+import { HttpService } from '@nestjs/axios';
+import { GetMatirialsIdStep } from '../steps/get-matirials-id';
+
 export class TiktokStepFactory {
   constructor(
     @Inject(Logger) private readonly logger: Logger,
     private readonly prisma: PrismaService,
+    private readonly httpService: HttpService,
   ) {}
 
   createInitializationStep(): TiktokScraperStep {
@@ -22,7 +26,12 @@ export class TiktokStepFactory {
 
   createApiRequestStep(): TiktokScraperStep {
     this.logger.log('Creating ApiRequestStep');
-    return new ApiRequestStep('ApiRequestStep', this.logger);
+    return new ApiRequestStep('ApiRequestStep', this.logger, this.httpService);
+  }
+
+  createGetMatirialsIdStep(): TiktokScraperStep {
+    this.logger.log('Creating GetMatirialsIdStep');
+    return new GetMatirialsIdStep('GetMatirialsIdStep', this.logger);
   }
 
   // createInterceptionSetupStep(): IScraperStep {

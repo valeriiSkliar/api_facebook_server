@@ -30,7 +30,8 @@ export interface TiktokScraperState extends IBaseScraperState {
   tiktokApi?: any; // TODO: Add type
   sessionToken?: string;
   apiConfig?: TikTokApiConfig | null;
-  rawApiResponse?: any; // TODO: Add type
+  rawApiResponse?: TikTokApiResponse;
+  materialsIds?: string[];
 }
 
 export interface TiktokScraperOptions extends IBaseScraperOptions {
@@ -52,5 +53,15 @@ export interface TiktokScraperContext
 
 export interface TiktokScraperResult
   extends IBaseScraperResult<TiktokMaterial> {
-  pagination: TikTokPaginationData;
+  pagination?: TikTokPaginationData;
+}
+
+export interface TikTokApiResponse {
+  code: number;
+  data: {
+    materials: TiktokMaterial[];
+    pagination: TikTokPaginationData;
+  };
+  msg: string;
+  request_id: string;
 }

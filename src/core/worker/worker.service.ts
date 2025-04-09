@@ -18,8 +18,7 @@ import { AdLibraryQuery } from '@src/scrapers/facebook/models/facebook-ad-lib-qu
 // import { ScraperResult } from '@src/scrapers/facebook/models/facebook-scraper-result';
 import { FacebookScraperOptionsDto } from '@src/api/facebook/dto';
 import { IScraper } from '@src/scrapers/common/interfaces';
-import { AdData } from '@src/scrapers/facebook/models/facebook-ad-data';
-import { BaseScraperResult } from '@src/scrapers/common/interfaces/base-scraper-result';
+import { IBaseScraperResult } from '@src/scrapers/common/interfaces/base-scraper-result';
 
 @Injectable()
 export class WorkerService implements OnModuleInit {
@@ -141,7 +140,7 @@ export class WorkerService implements OnModuleInit {
   private async executeScrapingProcess(
     request: RequestMetadata<any>,
     scraper: IScraper<any, any>,
-  ): Promise<BaseScraperResult<any>> {
+  ): Promise<IBaseScraperResult<any>> {
     // Execute the scraping pipeline using the appropriate method
     const result = await scraper.scrape(request);
 

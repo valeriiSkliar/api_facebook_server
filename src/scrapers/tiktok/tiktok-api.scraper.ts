@@ -7,7 +7,7 @@ import { RequestMetadata } from '@src/api/requests/request-manager-service';
 import { TiktokLibraryQuery } from './models/tiktok-library-query';
 import { TiktokQueryTransformer } from './transformers/tiktok-query.transformer';
 import { TikTokScraperFactory } from './factories/tiktok-scraper.factory';
-import { BaseScraperResult } from '../common/interfaces/base-scraper-result';
+import { IBaseScraperResult } from '../common/interfaces/base-scraper-result';
 import { AdData } from '../facebook/models/facebook-ad-data';
 
 @Injectable()
@@ -21,7 +21,7 @@ export class TiktokApiScraper implements IScraper<TiktokLibraryQuery, AdData> {
 
   async scrape(
     request: RequestMetadata<any>,
-  ): Promise<BaseScraperResult<AdData>> {
+  ): Promise<IBaseScraperResult<AdData>> {
     const startTime = Date.now();
 
     // Cast to TiktokLibraryQuery if needed or extract from request parameters
@@ -55,6 +55,8 @@ export class TiktokApiScraper implements IScraper<TiktokLibraryQuery, AdData> {
         typeof request.parameters === 'object' ? request.parameters : {},
       );
       const result = await scraper.execute(context);
+
+      console.log('result', result);
 
       return await Promise.resolve({
         success: false,

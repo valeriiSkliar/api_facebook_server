@@ -1,0 +1,56 @@
+import {
+  IBaseScraperQuery,
+  IBaseScraperOptions,
+  IBaseScraperState,
+  IBaseScraperContext,
+  IBaseScraperResult,
+} from '@src/scrapers/common/interfaces';
+import { TiktokLibraryPeriod } from './models/tiktok-library-query';
+import {
+  TiktokLibraryCountryCode,
+  TiktokLibraryOrderBy,
+  TiktokLibraryAdFormat,
+  TiktokLibraryLike,
+  TiktokLibraryAdLanguage,
+} from './models/tiktok-library-query';
+import { TikTokAdData, TikTokPaginationData } from './models/tiktok-ad-data';
+
+export interface TiktokScraperQuery extends IBaseScraperQuery {
+  queryString: string;
+  period: TiktokLibraryPeriod;
+  orderBy: TiktokLibraryOrderBy;
+  countryCode?: TiktokLibraryCountryCode[];
+  languages?: TiktokLibraryAdLanguage[];
+  adFormat?: TiktokLibraryAdFormat;
+  like?: TiktokLibraryLike;
+  adLanguages?: TiktokLibraryAdLanguage[];
+}
+
+export interface TiktokScraperState extends IBaseScraperState {
+  tiktokApi?: any; // TODO: Add type
+  sessionToken?: string;
+  apiConfig?: any; // TODO: Add type
+  rawApiResponse?: any; // TODO: Add type
+}
+
+export interface TiktokScraperOptions extends IBaseScraperOptions {
+  retryAttempts: number;
+  userAgent?: string;
+  timeout?: number;
+}
+
+export type TiktokMaterial = TikTokAdData;
+
+export interface TiktokScraperContext
+  extends IBaseScraperContext<
+    TiktokScraperQuery,
+    TiktokScraperOptions,
+    TiktokScraperState
+  > {
+  someProperty?: string;
+}
+
+export interface TiktokScraperResult
+  extends IBaseScraperResult<TiktokMaterial> {
+  pagination: TikTokPaginationData;
+}

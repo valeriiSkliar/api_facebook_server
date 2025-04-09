@@ -10,7 +10,7 @@ import { RequestMetadata } from '@src/api/requests/request-manager-service';
 import { AdLibraryQuery } from './models/facebook-ad-lib-query';
 import { ScraperOptions } from './models/facebook-scraper-options';
 import { FacebookScraperOptionsDto } from '@src/api/facebook/dto';
-import { BaseScraperResult } from '../common/interfaces/base-scraper-result';
+import { IBaseScraperResult } from '../common/interfaces/base-scraper-result';
 import { AdData } from './models/facebook-ad-data';
 
 @Injectable()
@@ -25,7 +25,7 @@ export class FacebookBrowserScraper implements IScraper {
 
   async scrape(
     request: RequestMetadata<FacebookScraperOptionsDto>,
-  ): Promise<BaseScraperResult<AdData>> {
+  ): Promise<IBaseScraperResult<AdData>> {
     let browserId: string | null = null;
     let tabId: string | null = null;
 

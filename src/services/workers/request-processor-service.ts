@@ -10,8 +10,6 @@ import {
 import { ScraperRegistry } from '@src/scrapers/common/scraper.registry';
 import { IScraper } from '@src/scrapers/common/interfaces';
 import { ScraperResult } from '@src/scrapers/facebook/models/facebook-scraper-result';
-// import { BaseScraperResult } from '@src/scrapers/common/interfaces/base-scraper-result';
-// import { AdData } from '@src/scrapers/facebook/models/facebook-ad-data';
 
 @Injectable()
 export class RequestProcessorService {

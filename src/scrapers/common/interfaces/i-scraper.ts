@@ -1,5 +1,5 @@
 import { RequestMetadata } from '@src/api/requests/request-manager-service';
-import { BaseScraperResult } from './base-scraper-result';
+import { IBaseScraperResult } from './base-scraper-result';
 
 // /**
 //  * Определяет структуру результата работы скрапера.
@@ -27,5 +27,5 @@ export interface IScraper<T = unknown, R = unknown> {
    * @param request - Метаданные запроса, содержащие параметры и тип.
    * @returns Promise, разрешающийся результатом скрапинга.
    */
-  scrape(request: RequestMetadata<T>): Promise<BaseScraperResult<R>>;
+  scrape(request: RequestMetadata<T>): Promise<IBaseScraperResult<R>>;
 }

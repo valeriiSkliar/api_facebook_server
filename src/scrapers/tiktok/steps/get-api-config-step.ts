@@ -2,11 +2,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { Injectable, Logger } from '@nestjs/common';
-import { IScraperStep } from '@src/scrapers/common/interfaces';
 import { PrismaService } from '@src/database/prisma.service';
-import { ScraperContext } from '@src/scrapers/facebook/models/facebook-scraper-context';
 import { ApiConfiguration } from '@src/scrapers/tiktok/models/tiktok-scraper-context';
-
+import { TiktokScraperStep } from './tiktok-scraper-step';
+import { TiktokScraperContext } from '../tiktok-scraper-types';
 interface ApiConfigParameters {
   url: string;
   method: string;
@@ -16,14 +15,16 @@ interface ApiConfigParameters {
 }
 
 @Injectable()
-export class GetApiConfigStep implements IScraperStep {
+export class GetApiConfigStep extends TiktokScraperStep {
   constructor(
-    private readonly name: string,
-    private readonly logger: Logger,
+    protected readonly name: string,
+    protected readonly logger: Logger,
     private readonly prisma: PrismaService,
-  ) {}
+  ) {
+    super(name, logger);
+  }
 
-  async execute(context: ScraperContext): Promise<boolean> {
+  async execute(context: TiktokScraperContext): Promise<boolean> {
     this.logger.log(`Executing ${this.name}`);
 
     const dbApiConfig = await this.prisma.apiConfiguration.findFirst({
@@ -52,7 +53,7 @@ export class GetApiConfigStep implements IScraperStep {
     return true;
   }
 
-  async shouldExecute(context: ScraperContext): Promise<boolean> {
+  async shouldExecute(context: TiktokScraperContext): Promise<boolean> {
     return await Promise.resolve(!context.state.apiConfig);
   }
 

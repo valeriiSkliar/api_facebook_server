@@ -11,3 +11,10 @@ export * from './i-scraper-step';
 export * from './i-session-manager';
 export * from './i-email-verification-handler';
 export * from './i-scraper';
+
+export * from './base-scraper-context';
+export * from './base-scraper-options';
+export * from './base-scraper-query';
+export * from './base-scraper-result';
+export * from './base-scraper-state';
+export * from './generic-scraper-step';

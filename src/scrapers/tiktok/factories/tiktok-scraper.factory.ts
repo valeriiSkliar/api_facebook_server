@@ -25,7 +25,6 @@ export class TikTokScraperFactory extends GenericScraperFactory<
   TiktokMaterial
 > {
   createScraper(
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     options?: Partial<TiktokScraperOptions>,
   ): GenericScraperPipeline<
     TiktokScraperStep,
@@ -72,10 +71,16 @@ export class TikTokScraperFactory extends GenericScraperFactory<
       this.stepFactory.createGetApiConfigStep(),
       this.stepFactory.createApiRequestStep(),
       this.stepFactory.createGetMatirialsIdStep(),
+      this.stepFactory.createFilterMaterialsStep(),
       this.stepFactory.createProcessMaterialsStep(),
+      this.stepFactory.createSaveCreativesStep(),
     ];
   }
-
+  /**
+   * Merges the provided options with the default options.
+   * @param options The options to merge with the default options.
+   * @returns The merged options.
+   */
   protected mergeWithDefaultOptions(
     options?: Partial<TiktokScraperOptions>,
   ): TiktokScraperOptions {

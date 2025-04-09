@@ -1,41 +1,62 @@
-import { Module, Logger } from '@nestjs/common';
-import { TiktokApiScraper } from './tiktok-api.scraper';
-import { TiktokQueryTransformer } from './transformers/tiktok-query.transformer';
+import { Module } from '@nestjs/common';
 import { TikTokScraperFactory } from './factories/tiktok-scraper.factory';
 import { TiktokStepFactory } from './factories/tiktok-step.factory';
-import { InitializationStep as TiktokInitializationStep } from './steps/initialization-step';
-import { PrismaModule, PrismaService } from '@src/database';
 import { HttpModule, HttpService } from '@nestjs/axios';
+import { ConfigService } from '@nestjs/config';
+import { Logger } from '@nestjs/common';
+import { PrismaService } from '@src/database/prisma.service';
+import { TiktokApiScraper } from './tiktok-api.scraper';
+import { InitializationStep as TiktokInitializationStep } from './steps/initialization-step';
 import { ProcessMaterialsStep as TiktokProcessMaterialsStep } from './steps/process-materials-step';
+import { FilterMaterialsStep as TiktokFilterMaterialsStep } from './steps/filter-materials.step';
 import { ApiRequestStep as TiktokApiRequestStep } from './steps/api-request-step';
 import { GetMatirialsIdStep as TiktokGetMatirialsIdStep } from './steps/get-matirials-id';
 import { GetApiConfigStep as TiktokGetApiConfigStep } from './steps/get-api-config-step';
+import { SaveCreativesStep } from './steps/save-creatives.step';
+import { TiktokCreativeService } from './services/tiktok-creative.service';
+import { TiktokQueryTransformer } from './transformers/tiktok-query.transformer';
+
 @Module({
   imports: [
-    PrismaModule,
-    HttpModule.register({
-      timeout: 5000,
-      maxRedirects: 5,
+    HttpModule.registerAsync({
+      useFactory: (configService: ConfigService) => ({
+        timeout: configService.get('HTTP_TIMEOUT', 5000),
+        maxRedirects: 5,
+      }),
+      inject: [ConfigService],
     }),
   ],
   providers: [
+    TikTokScraperFactory,
+    TiktokStepFactory,
     Logger,
     PrismaService,
     TiktokApiScraper,
+    TiktokCreativeService,
     TiktokQueryTransformer,
-    TiktokStepFactory,
-    TikTokScraperFactory,
     {
       provide: TiktokInitializationStep,
-      useFactory: (logger: Logger) => {
-        return new TiktokInitializationStep('InitializationStep', logger);
-      },
-      inject: [Logger],
+      useClass: TiktokInitializationStep,
     },
     {
-      provide: TiktokGetApiConfigStep,
+      provide: TiktokProcessMaterialsStep,
+      useFactory: (logger: Logger, httpService: HttpService) => {
+        return new TiktokProcessMaterialsStep(
+          'ProcessMaterialsStep',
+          logger,
+          httpService,
+        );
+      },
+      inject: [Logger, HttpService],
+    },
+    {
+      provide: TiktokFilterMaterialsStep,
       useFactory: (logger: Logger, prisma: PrismaService) => {
-        return new TiktokGetApiConfigStep('GetApiConfigStep', logger, prisma);
+        return new TiktokFilterMaterialsStep(
+          'FilterMaterialsStep',
+          logger,
+          prisma,
+        );
       },
       inject: [Logger, PrismaService],
     },
@@ -54,15 +75,15 @@ import { GetApiConfigStep as TiktokGetApiConfigStep } from './steps/get-api-conf
       inject: [Logger],
     },
     {
-      provide: TiktokProcessMaterialsStep,
-      useFactory: (logger: Logger, httpService: HttpService) => {
-        return new TiktokProcessMaterialsStep(
-          'ProcessMaterialsStep',
-          logger,
-          httpService,
-        );
+      provide: TiktokGetApiConfigStep,
+      useFactory: (logger: Logger, prisma: PrismaService) => {
+        return new TiktokGetApiConfigStep('GetApiConfigStep', logger, prisma);
       },
-      inject: [Logger, HttpService],
+      inject: [Logger, PrismaService],
+    },
+    {
+      provide: SaveCreativesStep,
+      useClass: SaveCreativesStep,
     },
   ],
   exports: [TiktokApiScraper, TiktokStepFactory, TikTokScraperFactory],

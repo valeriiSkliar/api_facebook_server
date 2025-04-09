@@ -284,3 +284,85 @@ model Statistics {
 
   @@index([date])
 }
+
+
+//=============================================================================
+// TikTok Models
+//=============================================================================
+
+model DetailMaterial {
+  id            String      @id
+  adTitle       String      @map("ad_title")
+  brandName     String      @map("brand_name")
+  comment       Int
+  cost         Float
+  countryCodes  CountryCode[]
+  ctr          Float
+  favorite     Boolean
+  hasSummary   Boolean      @map("has_summary")
+  highlightText String      @map("highlight_text")
+  industryKey  String       @map("industry_key")
+  isSearch     Boolean      @map("is_search")
+  keywords     Keyword[]
+  landingPage  String       @map("landing_page")
+  like         Int
+  objectiveKey String       @map("objective_key")
+  objectives   Objective[]
+  patterns     Pattern[]
+  share        Int
+  source       String
+  sourceKey    Int          @map("source_key")
+  tag          Int
+  videoInfo    VideoInfo?
+  voiceOver    Boolean      @map("voice_over")
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+}
+
+model CountryCode {
+  id              Int            @id @default(autoincrement())
+  code            String
+  detailMaterial  DetailMaterial @relation(fields: [detailMaterialId], references: [id])
+  detailMaterialId String        @map("detail_material_id")
+
+  @@index([detailMaterialId])
+}
+
+model Keyword {
+  id              Int            @id @default(autoincrement())
+  keyword         String
+  detailMaterial  DetailMaterial @relation(fields: [detailMaterialId], references: [id])
+  detailMaterialId String        @map("detail_material_id")
+
+  @@index([detailMaterialId])
+}
+
+model Pattern {
+  id              Int            @id @default(autoincrement())
+  label           String
+  detailMaterial  DetailMaterial @relation(fields: [detailMaterialId], references: [id])
+  detailMaterialId String        @map("detail_material_id")
+
+  @@index([detailMaterialId])
+}
+
+model Objective {
+  id              Int            @id @default(autoincrement())
+  label           String
+  value           Int
+  detailMaterial  DetailMaterial @relation(fields: [detailMaterialId], references: [id])
+  detailMaterialId String        @map("detail_material_id")
+}
+
+model VideoInfo {
+  id              String         @id @default(cuid())
+  vid             String         @unique
+  duration        Float
+  cover           String      @db.Text
+  videoUrl720p    String?     @db.Text @map("video_url_720p")
+  width           Int
+  height          Int
+  detailMaterial  DetailMaterial @relation(fields: [detailMaterialId], references: [id])
+  detailMaterialId String        @unique @map("detail_material_id")
+} 
+

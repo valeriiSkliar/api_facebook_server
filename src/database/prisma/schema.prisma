@@ -304,7 +304,7 @@ model DetailMaterial {
   industryKey  String       @map("industry_key")
   isSearch     Boolean      @map("is_search")
   keywords     Keyword[]
-  landingPage  String       @map("landing_page")
+  landingPage  String       @map("landing_page") @db.Text
   like         Int
   objectiveKey String       @map("objective_key")
   objectives   Objective[]

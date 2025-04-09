@@ -48,23 +48,6 @@ export class TiktokCreativeService {
         continue;
       }
 
-      // Get landing page and truncate if needed (assuming max length is 255)
-      const MAX_LANDING_PAGE_LENGTH = 191; // Safe limit for MySQL VARCHAR
-      const landingPage = (adData.landing_page ?? '').slice(
-        0,
-        MAX_LANDING_PAGE_LENGTH,
-      );
-
-      // Log if truncation happened to help with debugging
-      if (
-        adData.landing_page &&
-        adData.landing_page.length > MAX_LANDING_PAGE_LENGTH
-      ) {
-        this.logger.warn(
-          `Landing page URL truncated for ad ${adData.id}: ${adData.landing_page.length} → ${MAX_LANDING_PAGE_LENGTH} chars`,
-        );
-      }
-
       // Get highlight text and truncate if needed
       const MAX_HIGHLIGHT_TEXT_LENGTH = 191; // Same safe limit
       const highlightText = (adData.highlight_text ?? '').slice(
@@ -87,7 +70,7 @@ export class TiktokCreativeService {
         highlightText: highlightText,
         industryKey: (adData.industry_key ?? '').slice(0, 100),
         isSearch: adData.is_search ?? false,
-        landingPage: landingPage,
+        landingPage: adData.landing_page ?? '',
         like: adData.like ?? 0,
         objectiveKey: (adData.objective_key ?? '').slice(0, 100),
         share: adData.share ?? 0,

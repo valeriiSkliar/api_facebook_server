@@ -3,7 +3,7 @@ import axios from 'axios';
 import { v4 as uuidv4 } from 'uuid';
 import { TiktokScraperStep } from './tiktok-scraper-step';
 import {
-  TiktokMaterial,
+  // TiktokMaterial,
   TiktokScraperContext,
   TikTokApiResponse,
 } from '../tiktok-scraper-types';
@@ -103,31 +103,6 @@ export class ApiRequestStep extends TiktokScraperStep {
         searchData?.data?.materials &&
         Array.isArray(searchData.data.materials)
       ) {
-        const materialIds: string[] = [];
-
-        // Extract material IDs
-        searchData.data.materials.forEach((material: TiktokMaterial) => {
-          if (material.id) {
-            materialIds.push(material.id);
-          }
-        });
-
-        // Log the number of materials found
-        this.logger.log(
-          `Found ${materialIds.length} materials in API response`,
-        );
-
-        // Now process each material to get the full details
-        // if (materialIds.length > 0) {
-        //   // await this.processMaterialDetails(context, materialIds, headers);
-        // }
-
-        // Update pagination state
-        // context.state.currentPage++;
-
-        // Check if there are more results to fetch (based on API response)
-        // context.state.hasMoreResults = !!searchData.data.pagination.has_more;
-
         return true;
       } else {
         this.logger.warn(`No materials found in API response`);

@@ -32,6 +32,7 @@ export interface TiktokScraperState extends IBaseScraperState {
   apiConfig?: TikTokApiConfig | null;
   rawApiResponse?: TikTokApiResponse;
   materialsIds?: string[];
+  permissionError?: boolean;
 }
 
 export interface TiktokScraperOptions extends IBaseScraperOptions {

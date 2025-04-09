@@ -10,6 +10,7 @@ import { SaveCreativesStep } from '../steps/save-creatives.step';
 import { PrismaService } from '@src/database/prisma.service';
 import { HttpService } from '@nestjs/axios';
 import { TiktokCreativeService } from '../services/tiktok-creative.service';
+import { PaginationStep } from '../steps/pagination-step';
 
 @Injectable()
 export class TiktokStepFactory {
@@ -26,6 +27,10 @@ export class TiktokStepFactory {
 
   createGetApiConfigStep(): TiktokScraperStep {
     return new GetApiConfigStep('GetApiConfigStep', this.logger, this.prisma);
+  }
+
+  createPaginationStep(): TiktokScraperStep {
+    return new PaginationStep('PaginationStep', this.logger);
   }
 
   createApiRequestStep(): TiktokScraperStep {

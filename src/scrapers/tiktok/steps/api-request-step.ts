@@ -1,9 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import { v4 as uuidv4 } from 'uuid';
 import { TiktokScraperStep } from './tiktok-scraper-step';
 import {
-  // TiktokMaterial,
   TiktokScraperContext,
   TikTokApiResponse,
 } from '../tiktok-scraper-types';
@@ -28,13 +27,13 @@ export class ApiRequestStep extends TiktokScraperStep {
       );
     }
 
+    // Reset permission error flag at the start of execution
+    context.state.permissionError = false;
+
     try {
       // Generate a unique request ID
       const requestId = uuidv4();
       this.logger.log(`Starting TikTok API request (ID: ${requestId})`);
-
-      // Initialize currentPage if undefined
-      context.state.currentPage = context.state.currentPage || 0;
 
       // Extract API configuration that was set in the previous step
       const { headers, url } = context.state.apiConfig;
@@ -55,9 +54,12 @@ export class ApiRequestStep extends TiktokScraperStep {
         apiEndpoint.searchParams.set('period', query.period.toString());
       }
 
-      // Add page number for pagination
+      // Get current page, start with 1 if not initialized
       const currentPage = context.state.currentPage || 0;
+
+      // Add page number for pagination (API pages are 1-based)
       apiEndpoint.searchParams.set('page', (currentPage + 1).toString());
+      this.logger.log(`Requesting page ${currentPage + 1}`);
 
       // Add sorting parameter
       if (query.orderBy) {
@@ -67,6 +69,22 @@ export class ApiRequestStep extends TiktokScraperStep {
       // Add country code filter
       if (query.countryCode && query.countryCode.length > 0) {
         apiEndpoint.searchParams.set('country_code', query.countryCode[0]);
+      }
+
+      // Add additional filters if available
+      if (query.adFormat) {
+        apiEndpoint.searchParams.set('ad_format', query.adFormat.toString());
+      }
+
+      if (query.like) {
+        apiEndpoint.searchParams.set('like', query.like.toString());
+      }
+
+      if (query.adLanguages && query.adLanguages.length > 0) {
+        apiEndpoint.searchParams.set(
+          'ad_language',
+          query.adLanguages.join(','),
+        );
       }
 
       this.logger.log(`Making API request to: ${apiEndpoint.toString()}`);
@@ -92,10 +110,10 @@ export class ApiRequestStep extends TiktokScraperStep {
         throw new Error(`API request failed with status: ${response.status}`);
       }
 
-      // Extract material IDs from the response
+      // Extract data from the response
       const searchData = response.data;
 
-      // Save the raw API response in context for debugging/reference
+      // Save the raw API response in context for pagination and material processing
       context.state.rawApiResponse = searchData;
 
       // Process ad materials from the response
@@ -103,6 +121,18 @@ export class ApiRequestStep extends TiktokScraperStep {
         searchData?.data?.materials &&
         Array.isArray(searchData.data.materials)
       ) {
+        // Update pagination information
+        if (searchData.data.pagination) {
+          const { pagination } = searchData.data;
+
+          // Update context with basic pagination info (detailed handling in PaginationStep)
+          context.state.hasMoreResults = pagination.has_more;
+
+          this.logger.log(
+            `Retrieved page ${pagination.page} of results. Total count: ${pagination.total_count}, Has more: ${pagination.has_more}`,
+          );
+        }
+
         return true;
       } else {
         this.logger.warn(`No materials found in API response`);
@@ -110,108 +140,51 @@ export class ApiRequestStep extends TiktokScraperStep {
         return true;
       }
     } catch (error) {
+      // Check for specific Axios error with code 40101
+      if (axios.isAxiosError(error)) {
+        const axiosError = error as AxiosError<{ code?: number; msg?: string }>; // Type assertion for better access
+        if (axiosError.response?.data?.code === 40101) {
+          this.logger.warn(
+            `API permission error (40101): ${axiosError.response.data.msg}. Setting permissionError flag.`,
+          );
+          context.state.permissionError = true; // Set flag for the calling service
+          context.state.errors.push(
+            new Error(
+              `API Permission Error: ${axiosError.response.data.msg} (Code: 40101)`,
+            ),
+          );
+          return false; // Indicate step failure due to permission error
+        }
+      }
+
+      // Handle other errors
       this.logger.error(`Error in ${this.name}:`, error);
-      context.state.errors.push(
-        error instanceof Error ? error : new Error(String(error)),
-      );
-      return false;
+      const errorMessage =
+        error instanceof Error ? error : new Error(String(error));
+      context.state.errors.push(errorMessage);
+      return false; // Indicate general step failure
     }
   }
 
-  // /**
-  //  * Process material details by fetching each material
-  //  */
-  // private async processMaterialDetails(
-  //   context: TiktokScraperContext,
-  //   materialIds: string[],
-  //   headers: Record<string, string>,
-  // ): Promise<void> {
-  //   // Use the detail endpoint for fetching material data
-  //   const baseDetailUrl =
-  //     'https://ads.tiktok.com/creative_radar_api/v1/top_ads/v2/detail';
-
-  //   this.logger.log(`Processing ${materialIds.length} materials`);
-
-  //   // Process each material ID sequentially to avoid rate limiting
-  //   for (const [index, materialId] of materialIds.entries()) {
-  //     try {
-  //       this.logger.debug(
-  //         `Processing material ${index + 1}/${materialIds.length}: ${materialId}`,
-  //       );
-
-  //       // Create URL with material_id parameter
-  //       const url = new URL(baseDetailUrl);
-  //       url.searchParams.set('material_id', materialId);
-
-  //       // Make the request for material details
-  //       const response = await axios.get(url.toString(), { headers });
-
-  //       // Extract ad data from response
-  //       if (response.data?.data) {
-  //         const adData = this.mapResponseToAdData(
-  //           materialId,
-  //           response.data.data,
-  //         );
-
-  //         // Add to collected ads
-  //         context.state.adsCollected.push(adData);
-
-  //         this.logger.debug(`Successfully processed material ${materialId}`);
-  //       }
-
-  //       // Add a small delay between requests to prevent rate limiting
-  //       await new Promise((resolve) => setTimeout(resolve, 500));
-  //     } catch (error) {
-  //       this.logger.error(`Error processing material ${materialId}:`, error);
-
-  //       // Add the error to context but continue processing other materials
-  //       context.state.errors.push(
-  //         error instanceof Error ? error : new Error(String(error)),
-  //       );
-  //     }
-  //   }
-
-  //   this.logger.log(
-  //     `Completed processing ${materialIds.length} materials. Total ads collected: ${context.state.adsCollected.length}`,
-  //   );
-  // }
-
-  // /**
-  //  * Map the TikTok API response to our AdData format
-  //  */
-  // private mapResponseToAdData(materialId: string, data: any): TiktokMaterial {
-  //   // Extract relevant fields from the API response
-  //   return {
-  //     id: materialId,
-  //     ad_title: data.ad_title || '',
-  //     brand_name: data.brand_name || '',
-  //     cost: data.cost || 0,
-  //     ctr: data.ctr || 0,
-  //     favorite: data.favorite || false,
-  //     industry_key: data.industry_key || '',
-  //     is_search: data.is_search || false,
-  //     like: data.like || 0,
-  //     objective_key: data.objective_key || '',
-  //     tag: data.tag || undefined,
-  //     video_info: {
-  //       vid: data.video_info?.vid || '',
-  //       duration: data.video_info?.duration || 0,
-  //       cover: data.video_info?.cover || '',
-  //       video_url: data.video_info?.video_url || {},
-  //       width: data.video_info?.width || 0,
-  //       height: data.video_info?.height || 0,
-  //     },
-  //   };
-  // }
-
   async shouldExecute(context: TiktokScraperContext): Promise<boolean> {
-    // This step should only execute if we have API configuration
-    return await Promise.resolve(!!context.state.apiConfig);
-  }
+    // Execute if we have API config and either:
+    // 1. We're on the initial page (currentPage is 0 or undefined)
+    // 2. We have more results to fetch and haven't exceeded max pages
+    const maxPages = context.options.behavior?.maxPages || 10;
+    const currentPage = context.state.currentPage || 0;
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async cleanup(context: TiktokScraperContext): Promise<void> {
-    // No cleanup needed
+    const shouldProceed =
+      !!context.state.apiConfig &&
+      (currentPage === 0 ||
+        (context.state.hasMoreResults && currentPage < maxPages));
+
+    if (!shouldProceed && currentPage > 0) {
+      this.logger.log(
+        `Skipping API request - either no more results or max pages (${maxPages}) reached`,
+      );
+    }
+
+    return Promise.resolve(shouldProceed ?? false);
   }
 
   getName(): string {

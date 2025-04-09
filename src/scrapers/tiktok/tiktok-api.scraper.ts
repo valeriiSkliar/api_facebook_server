@@ -8,10 +8,13 @@ import { TiktokLibraryQuery } from './models/tiktok-library-query';
 import { TiktokQueryTransformer } from './transformers/tiktok-query.transformer';
 import { TikTokScraperFactory } from './factories/tiktok-scraper.factory';
 import { IBaseScraperResult } from '../common/interfaces/base-scraper-result';
-import { AdData } from '../facebook/models/facebook-ad-data';
+import { DetailMaterial } from './models/detail-api-response';
+import { TikTokAdData } from './models/tiktok-ad-data';
 
 @Injectable()
-export class TiktokApiScraper implements IScraper<TiktokLibraryQuery, AdData> {
+export class TiktokApiScraper
+  implements IScraper<TiktokLibraryQuery, TikTokAdData>
+{
   private readonly logger = new Logger(TiktokApiScraper.name);
 
   constructor(
@@ -21,7 +24,7 @@ export class TiktokApiScraper implements IScraper<TiktokLibraryQuery, AdData> {
 
   async scrape(
     request: RequestMetadata<any>,
-  ): Promise<IBaseScraperResult<AdData>> {
+  ): Promise<IBaseScraperResult<TikTokAdData>> {
     const startTime = Date.now();
 
     // Cast to TiktokLibraryQuery if needed or extract from request parameters
@@ -55,16 +58,21 @@ export class TiktokApiScraper implements IScraper<TiktokLibraryQuery, AdData> {
         typeof request.parameters === 'object' ? request.parameters : {},
       );
       const result = await scraper.execute(context);
+      const adsData = this.mapResultToAdData(result.ads as DetailMaterial[]);
 
       console.log('result', result);
 
-      return await Promise.resolve({
-        success: false,
-        errors: [new Error('Not implemented')],
-        ads: [],
-        totalCount: 0,
+      return {
+        success: result.success,
+        errors: result.errors,
+        ads: adsData,
+        totalCount: adsData.length,
         executionTime: Date.now() - startTime,
-      });
+        outputPath: result.outputPath,
+        includeAdsInResponse: result.includeAdsInResponse,
+        hasMoreResults: false,
+        currentPage: 0,
+      };
     } catch (error) {
       this.logger.error('Error scraping TikTok ads', error);
       return {
@@ -90,5 +98,29 @@ export class TiktokApiScraper implements IScraper<TiktokLibraryQuery, AdData> {
 
   private buildQuery(parameters: TiktokLibraryQuery): TiktokLibraryQuery {
     return this.queryTransformer.transform(parameters);
+  }
+
+  private mapResultToAdData(materials: DetailMaterial[]): TikTokAdData[] {
+    return materials.map((material) => ({
+      id: material.id,
+      ad_title: material.ad_title,
+      brand_name: material.brand_name,
+      cost: material.cost,
+      ctr: material.ctr,
+      favorite: material.favorite,
+      industry_key: material.industry_key,
+      is_search: material.is_search,
+      like: material.like,
+      objective_key: material.objective_key,
+      tag: material.tag,
+      video_info: {
+        vid: material.video_info.vid,
+        duration: material.video_info.duration,
+        height: material.video_info.height,
+        width: material.video_info.width,
+        cover: material.video_info.cover,
+        video_url: material.video_info.video_url,
+      },
+    }));
   }
 }

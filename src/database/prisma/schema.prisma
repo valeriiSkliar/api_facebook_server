@@ -292,8 +292,8 @@ model Statistics {
 
 model DetailMaterial {
   id            String      @id
-  adTitle       String      @map("ad_title")
-  brandName     String      @map("brand_name")
+  adTitle       String      @map("ad_title") @db.Text
+  brandName     String      @map("brand_name") @db.Text
   comment       Int
   cost         Float
   countryCodes  CountryCode[]

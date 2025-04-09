@@ -61,6 +61,7 @@ export class TikTokScraperFactory extends GenericScraperFactory<
         hasMoreResults: true,
         currentPage: 0,
         apiConfig: null,
+        permissionError: false,
         // Tiktok-specific state initialization
       },
     };
@@ -70,6 +71,7 @@ export class TikTokScraperFactory extends GenericScraperFactory<
       this.stepFactory.createInitializationStep(),
       this.stepFactory.createGetApiConfigStep(),
       this.stepFactory.createApiRequestStep(),
+      this.stepFactory.createPaginationStep(),
       this.stepFactory.createGetMatirialsIdStep(),
       this.stepFactory.createFilterMaterialsStep(),
       this.stepFactory.createProcessMaterialsStep(),

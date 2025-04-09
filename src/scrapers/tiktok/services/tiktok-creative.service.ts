@@ -60,8 +60,8 @@ export class TiktokCreativeService {
         'countryCodes' | 'keywords' | 'objectives' | 'patterns' | 'videoInfo'
       > = {
         id: adData.id,
-        adTitle: (adData.ad_title ?? '').slice(0, 255),
-        brandName: (adData.brand_name ?? '').slice(0, 255),
+        adTitle: adData.ad_title ?? '',
+        brandName: adData.brand_name ?? '',
         comment: adData.comment ?? 0,
         cost: adData.cost ?? 0,
         ctr: adData.ctr ?? 0,

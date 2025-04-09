@@ -15,7 +15,7 @@ import { GetApiConfigStep as TiktokGetApiConfigStep } from './steps/get-api-conf
 import { SaveCreativesStep } from './steps/save-creatives.step';
 import { TiktokCreativeService } from './services/tiktok-creative.service';
 import { TiktokQueryTransformer } from './transformers/tiktok-query.transformer';
-
+import { PaginationStep as TiktokPaginationStep } from './steps/pagination-step';
 @Module({
   imports: [
     HttpModule.registerAsync({
@@ -66,6 +66,13 @@ import { TiktokQueryTransformer } from './transformers/tiktok-query.transformer'
         return new TiktokApiRequestStep('ApiRequestStep', logger, httpService);
       },
       inject: [Logger, HttpService],
+    },
+    {
+      provide: TiktokPaginationStep,
+      useFactory: (logger: Logger) => {
+        return new TiktokPaginationStep('PaginationStep', logger);
+      },
+      inject: [Logger],
     },
     {
       provide: TiktokGetMatirialsIdStep,

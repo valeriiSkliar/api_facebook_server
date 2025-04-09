@@ -48,13 +48,23 @@ export class ProcessMaterialsStep extends TiktokScraperStep {
       const materialIds = [...context.state.materialsIds];
       const results: DetailMaterial[] = [];
 
+      // Initialize current page for dynamic delay calculation
+      let currentPage = 0;
+
       // Process materials in batches
       while (materialIds.length > 0) {
         const batch = materialIds.splice(0, batchSize);
+        currentPage++;
+
+        // Calculate dynamic delay for current page
+        const dynamicDelay = Math.min(500 + (currentPage - 1) * 100, 2000);
+        this.logger.debug(
+          `Using dynamic delay of ${dynamicDelay}ms for page ${currentPage}`,
+        );
 
         // Process batch in parallel
         const batchPromises = batch.map((materialId) =>
-          this.processMaterial(materialId, baseDetailUrl, headers),
+          this.processMaterial(materialId, baseDetailUrl, headers, currentPage),
         );
         const batchResults = await Promise.all(batchPromises);
 
@@ -62,9 +72,9 @@ export class ProcessMaterialsStep extends TiktokScraperStep {
         const validResults = batchResults.filter((result) => result !== null);
         results.push(...validResults);
 
-        // Add a delay between batches to prevent rate limiting
+        // Add a dynamic delay between batches to prevent rate limiting
         if (materialIds.length > 0) {
-          await new Promise((resolve) => setTimeout(resolve, 1000));
+          await new Promise((resolve) => setTimeout(resolve, dynamicDelay));
         }
       }
 
@@ -104,13 +114,22 @@ export class ProcessMaterialsStep extends TiktokScraperStep {
     materialId: string,
     baseUrl: string,
     headers: Record<string, string>,
+    pageNumber: number = 1,
   ): Promise<DetailMaterial | null> {
     try {
       // Create URL with material_id parameter
       const url = new URL(baseUrl);
       url.searchParams.set('material_id', materialId);
 
-      this.logger.debug(`Processing material: ${materialId}`);
+      this.logger.debug(
+        `Processing material: ${materialId} on page ${pageNumber}`,
+      );
+
+      // Calculate dynamic delay for individual request based on page number
+      const requestDelay = Math.min(500 + (pageNumber - 1) * 100, 2000);
+
+      // Apply delay before making the request
+      await new Promise((resolve) => setTimeout(resolve, requestDelay));
 
       // Make the request for material details
       const response = await firstValueFrom(

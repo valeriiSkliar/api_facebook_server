@@ -6,6 +6,7 @@ import { TiktokScraperStep } from '../steps/tiktok-scraper-step';
 import { ApiRequestStep } from '../steps/api-request-step';
 import { HttpService } from '@nestjs/axios';
 import { GetMatirialsIdStep } from '../steps/get-matirials-id';
+import { ProcessMaterialsStep } from '../steps/process-materials-step';
 
 export class TiktokStepFactory {
   constructor(
@@ -34,6 +35,14 @@ export class TiktokStepFactory {
     return new GetMatirialsIdStep('GetMatirialsIdStep', this.logger);
   }
 
+  createProcessMaterialsStep(): TiktokScraperStep {
+    this.logger.log('Creating ProcessMaterialsStep');
+    return new ProcessMaterialsStep(
+      'ProcessMaterialsStep',
+      this.logger,
+      this.httpService,
+    );
+  }
   // createInterceptionSetupStep(): IScraperStep {
   //   this.logger.log('Creating InterceptionSetupStep');
   //   return new InterceptionSetupStep('InterceptionSetupStep', this.logger);

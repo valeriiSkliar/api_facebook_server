@@ -14,20 +14,32 @@ export class GetMatirialsIdStep extends TiktokScraperStep {
     }
 
     const { data } = context.state.rawApiResponse;
-    const { materials } = data;
+
+    if (!data) {
+      this.logger.warn('No data found in API response');
+      context.state.materialsIds = [];
+      return Promise.resolve(true);
+    }
+
+    const materials = data.materials;
+
+    if (!materials || !Array.isArray(materials)) {
+      this.logger.warn('No materials found in API response data');
+      context.state.materialsIds = [];
+      return Promise.resolve(true);
+    }
 
     const materialsIds = materials.map((material) => material.id);
-
     context.state.materialsIds = materialsIds;
 
     return Promise.resolve(true);
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async shouldExecute(context: TiktokScraperContext): Promise<boolean> {
-    return Promise.resolve(
-      context.state?.rawApiResponse?.data?.materials.length !== 0,
-    );
+    return Promise.resolve(true);
   }
+
   constructor(
     protected readonly name: string,
     protected readonly logger: Logger,

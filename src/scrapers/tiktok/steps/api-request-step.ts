@@ -87,9 +87,6 @@ export class ApiRequestStep extends TiktokScraperStep {
         },
       );
 
-      this.logger.log(
-        `API request succeeded. Processing data... ${JSON.stringify(response)}`,
-      );
       // Handle the response
       if (response.status !== 200) {
         throw new Error(`API request failed with status: ${response.status}`);
@@ -121,15 +118,15 @@ export class ApiRequestStep extends TiktokScraperStep {
         );
 
         // Now process each material to get the full details
-        if (materialIds.length > 0) {
-          // await this.processMaterialDetails(context, materialIds, headers);
-        }
+        // if (materialIds.length > 0) {
+        //   // await this.processMaterialDetails(context, materialIds, headers);
+        // }
 
         // Update pagination state
         // context.state.currentPage++;
 
         // Check if there are more results to fetch (based on API response)
-        context.state.hasMoreResults = !!searchData.data.pagination.has_more;
+        // context.state.hasMoreResults = !!searchData.data.pagination.has_more;
 
         return true;
       } else {

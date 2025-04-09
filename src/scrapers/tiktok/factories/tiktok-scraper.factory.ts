@@ -72,6 +72,7 @@ export class TikTokScraperFactory extends GenericScraperFactory<
       this.stepFactory.createGetApiConfigStep(),
       this.stepFactory.createApiRequestStep(),
       this.stepFactory.createGetMatirialsIdStep(),
+      this.stepFactory.createProcessMaterialsStep(),
     ];
   }
 

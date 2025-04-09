@@ -26,6 +26,14 @@ export interface TiktokScraperQuery extends IBaseScraperQuery {
   adLanguages?: TiktokLibraryAdLanguage[];
 }
 
+// Interface to track failed materials
+export interface FailedMaterial {
+  materialId: string;
+  attempts: number;
+  lastError: string;
+  timestamp: Date;
+}
+
 export interface TiktokScraperState extends IBaseScraperState {
   tiktokApi?: any; // TODO: Add type
   sessionToken?: string;
@@ -33,6 +41,7 @@ export interface TiktokScraperState extends IBaseScraperState {
   rawApiResponse?: TikTokApiResponse;
   materialsIds?: string[];
   permissionError?: boolean;
+  failedMaterials?: FailedMaterial[]; // Track failed materials with retry information
 }
 
 export interface TiktokScraperOptions extends IBaseScraperOptions {

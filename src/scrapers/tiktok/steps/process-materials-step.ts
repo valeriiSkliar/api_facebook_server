@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { Injectable, Logger } from '@nestjs/common';
 import { TiktokScraperStep } from './tiktok-scraper-step';
 import { TiktokScraperContext } from '../tiktok-scraper-types';
@@ -8,14 +11,72 @@ import {
   DetailMaterial,
 } from '../models/detail-api-response';
 
+import { FailedMaterial } from '../tiktok-scraper-types';
+
+class RetryHandler {
+  private readonly maxRetries = 3;
+  private readonly logger: Logger;
+
+  constructor(logger: Logger) {
+    this.logger = logger;
+  }
+
+  async executeWithRetry<T>(
+    operation: () => Promise<T>,
+    materialId: string,
+    errorHandler?: (error: Error, attempt: number) => void,
+  ): Promise<T | null> {
+    let attempt = 0;
+    let lastError: Error | null = null;
+
+    while (attempt <= this.maxRetries) {
+      try {
+        if (attempt > 0) {
+          // Calculate exponential backoff delay: 1s, 2s, 4s
+          const delay = Math.pow(2, attempt - 1) * 1000;
+          this.logger.debug(
+            `Retry attempt ${attempt}/${this.maxRetries} for material ${materialId}. Waiting ${delay}ms before retry...`,
+          );
+          await new Promise((resolve) => setTimeout(resolve, delay));
+        }
+
+        return await operation();
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error));
+        attempt++;
+
+        if (errorHandler) {
+          errorHandler(lastError, attempt);
+        }
+
+        if (attempt > this.maxRetries) {
+          this.logger.error(
+            `Failed to process material ${materialId} after ${this.maxRetries} attempts. Last error: ${lastError.message}`,
+          );
+          return null;
+        }
+
+        this.logger.warn(
+          `Error processing material ${materialId} (attempt ${attempt}/${this.maxRetries}): ${lastError.message}`,
+        );
+      }
+    }
+
+    return null;
+  }
+}
+
 @Injectable()
 export class ProcessMaterialsStep extends TiktokScraperStep {
+  private retryHandler: RetryHandler;
+
   constructor(
     protected readonly name: string,
     protected readonly logger: Logger,
     private readonly httpService: HttpService,
   ) {
     super(name, logger);
+    this.retryHandler = new RetryHandler(logger);
   }
 
   async execute(context: TiktokScraperContext): Promise<boolean> {
@@ -48,6 +109,11 @@ export class ProcessMaterialsStep extends TiktokScraperStep {
       const materialIds = [...context.state.materialsIds];
       const results: DetailMaterial[] = [];
 
+      // Initialize failed materials tracking if it doesn't exist
+      if (!context.state.failedMaterials) {
+        context.state.failedMaterials = [];
+      }
+
       // Initialize current page for dynamic delay calculation
       let currentPage = 0;
 
@@ -64,12 +130,26 @@ export class ProcessMaterialsStep extends TiktokScraperStep {
 
         // Process batch in parallel
         const batchPromises = batch.map((materialId) =>
-          this.processMaterial(materialId, baseDetailUrl, headers, currentPage),
+          this.processMaterial(
+            materialId,
+            baseDetailUrl,
+            headers,
+            currentPage,
+            context,
+          ),
         );
         const batchResults = await Promise.all(batchPromises);
 
         // Filter out failures and add successful results
         const validResults = batchResults.filter((result) => result !== null);
+        const failedCount = batch.length - validResults.length;
+
+        if (failedCount > 0) {
+          this.logger.warn(
+            `Failed to process ${failedCount} materials in batch ${currentPage} after retries`,
+          );
+        }
+
         results.push(...validResults);
 
         // Add a dynamic delay between batches to prevent rate limiting
@@ -80,13 +160,29 @@ export class ProcessMaterialsStep extends TiktokScraperStep {
 
       // Add processed materials to collected ads
       context.state.adsCollected.push(...results);
-      this.logger.log(`Materials IDs:`, {
-        materialsIds: context.state.materialsIds,
-        // adsCollected: context.state.adsCollected,
+
+      const totalAttempted = context.state.materialsIds.length;
+      const successCount = results.length;
+      const successRate = (successCount / totalAttempted) * 100;
+
+      this.logger.log(`Materials processing statistics:`, {
+        totalAttempted,
+        successfullyProcessed: successCount,
+        failedAfterRetries: totalAttempted - successCount,
+        successRate: `${successRate.toFixed(2)}%`,
+        failedMaterialsCount: context.state.failedMaterials.length,
       });
 
+      // Log common failure reasons if there are any failures
+      if (context.state.failedMaterials.length > 0) {
+        const failureReasons = this.analyzeFailureReasons(
+          context.state.failedMaterials,
+        );
+        this.logger.warn('Common failure reasons:', failureReasons);
+      }
+
       this.logger.log(
-        `Successfully processed ${results.length} materials out of ${context.state.materialsIds.length}`,
+        `Successfully processed ${successCount} materials out of ${totalAttempted} (${successRate.toFixed(2)}%)`,
       );
       context.state.materialsIds = [];
 
@@ -108,6 +204,48 @@ export class ProcessMaterialsStep extends TiktokScraperStep {
   }
 
   /**
+   * Analyze failure reasons to find patterns
+   */
+  private analyzeFailureReasons(
+    failedMaterials: FailedMaterial[],
+  ): Record<string, number> {
+    const reasonCounts: Record<string, number> = {};
+
+    for (const failed of failedMaterials) {
+      // Extract the main error message without specific details
+      const baseError = this.categorizeError(failed.lastError);
+
+      if (!reasonCounts[baseError]) {
+        reasonCounts[baseError] = 0;
+      }
+      reasonCounts[baseError]++;
+    }
+
+    return reasonCounts;
+  }
+
+  /**
+   * Categorize errors to find patterns
+   */
+  private categorizeError(errorMessage: string): string {
+    if (errorMessage.includes('timeout')) {
+      return 'Request timeout';
+    } else if (errorMessage.includes('429')) {
+      return 'Rate limiting (429)';
+    } else if (errorMessage.includes('403')) {
+      return 'Access denied (403)';
+    } else if (errorMessage.includes('404')) {
+      return 'Resource not found (404)';
+    } else if (errorMessage.includes('500')) {
+      return 'Server error (500)';
+    } else if (errorMessage.includes('network')) {
+      return 'Network error';
+    } else {
+      return 'Other error';
+    }
+  }
+
+  /**
    * Process a single material by making an API request
    */
   private async processMaterial(
@@ -115,38 +253,63 @@ export class ProcessMaterialsStep extends TiktokScraperStep {
     baseUrl: string,
     headers: Record<string, string>,
     pageNumber: number = 1,
+    context?: TiktokScraperContext,
   ): Promise<DetailMaterial | null> {
-    try {
-      // Create URL with material_id parameter
-      const url = new URL(baseUrl);
-      url.searchParams.set('material_id', materialId);
+    this.logger.debug(
+      `Processing material: ${materialId} on page ${pageNumber}`,
+    );
 
-      this.logger.debug(
-        `Processing material: ${materialId} on page ${pageNumber}`,
-      );
+    let lastError: string = '';
+    let attempts = 0;
 
-      // Calculate dynamic delay for individual request based on page number
-      const requestDelay = Math.min(500 + (pageNumber - 1) * 100, 2000);
+    const result = await this.retryHandler.executeWithRetry(
+      async () => {
+        // Create URL with material_id parameter
+        const url = new URL(baseUrl);
+        url.searchParams.set('material_id', materialId);
 
-      // Apply delay before making the request
-      await new Promise((resolve) => setTimeout(resolve, requestDelay));
+        // Calculate dynamic delay for individual request based on page number
+        const requestDelay = Math.min(500 + (pageNumber - 1) * 100, 2000);
 
-      // Make the request for material details
-      const response = await firstValueFrom(
-        this.httpService.get<DetailApiResponse>(url.toString(), { headers }),
-      );
+        // Apply delay before making the request
+        await new Promise((resolve) => setTimeout(resolve, requestDelay));
 
-      // Check if the request was successful and data exists
-      if (response.status === 200 && response.data?.data) {
-        return this.mapResponseToAdData(materialId, response.data.data);
-      } else {
-        this.logger.warn(`Invalid response for material ${materialId}`);
-        return null;
-      }
-    } catch (error) {
-      this.logger.error(`Error processing material ${materialId}:`, error);
-      return null;
+        // Make the request for material details
+        const response = await firstValueFrom(
+          this.httpService.get<DetailApiResponse>(url.toString(), { headers }),
+        );
+
+        // Check if the request was successful and data exists
+        if (response.status === 200 && response.data?.data) {
+          return this.mapResponseToAdData(materialId, response.data.data);
+        } else {
+          throw new Error(
+            `Invalid response for material ${materialId}: ${response.status}`,
+          );
+        }
+      },
+      materialId,
+      (error, attempt) => {
+        attempts = attempt;
+        lastError = String(error.message); // Ensure lastError is always a string
+        this.logger.warn(
+          `Attempt ${attempt}: Failed to process material ${materialId} - ${error.message}`,
+          { materialId, attempt, error: error.message, stack: error.stack },
+        );
+      },
+    );
+
+    // Track failed materials if context is provided
+    if (!result && context && context.state.failedMaterials) {
+      context.state.failedMaterials.push({
+        materialId,
+        attempts,
+        lastError,
+        timestamp: new Date(),
+      });
     }
+
+    return result;
   }
 
   /**

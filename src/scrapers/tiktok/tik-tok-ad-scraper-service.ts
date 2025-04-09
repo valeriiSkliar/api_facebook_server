@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
+
 /* eslint-disable @typescript-eslint/require-await */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
+
 import { Injectable, Logger } from '@nestjs/common';
 import { BrowserPoolService } from '@core/browser/browser-pool/browser-pool-service';
 

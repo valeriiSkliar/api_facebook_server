@@ -1,7 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/require-await */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
 import { Injectable, Logger } from '@nestjs/common';
 import { FacebookScraperFactory } from '../scrapers/common/factories/facabook-scraper-factory';
 import { AdLibraryQuery } from '../scrapers/facebook/models/facebook-ad-lib-query';

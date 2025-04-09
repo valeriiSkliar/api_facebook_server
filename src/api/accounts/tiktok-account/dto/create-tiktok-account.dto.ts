@@ -6,7 +6,6 @@ import {
   IsString,
 } from 'class-validator';
 
-/* eslint-disable @typescript-eslint/no-unsafe-call */
 export class CreateTiktokAccountDto {
   @IsString()
   @IsNotEmpty()

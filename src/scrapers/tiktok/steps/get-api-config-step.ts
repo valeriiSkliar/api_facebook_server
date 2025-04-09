@@ -3,9 +3,9 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@src/database/prisma.service';
-import { ApiConfiguration } from '@src/scrapers/tiktok/models/tiktok-scraper-context';
 import { TiktokScraperStep } from './tiktok-scraper-step';
 import { TiktokScraperContext } from '../tiktok-scraper-types';
+import { TikTokApiConfig } from '../models/api-config';
 interface ApiConfigParameters {
   url: string;
   method: string;
@@ -38,17 +38,15 @@ export class GetApiConfigStep extends TiktokScraperStep {
     }
 
     const parameters = dbApiConfig.parameters as unknown as ApiConfigParameters;
-    this.logger.log('parameters', parameters);
-    const apiConfig: ApiConfiguration = {
-      accessToken: parameters.headers?.['Authorization'] || '',
-      apiEndpoint: parameters.url || '',
+    const apiConfig: TikTokApiConfig = {
+      url: parameters.url,
+      method: parameters.method,
+      headers: parameters.headers,
+      postData: parameters.postData,
+      timestamp: parameters.timestamp,
     };
 
-    this.logger.log(`API Config: ${JSON.stringify(apiConfig)}`);
     context.state.apiConfig = apiConfig;
-    this.logger.log(`${this.name} completed successfully`, {
-      context,
-    });
 
     return true;
   }

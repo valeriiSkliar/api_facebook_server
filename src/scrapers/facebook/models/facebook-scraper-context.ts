@@ -3,7 +3,6 @@ import { Browser } from 'playwright';
 import { AdData } from './facebook-ad-data';
 import { AdLibraryQuery } from './facebook-ad-lib-query';
 import { ScraperOptions } from './facebook-scraper-options';
-import { ApiConfiguration } from '@src/scrapers/tiktok/models/tiktok-scraper-context';
 export interface ScraperContext {
   query: AdLibraryQuery;
   options: ScraperOptions;
@@ -17,6 +16,5 @@ export interface ScraperContext {
     forceStop: boolean;
     externalBrowser?: boolean;
     browserId?: string;
-    apiConfig?: ApiConfiguration;
   };
 }

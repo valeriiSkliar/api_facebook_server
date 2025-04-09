@@ -14,7 +14,7 @@ import {
   TiktokLibraryAdLanguage,
 } from './models/tiktok-library-query';
 import { TikTokAdData, TikTokPaginationData } from './models/tiktok-ad-data';
-
+import { TikTokApiConfig } from './models/api-config';
 export interface TiktokScraperQuery extends IBaseScraperQuery {
   queryString: string;
   period: TiktokLibraryPeriod;
@@ -29,7 +29,7 @@ export interface TiktokScraperQuery extends IBaseScraperQuery {
 export interface TiktokScraperState extends IBaseScraperState {
   tiktokApi?: any; // TODO: Add type
   sessionToken?: string;
-  apiConfig?: any; // TODO: Add type
+  apiConfig?: TikTokApiConfig | null;
   rawApiResponse?: any; // TODO: Add type
 }
 

@@ -31,58 +31,59 @@ export class ApiRequestStep extends TiktokScraperStep {
       context.state.currentPage = context.state.currentPage || 0;
 
       // Extract API configuration that was set in the previous step
-      const { apiEndpoint, accessToken } = context.state.apiConfig;
+      const { headers, url } = context.state.apiConfig;
 
       // Build the API URL with query parameters
-      const url = new URL(apiEndpoint);
+      const apiEndpoint = new URL(url);
 
       // Map our context query to TikTok API parameters
       const { query } = context;
 
       // Add query parameters
       if (query.queryString) {
-        url.searchParams.set('keyword', query.queryString);
+        apiEndpoint.searchParams.set('keyword', query.queryString);
       }
 
       // Add period/timeframe parameter if set
       if (query.period) {
-        url.searchParams.set('period', query.period.toString());
+        apiEndpoint.searchParams.set('period', query.period.toString());
       }
 
       // Add page number for pagination
       const currentPage = context.state.currentPage || 0;
-      url.searchParams.set('page', (currentPage + 1).toString());
+      apiEndpoint.searchParams.set('page', (currentPage + 1).toString());
 
       // Add sorting parameter
       if (query.orderBy) {
-        url.searchParams.set('order_by', query.orderBy);
+        apiEndpoint.searchParams.set('order_by', query.orderBy);
       }
 
       // Add country code filter
       if (query.countryCode && query.countryCode.length > 0) {
-        url.searchParams.set('country_code', query.countryCode[0]);
+        apiEndpoint.searchParams.set('country_code', query.countryCode[0]);
       }
 
-      this.logger.log(`Making API request to: ${url.toString()}`);
+      this.logger.log(`Making API request to: ${apiEndpoint.toString()}`);
 
       // Set up headers from API config
-      const headers = {
-        Authorization: accessToken,
+      const headersWithAuth = {
+        ...headers,
         'Content-Type': 'application/json',
         'User-Agent':
           'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.99 Safari/537.36',
       };
 
       // Make the API request
-      const response = await axios.get(url.toString(), { headers });
+      const response = await axios.get(apiEndpoint.toString(), {
+        headers: headersWithAuth,
+      });
 
       // Handle the response
       if (response.status !== 200) {
         throw new Error(`API request failed with status: ${response.status}`);
       }
 
-      this.logger.log(`API request succeeded. Processing data...`);
-
+      return true;
       // Extract material IDs from the response
       const searchData = response.data;
 
@@ -114,7 +115,7 @@ export class ApiRequestStep extends TiktokScraperStep {
         }
 
         // Update pagination state
-        context.state.currentPage++;
+        // context.state.currentPage++;
 
         // Check if there are more results to fetch (based on API response)
         context.state.hasMoreResults = !!searchData.data.has_more;

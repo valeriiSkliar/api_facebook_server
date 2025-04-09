@@ -3,6 +3,7 @@ import { InitializationStep } from '../steps/initialization-step';
 import { GetApiConfigStep } from '../steps/get-api-config-step';
 import { PrismaService } from '@src/database/prisma.service';
 import { TiktokScraperStep } from '../steps/tiktok-scraper-step';
+import { ApiRequestStep } from '../steps/api-request-step';
 export class TiktokStepFactory {
   constructor(
     @Inject(Logger) private readonly logger: Logger,
@@ -19,10 +20,10 @@ export class TiktokStepFactory {
     return new GetApiConfigStep('GetApiConfigStep', this.logger, this.prisma);
   }
 
-  // createNavigationStep(): IScraperStep {
-  //   this.logger.log('Creating NavigationStep');
-  //   return new NavigationStep('NavigationStep', this.logger);
-  // }
+  createApiRequestStep(): TiktokScraperStep {
+    this.logger.log('Creating ApiRequestStep');
+    return new ApiRequestStep('ApiRequestStep', this.logger);
+  }
 
   // createInterceptionSetupStep(): IScraperStep {
   //   this.logger.log('Creating InterceptionSetupStep');

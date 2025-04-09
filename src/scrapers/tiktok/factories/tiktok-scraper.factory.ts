@@ -61,6 +61,7 @@ export class TikTokScraperFactory extends GenericScraperFactory<
         forceStop: false,
         hasMoreResults: true,
         currentPage: 0,
+        apiConfig: null,
         // Tiktok-specific state initialization
       },
     };
@@ -69,6 +70,7 @@ export class TikTokScraperFactory extends GenericScraperFactory<
     return [
       this.stepFactory.createInitializationStep(),
       this.stepFactory.createGetApiConfigStep(),
+      this.stepFactory.createApiRequestStep(),
     ];
   }
 

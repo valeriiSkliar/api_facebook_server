@@ -16,6 +16,9 @@ import { SaveCreativesStep } from './steps/save-creatives.step';
 import { TiktokCreativeService } from './services/tiktok-creative.service';
 import { TiktokQueryTransformer } from './transformers/tiktok-query.transformer';
 import { PaginationStep as TiktokPaginationStep } from './steps/pagination-step';
+import { ReportingModule } from '@src/core/reporting/reporting.module';
+import { CoreModule } from '@src/core/core.module';
+
 @Module({
   imports: [
     HttpModule.registerAsync({
@@ -25,6 +28,8 @@ import { PaginationStep as TiktokPaginationStep } from './steps/pagination-step'
       }),
       inject: [ConfigService],
     }),
+    ReportingModule,
+    CoreModule,
   ],
   providers: [
     TikTokScraperFactory,

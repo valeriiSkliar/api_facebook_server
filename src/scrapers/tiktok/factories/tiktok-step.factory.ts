@@ -11,6 +11,9 @@ import { PrismaService } from '@src/database/prisma.service';
 import { HttpService } from '@nestjs/axios';
 import { TiktokCreativeService } from '../services/tiktok-creative.service';
 import { PaginationStep } from '../steps/pagination-step';
+import { ErrorAnalysisStep } from '../steps/error-analysis-step';
+import { ErrorReportingService } from '@src/core/reporting/services/error-reporting-service';
+import { ApiResponseAnalyzer } from '@src/core/api/analyzer/base-api-response-analyzer';
 
 @Injectable()
 export class TiktokStepFactory {
@@ -19,6 +22,8 @@ export class TiktokStepFactory {
     private readonly prisma: PrismaService,
     private readonly httpService: HttpService,
     private readonly creativeService: TiktokCreativeService,
+    private readonly errorReportingService: ErrorReportingService,
+    private readonly apiResponseAnalyzer: ApiResponseAnalyzer,
   ) {}
 
   createInitializationStep(): TiktokScraperStep {
@@ -46,6 +51,15 @@ export class TiktokStepFactory {
       'FilterMaterialsStep',
       this.logger,
       this.prisma,
+    );
+  }
+
+  createErrorAnalysisStep(): TiktokScraperStep {
+    return new ErrorAnalysisStep(
+      'ErrorAnalysisStep',
+      this.logger,
+      this.errorReportingService,
+      this.apiResponseAnalyzer,
     );
   }
 

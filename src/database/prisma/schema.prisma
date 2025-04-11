@@ -183,6 +183,7 @@ model ApiConfiguration {
 
   // Relations
   sessions             Session[]     @relation("applies_to")
+  errorRecords         ApiErrorRecord[] @relation("has_errors")
 
 }
 
@@ -211,6 +212,37 @@ model Proxy {
   @@index([last_check_timestamp])
 }
 
+model ApiErrorRecord {
+  id           Int      @id @default(autoincrement())
+  materialId   String?  // Может быть null для ошибок запроса списка
+  timestamp    DateTime @default(now()) // Время возникновения ошибки (или анализа)
+  endpoint     String   @db.VarChar(512) // Базовый эндпоинт
+  requestUrl   String   @db.Text // Полный URL запроса
+  statusCode   Int      // HTTP статус (или 0)
+  errorType    String   @db.VarChar(50) // Классифицированный тип из ApiErrorType
+  errorMessage String?  @db.Text // Сообщение об ошибке
+  headers      Json?    // Заголовки *ответа* (если были)
+  requestHeaders Json?  // Заголовки *запроса* (для диагностики)
+  requestBody  String?  @db.Text // Тело *запроса* (если POST и не слишком большое)
+  requestId    String?  // ID запроса, если используется (для связки логов)
+  sessionId    String?  // ID сессии скрапинга
+  apiConfigId  Int?     // ID использованной конфигурации API (для связи) | null, если не использовалась
+  apiConfig    ApiConfiguration? @relation("has_errors", fields: [apiConfigId], references: [id]) // Опционально, если есть модель ApiConfiguration
+
+  retryCount   Int      @default(0) // Сколько раз пытались повторить *этот* конкретный запрос
+  wasResolved  Boolean  @default(false) // Был ли запрос в итоге успешно выполнен после этой ошибки
+
+  responseTimeMs Int?   // Время ответа в мс
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([errorType])
+  @@index([materialId])
+  @@index([sessionId])
+  @@index([timestamp])
+  @@index([endpoint])
+}
 //=============================================================================
 // Request Handling Models
 //=============================================================================

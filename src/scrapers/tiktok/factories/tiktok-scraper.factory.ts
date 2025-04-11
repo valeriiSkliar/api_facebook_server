@@ -14,6 +14,8 @@ import { TiktokScraperState } from '../tiktok-scraper-types';
 import { GenericScraperFactory } from '@src/scrapers/common/factories/generic-scraper-factory';
 import { TiktokScraperStep } from '../steps/tiktok-scraper-step';
 import { TikTokAdData } from '../models/tiktok-ad-data';
+import { ErrorReportingService } from '@src/core/reporting/services/error-reporting-service';
+
 @Injectable()
 export class TikTokScraperFactory extends GenericScraperFactory<
   TiktokScraperQuery,
@@ -55,6 +57,7 @@ export class TikTokScraperFactory extends GenericScraperFactory<
       query,
       options: this.mergeWithDefaultOptions(options),
       state: {
+        apiErrors: [],
         adsCollected: [],
         errors: [],
         forceStop: false,
@@ -75,6 +78,7 @@ export class TikTokScraperFactory extends GenericScraperFactory<
       this.stepFactory.createGetMatirialsIdStep(),
       this.stepFactory.createFilterMaterialsStep(),
       this.stepFactory.createProcessMaterialsStep(),
+      this.stepFactory.createErrorAnalysisStep(),
       this.stepFactory.createSaveCreativesStep(),
     ];
   }

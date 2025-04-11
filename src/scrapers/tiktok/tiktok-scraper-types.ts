@@ -15,6 +15,15 @@ import {
 } from './models/tiktok-library-query';
 import { TikTokAdData, TikTokPaginationData } from './models/tiktok-ad-data';
 import { TikTokApiConfig } from './models/api-config';
+import { AxiosError } from 'axios';
+
+export interface TiktokScraperApiError {
+  materialId: string;
+  error: AxiosError;
+  endpoint: string;
+  timestamp: Date;
+}
+
 export interface TiktokScraperQuery extends IBaseScraperQuery {
   queryString: string;
   period: TiktokLibraryPeriod;
@@ -35,7 +44,7 @@ export interface FailedMaterial {
 }
 
 export interface TiktokScraperState extends IBaseScraperState {
-  tiktokApi?: any; // TODO: Add type
+  apiErrors: TiktokScraperApiError[];
   sessionToken?: string;
   apiConfig?: TikTokApiConfig | null;
   rawApiResponse?: TikTokApiResponse;

@@ -6,6 +6,7 @@ import { CacheModule } from './cache/cache.module';
 import { FileStorageModule } from './storage/file-storage/file-storage.module';
 import { PrismaModule } from '../database/prisma.module';
 import { RedisModule } from './storage/redis/redis.module';
+import { ApiAnalyzerModule } from './api/analyzer/api-analyzer.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { RedisModule } from './storage/redis/redis.module';
     CacheModule,
     // WorkerModule,
     FileStorageModule,
+    ApiAnalyzerModule,
   ],
   exports: [
     PrismaModule,
@@ -25,6 +27,7 @@ import { RedisModule } from './storage/redis/redis.module';
     CacheModule,
     // WorkerModule,
     FileStorageModule,
+    ApiAnalyzerModule,
   ],
 })
 export class CoreModule {}

@@ -148,20 +148,27 @@ export class ApiRequestStep extends TiktokScraperStep {
             `API permission error (40101): ${axiosError.response.data.msg}. Setting permissionError flag.`,
           );
           context.state.permissionError = true; // Set flag for the calling service
-          context.state.errors.push(
-            new Error(
-              `API Permission Error: ${axiosError.response.data.msg} (Code: 40101)`,
-            ),
-          );
+          context.state.apiErrors.push({
+            materialId: '',
+            timestamp: new Date(),
+            endpoint: '',
+            error: axiosError,
+          });
           return false; // Indicate step failure due to permission error
         }
       }
 
       // Handle other errors
       this.logger.error(`Error in ${this.name}:`, error);
-      const errorMessage =
-        error instanceof Error ? error : new Error(String(error));
-      context.state.errors.push(errorMessage);
+      // const errorMessage =
+      //   error instanceof Error ? error : new AxiosError(String(error));
+      context.state.apiErrors.push({
+        materialId: '',
+        timestamp: new Date(),
+        endpoint: '',
+        error:
+          error instanceof AxiosError ? error : new AxiosError(String(error)),
+      });
       return false; // Indicate general step failure
     }
   }

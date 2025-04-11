@@ -20,74 +20,53 @@ export class ErrorAnalysisStep extends AbstractGenericScraperStep<TiktokScraperC
   async execute(context: TiktokScraperContext): Promise<boolean> {
     this.logger.log(`Executing ${this.name}`);
 
-    // Получаем накопленные ошибки из контекста
-    // const errors = context.state.errors || [];
+    // Get accumulated errors from context
     const apiErrors = context.state.apiErrors || [];
     if (apiErrors.length === 0) {
       this.logger.log('No errors to analyze');
       return true;
     }
-    // Анализируем ошибки
+    // Analyze errors
     const analysisResults = await this.analyzeErrors(context);
 
     await this.errorReportingService.saveErrors(analysisResults);
 
-    // Формируем рекомендации для следующих запусков
-    // const recommendations = this.generateRecommendations(
-    // analysisResults,
-    // context,
-    // );
-
-    // Сохраняем статистику и результаты анализа
-    // await this.errorReportingService.saveAnalysisResults(
-    //   analysisResults,
-    //   context.query,
-    // );
-
-    // Добавляем рекомендации в контекст для использования в следующих шагах
-    // context.state.errorAnalysis = {
-    //   results: analysisResults,
-    //   recommendations,
-    //   errorRate: this.calculateErrorRate(context),
-    //   mostCommonErrorType: this.findMostCommonErrorType(analysisResults),
-    // };
-
-    // Логируем итоги анализа
-    // this.logAnalysisResults(context.state.errorAnalysis);
+    // Log error statistics
+    this.logger.log(`Analyzed and saved ${analysisResults.length} API errors`);
+    
+    // Generate error frequency report
+    const errorFrequency = this.getErrorFrequency(analysisResults);
+    this.logger.log('Error frequency by type:', errorFrequency);
 
     return true;
   }
 
   private async analyzeErrors(
-    // apiErrors: ApiResponseAnalysis[],
     context: TiktokScraperContext,
   ): Promise<ApiResponseAnalysis[]> {
-    // Анализ ошибок
+    // Analyze errors
     return Promise.all(
       context.state.apiErrors.map((error) =>
         this.apiResponseAnalyzer.analyzeResponse(
           error.materialId,
           error.error,
           error.endpoint,
-          error.timestamp,
+          error.timestamp || new Date(), // Provide a default timestamp if missing
         ),
       ),
     );
   }
 
-  private generateRecommendations(
-    analysisResults: ApiResponseAnalysis[],
-    context: TiktokScraperContext,
-  ): ActionRecommendation[] {
-    // Генерация рекомендаций на основе результатов анализа
-    return analysisResults
-      .map(
-        (result) =>
-          // this.apiResponseAnalyzer.generateActionRecommendation(result),
-          null,
-      )
-      .filter((rec) => rec !== null);
+  private getErrorFrequency(analysisResults: ApiResponseAnalysis[]): Record<string, number> {
+    const frequency: Record<string, number> = {};
+    
+    for (const result of analysisResults) {
+      if (!frequency[result.errorType]) {
+        frequency[result.errorType] = 0;
+      }
+      frequency[result.errorType]++;
+    }
+    
+    return frequency;
   }
-
-  // Другие вспомогательные методы...
 }

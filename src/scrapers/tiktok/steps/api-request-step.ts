@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import axios, { AxiosError } from 'axios';
+import axios, { AxiosError, AxiosResponse } from 'axios';
 import { v4 as uuidv4 } from 'uuid';
 import { TiktokScraperStep } from './tiktok-scraper-step';
 import {
@@ -7,15 +7,23 @@ import {
   TikTokApiResponse,
 } from '../tiktok-scraper-types';
 import { HttpService } from '@nestjs/axios';
+import { ApiResponseAnalyzer } from '@src/core/api/analyzer/base-api-response-analyzer';
+import { ErrorStorage } from '@src/core/error-handling/storage/error-storage';
 
 @Injectable()
 export class ApiRequestStep extends TiktokScraperStep {
+  private readonly errorStorage: ErrorStorage;
+  private readonly apiAnalyzer: ApiResponseAnalyzer;
+
   constructor(
     protected readonly name: string,
     protected readonly logger: Logger,
     private readonly httpService: HttpService,
   ) {
     super(name, logger);
+    // Use singleton instance for error storage
+    this.errorStorage = ErrorStorage.getInstance();
+    this.apiAnalyzer = new ApiResponseAnalyzer(this.errorStorage);
   }
 
   async execute(context: TiktokScraperContext): Promise<boolean> {
@@ -30,73 +38,79 @@ export class ApiRequestStep extends TiktokScraperStep {
     // Reset permission error flag at the start of execution
     context.state.permissionError = false;
 
+    // Generate a unique request ID for tracking
+    const requestId = uuidv4();
+    this.logger.log(`Starting TikTok API request (ID: ${requestId})`);
+
+    // Extract API configuration that was set in the previous step
+    const { headers, url } = context.state.apiConfig;
+
+    // Build the API URL with query parameters
+    const apiEndpoint = new URL(url);
+
+    // Map our context query to TikTok API parameters
+    const { query } = context;
+
+    // Add query parameters
+    if (query.queryString) {
+      apiEndpoint.searchParams.set('keyword', query.queryString);
+    }
+
+    // Add period/timeframe parameter if set
+    if (query.period) {
+      apiEndpoint.searchParams.set('period', query.period.toString());
+    }
+
+    // Get current page, start with 1 if not initialized
+    const currentPage = context.state.currentPage || 0;
+
+    // Add page number for pagination (API pages are 1-based)
+    apiEndpoint.searchParams.set('page', (currentPage + 1).toString());
+    this.logger.log(`Requesting page ${currentPage + 1}`);
+
+    // Add sorting parameter
+    if (query.orderBy) {
+      apiEndpoint.searchParams.set('order_by', query.orderBy);
+    }
+
+    // Add country code filter
+    if (query.countryCode && query.countryCode.length > 0) {
+      apiEndpoint.searchParams.set('country_code', query.countryCode[0]);
+    }
+
+    // Add additional filters if available
+    if (query.adFormat) {
+      apiEndpoint.searchParams.set('ad_format', query.adFormat.toString());
+    }
+
+    if (query.like) {
+      apiEndpoint.searchParams.set('like', query.like.toString());
+    }
+
+    if (query.adLanguages && query.adLanguages.length > 0) {
+      apiEndpoint.searchParams.set(
+        'ad_language',
+        query.adLanguages.join(','),
+      );
+    }
+
+    this.logger.log(`Making API request to: ${apiEndpoint.toString()}`);
+
+    // Set up headers from API config
+    const headersWithAuth = {
+      ...headers,
+      'Content-Type': 'application/json',
+      'User-Agent':
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.99 Safari/537.36',
+    };
+
+    // Check if we need throttling based on previous errors
+    await this.applyThrottling(context);
+
+    // Track request timestamp for response time measurement
+    const requestTimestamp = new Date();
+    
     try {
-      // Generate a unique request ID
-      const requestId = uuidv4();
-      this.logger.log(`Starting TikTok API request (ID: ${requestId})`);
-
-      // Extract API configuration that was set in the previous step
-      const { headers, url } = context.state.apiConfig;
-
-      // Build the API URL with query parameters
-      const apiEndpoint = new URL(url);
-
-      // Map our context query to TikTok API parameters
-      const { query } = context;
-
-      // Add query parameters
-      if (query.queryString) {
-        apiEndpoint.searchParams.set('keyword', query.queryString);
-      }
-
-      // Add period/timeframe parameter if set
-      if (query.period) {
-        apiEndpoint.searchParams.set('period', query.period.toString());
-      }
-
-      // Get current page, start with 1 if not initialized
-      const currentPage = context.state.currentPage || 0;
-
-      // Add page number for pagination (API pages are 1-based)
-      apiEndpoint.searchParams.set('page', (currentPage + 1).toString());
-      this.logger.log(`Requesting page ${currentPage + 1}`);
-
-      // Add sorting parameter
-      if (query.orderBy) {
-        apiEndpoint.searchParams.set('order_by', query.orderBy);
-      }
-
-      // Add country code filter
-      if (query.countryCode && query.countryCode.length > 0) {
-        apiEndpoint.searchParams.set('country_code', query.countryCode[0]);
-      }
-
-      // Add additional filters if available
-      if (query.adFormat) {
-        apiEndpoint.searchParams.set('ad_format', query.adFormat.toString());
-      }
-
-      if (query.like) {
-        apiEndpoint.searchParams.set('like', query.like.toString());
-      }
-
-      if (query.adLanguages && query.adLanguages.length > 0) {
-        apiEndpoint.searchParams.set(
-          'ad_language',
-          query.adLanguages.join(','),
-        );
-      }
-
-      this.logger.log(`Making API request to: ${apiEndpoint.toString()}`);
-
-      // Set up headers from API config
-      const headersWithAuth = {
-        ...headers,
-        'Content-Type': 'application/json',
-        'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.99 Safari/537.36',
-      };
-
       // Make the API request
       const response = await axios.get<TikTokApiResponse>(
         apiEndpoint.toString(),
@@ -104,10 +118,25 @@ export class ApiRequestStep extends TiktokScraperStep {
           headers: headersWithAuth,
         },
       );
+      
+      // Analyze the successful response
+      const analysis = this.apiAnalyzer.analyzeResponse(
+        '',
+        null,
+        apiEndpoint.toString(),
+        requestTimestamp,
+        response,
+      );
+      
+      // Log success details
+      this.logger.log(
+        `API request (ID: ${requestId}) completed in ${analysis.responseTime}ms with status ${response.status}`,
+      );
 
       // Handle the response
-      if (response.status !== 200) {
-        throw new Error(`API request failed with status: ${response.status}`);
+      if (!analysis.isSuccess) {
+        this.logger.warn(`API request had logical error: ${analysis.errorMessage}`);
+        throw new Error(`API request failed with logical error: ${analysis.errorMessage}`);
       }
 
       // Extract data from the response
@@ -140,36 +169,66 @@ export class ApiRequestStep extends TiktokScraperStep {
         return true;
       }
     } catch (error) {
-      // Check for specific Axios error with code 40101
+      // Use the analyzer to process the error
+      const analysis = this.apiAnalyzer.analyzeResponse(
+        '',
+        error instanceof AxiosError ? error : null,
+        apiEndpoint.toString(),
+        requestTimestamp,
+      );
+      
+      // Generate recommendation for action based on error analysis
+      const recommendation = this.apiAnalyzer.generateActionRecommendation(
+        analysis,
+        1, // This is the first attempt in this step
+        3, // Maximum attempts would be handled by RetryHandler
+      );
+      
+      this.logger.error(
+        `API request (ID: ${requestId}) failed: ${analysis.errorMessage}. Recommendation: ${recommendation.message}`,
+      );
+      
+      // Check for specific Axios error with code 40101 (permission error)
       if (axios.isAxiosError(error)) {
-        const axiosError = error as AxiosError<{ code?: number; msg?: string }>; // Type assertion for better access
+        const axiosError = error as AxiosError<{ code?: number; msg?: string }>;
         if (axiosError.response?.data?.code === 40101) {
           this.logger.warn(
             `API permission error (40101): ${axiosError.response.data.msg}. Setting permissionError flag.`,
           );
           context.state.permissionError = true; // Set flag for the calling service
-          context.state.apiErrors.push({
-            materialId: '',
-            timestamp: new Date(),
-            endpoint: '',
-            error: axiosError,
-          });
-          return false; // Indicate step failure due to permission error
         }
       }
 
-      // Handle other errors
-      this.logger.error(`Error in ${this.name}:`, error);
-      // const errorMessage =
-      //   error instanceof Error ? error : new AxiosError(String(error));
+      // Track the error in context for reporting
       context.state.apiErrors.push({
         materialId: '',
         timestamp: new Date(),
-        endpoint: '',
+        endpoint: apiEndpoint.toString(),
         error:
           error instanceof AxiosError ? error : new AxiosError(String(error)),
       });
+      
       return false; // Indicate general step failure
+    }
+  }
+  
+  /**
+   * Apply throttling based on error patterns if needed
+   */
+  private async applyThrottling(context: TiktokScraperContext): Promise<void> {
+    // If rate limiting is likely occurring, add additional delay
+    if (this.errorStorage.isRateLimitingLikely()) {
+      const currentPage = context.state.currentPage || 0;
+      // Calculate dynamic delay based on both page number and rate limit detection
+      const baseDelay = 1000; // Base 1 second delay 
+      const pageMultiplier = Math.min(currentPage, 10); // Cap at page 10
+      const dynamicDelay = baseDelay + (pageMultiplier * 200);
+      
+      this.logger.warn(
+        `Rate limiting detected! Adding preventive delay of ${dynamicDelay}ms before request`,
+      );
+      
+      await new Promise(resolve => setTimeout(resolve, dynamicDelay));
     }
   }
 

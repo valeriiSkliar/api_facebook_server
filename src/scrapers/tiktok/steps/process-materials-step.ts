@@ -1,6 +1,5 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
 import { Injectable, Logger } from '@nestjs/common';
 import { TiktokScraperStep } from './tiktok-scraper-step';
 import { TiktokScraperContext } from '../tiktok-scraper-types';
@@ -10,34 +9,81 @@ import {
   DetailApiResponse,
   DetailMaterial,
 } from '../models/detail-api-response';
-
 import { FailedMaterial } from '../tiktok-scraper-types';
+import { ApiResponseAnalyzer } from '@src/core/api/analyzer/base-api-response-analyzer';
+import { ErrorStorage } from '@src/core/error-handling/storage/error-storage';
+import { AxiosError } from 'axios';
+import { ActionRecommendation } from '@src/core/api/models/action-recommendation';
 
 class RetryHandler {
   private readonly maxRetries = 3;
   private readonly logger: Logger;
+  private readonly apiAnalyzer: ApiResponseAnalyzer;
 
-  constructor(logger: Logger) {
+  constructor(logger: Logger, apiAnalyzer: ApiResponseAnalyzer) {
     this.logger = logger;
+    this.apiAnalyzer = apiAnalyzer;
   }
 
   async executeWithRetry<T>(
     operation: () => Promise<T>,
     materialId: string,
-    errorHandler?: (error: Error, attempt: number) => void,
+    endpoint: string,
+    errorHandler?: (
+      error: Error,
+      attempt: number,
+      recommendation: ActionRecommendation,
+    ) => void,
   ): Promise<T | null> {
     let attempt = 0;
     let lastError: Error | null = null;
 
     while (attempt <= this.maxRetries) {
       try {
+        const requestTimestamp = new Date();
+
         if (attempt > 0) {
-          // Calculate exponential backoff delay: 1s, 2s, 4s
-          const delay = Math.pow(2, attempt - 1) * 1000;
-          this.logger.debug(
-            `Retry attempt ${attempt}/${this.maxRetries} for material ${materialId}. Waiting ${delay}ms before retry...`,
-          );
-          await new Promise((resolve) => setTimeout(resolve, delay));
+          // Use analyzer to calculate the optimal delay based on error pattern
+          if (lastError instanceof AxiosError) {
+            // Analyze the error
+            const analysis = this.apiAnalyzer.analyzeResponse(
+              materialId,
+              lastError,
+              endpoint,
+              requestTimestamp,
+            );
+
+            // Get recommendation for next steps
+            const recommendation =
+              this.apiAnalyzer.generateActionRecommendation(
+                analysis,
+                attempt,
+                this.maxRetries,
+              );
+
+            // Apply delay as recommended
+            const delay =
+              recommendation.delayMs || Math.pow(2, attempt - 1) * 1000;
+            this.logger.debug(
+              `Retry attempt ${attempt}/${this.maxRetries} for material ${materialId}. Waiting ${delay}ms before retry based on error analysis.`,
+            );
+            await new Promise((resolve) => setTimeout(resolve, delay));
+
+            // If recommendation suggests we abort, stop trying
+            if (recommendation.action === 'abort') {
+              this.logger.warn(
+                `Aborting retries for ${materialId}: ${recommendation.message}`,
+              );
+              throw new Error(`Aborted: ${recommendation.message}`);
+            }
+          } else {
+            // Default exponential backoff if not an Axios error
+            const delay = Math.pow(2, attempt - 1) * 1000;
+            this.logger.debug(
+              `Retry attempt ${attempt}/${this.maxRetries} for material ${materialId}. Waiting ${delay}ms before retry...`,
+            );
+            await new Promise((resolve) => setTimeout(resolve, delay));
+          }
         }
 
         return await operation();
@@ -45,13 +91,33 @@ class RetryHandler {
         lastError = error instanceof Error ? error : new Error(String(error));
         attempt++;
 
-        if (errorHandler) {
-          errorHandler(lastError, attempt);
+        // Analyze error and get recommendation
+        let recommendation: ActionRecommendation = {
+          action: 'retry',
+          message: 'Default retry recommendation',
+        };
+
+        if (error instanceof AxiosError) {
+          const analysis = this.apiAnalyzer.analyzeResponse(
+            materialId,
+            error,
+            endpoint,
+            new Date(),
+          );
+          recommendation = this.apiAnalyzer.generateActionRecommendation(
+            analysis,
+            attempt,
+            this.maxRetries,
+          );
         }
 
-        if (attempt > this.maxRetries) {
+        if (errorHandler) {
+          errorHandler(lastError, attempt, recommendation);
+        }
+
+        if (attempt > this.maxRetries || recommendation.action === 'abort') {
           this.logger.error(
-            `Failed to process material ${materialId} after ${this.maxRetries} attempts. Last error: ${lastError.message}`,
+            `Failed to process material ${materialId} after ${attempt} attempts. Last error: ${lastError.message}`,
           );
           return null;
         }
@@ -69,6 +135,8 @@ class RetryHandler {
 @Injectable()
 export class ProcessMaterialsStep extends TiktokScraperStep {
   private retryHandler: RetryHandler;
+  private readonly errorStorage: ErrorStorage;
+  private readonly apiAnalyzer: ApiResponseAnalyzer;
 
   constructor(
     protected readonly name: string,
@@ -76,7 +144,9 @@ export class ProcessMaterialsStep extends TiktokScraperStep {
     private readonly httpService: HttpService,
   ) {
     super(name, logger);
-    this.retryHandler = new RetryHandler(logger);
+    this.errorStorage = ErrorStorage.getInstance();
+    this.apiAnalyzer = new ApiResponseAnalyzer(this.errorStorage);
+    this.retryHandler = new RetryHandler(logger, this.apiAnalyzer);
   }
 
   async execute(context: TiktokScraperContext): Promise<boolean> {
@@ -104,8 +174,18 @@ export class ProcessMaterialsStep extends TiktokScraperStep {
         `Processing ${context.state.materialsIds.length} materials in parallel`,
       );
 
-      // Set batch size to control concurrency
-      const batchSize = 5; // Process 5 materials at a time to avoid rate limiting
+      // Check for rate limiting before processing
+      const isRateLimited = this.errorStorage.isRateLimitingLikely();
+
+      // Set batch size to control concurrency - reduce if rate limiting is detected
+      let batchSize = 5; // Default: Process 5 materials at a time
+      if (isRateLimited) {
+        batchSize = 2; // Reduce batch size if rate limiting is detected
+        this.logger.warn(
+          `Reducing batch size to ${batchSize} due to detected rate limiting`,
+        );
+      }
+
       const materialIds = [...context.state.materialsIds];
       const results: DetailMaterial[] = [];
 
@@ -122,10 +202,14 @@ export class ProcessMaterialsStep extends TiktokScraperStep {
         const batch = materialIds.splice(0, batchSize);
         currentPage++;
 
-        // Calculate dynamic delay for current page
-        const dynamicDelay = Math.min(500 + (currentPage - 1) * 100, 2000);
+        // Calculate dynamic delay with rate limit awareness
+        let dynamicDelay = Math.min(500 + (currentPage - 1) * 100, 2000);
+        if (isRateLimited) {
+          // Increase delay when rate limiting is detected
+          dynamicDelay = Math.min(1000 + (currentPage - 1) * 300, 5000);
+        }
         this.logger.debug(
-          `Using dynamic delay of ${dynamicDelay}ms for page ${currentPage}`,
+          `Using dynamic delay of ${dynamicDelay}ms for page ${currentPage}${isRateLimited ? ' (rate limit mode)' : ''}`,
         );
 
         // Process batch in parallel
@@ -141,7 +225,9 @@ export class ProcessMaterialsStep extends TiktokScraperStep {
         const batchResults = await Promise.all(batchPromises);
 
         // Filter out failures and add successful results
-        const validResults = batchResults.filter((result) => result !== null);
+        const validResults = batchResults.filter(
+          (result) => result !== null,
+        ) as DetailMaterial[];
         const failedCount = batch.length - validResults.length;
 
         if (failedCount > 0) {
@@ -179,6 +265,14 @@ export class ProcessMaterialsStep extends TiktokScraperStep {
           context.state.failedMaterials,
         );
         this.logger.warn('Common failure reasons:', failureReasons);
+
+        // Report error frequency from the analyzer
+        const errorFrequency = this.apiAnalyzer.getErrorFrequencyAnalysis();
+        this.logger.warn('API error frequency:', errorFrequency);
+
+        // Check and report error trends
+        const trends = this.apiAnalyzer.getErrorRateTrend(10);
+        this.logger.warn('Error rate trends:', trends);
       }
 
       this.logger.log(
@@ -246,7 +340,7 @@ export class ProcessMaterialsStep extends TiktokScraperStep {
   }
 
   /**
-   * Process a single material by making an API request
+   * Process a single material by making an API request with improved error handling
    */
   private async processMaterial(
     materialId: string,
@@ -262,21 +356,36 @@ export class ProcessMaterialsStep extends TiktokScraperStep {
     let lastError: string = '';
     let attempts = 0;
 
+    // Create URL with material_id parameter
+    const url = new URL(baseUrl);
+    url.searchParams.set('material_id', materialId);
+
     const result = await this.retryHandler.executeWithRetry(
       async () => {
-        // Create URL with material_id parameter
-        const url = new URL(baseUrl);
-        url.searchParams.set('material_id', materialId);
-
-        // Calculate dynamic delay for individual request based on page number
+        // Apply dynamic delay based on page number to prevent rate limiting
         const requestDelay = Math.min(500 + (pageNumber - 1) * 100, 2000);
-
-        // Apply delay before making the request
         await new Promise((resolve) => setTimeout(resolve, requestDelay));
+
+        // Track request time for performance monitoring
+        const requestTimestamp = new Date();
 
         // Make the request for material details
         const response = await firstValueFrom(
           this.httpService.get<DetailApiResponse>(url.toString(), { headers }),
+        );
+
+        // Analyze response for issues even if status code is 200
+        const analysis = this.apiAnalyzer.analyzeResponse(
+          materialId,
+          null,
+          url.toString(),
+          requestTimestamp,
+          response,
+        );
+
+        // Log response time for monitoring
+        this.logger.debug(
+          `Material ${materialId} API response time: ${analysis.responseTime}ms`,
         );
 
         // Check if the request was successful and data exists
@@ -289,11 +398,12 @@ export class ProcessMaterialsStep extends TiktokScraperStep {
         }
       },
       materialId,
-      (error, attempt) => {
+      url.toString(),
+      (error, attempt, recommendation) => {
         attempts = attempt;
-        lastError = String(error.message); // Ensure lastError is always a string
+        lastError = String(error.message);
         this.logger.warn(
-          `Attempt ${attempt}: Failed to process material ${materialId} - ${error.message}`,
+          `Attempt ${attempt}: Failed to process material ${materialId} - ${error.message}. Recommendation: ${recommendation.message}`,
           { materialId, attempt, error: error.message, stack: error.stack },
         );
       },

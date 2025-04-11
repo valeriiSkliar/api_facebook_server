@@ -26,7 +26,17 @@ export class GetApiConfigStep extends TiktokScraperStep {
 
     const dbApiConfig = await this.prisma.apiConfiguration.findFirst({
       where: {
-        is_active: true,
+        OR: [
+          { is_active: true },
+          {
+            updated_at: {
+              gte: new Date(Date.now() - 60 * 60 * 1000), // last 1 hour
+            },
+          },
+        ],
+      },
+      orderBy: {
+        updated_at: 'desc',
       },
     });
 

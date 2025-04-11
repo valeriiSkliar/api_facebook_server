@@ -44,16 +44,33 @@ export interface FailedMaterial {
 }
 
 export interface TiktokScraperState extends IBaseScraperState {
+  // Task ID for tracking in state storage
+  taskId: string;
+  startTime: Date;
+
+  // Existing state properties
   apiErrors: TiktokScraperApiError[];
+  failedMaterials: FailedMaterial[]; // Track failed materials with retry information
+
+  // Material tracking
+  processedMaterialIds: string[];
+  failedMaterialIds: string[];
+
   sessionToken?: string;
   apiConfig?: TikTokApiConfig | null;
   rawApiResponse?: TikTokApiResponse;
   materialsIds?: string[];
   permissionError?: boolean;
-  failedMaterials?: FailedMaterial[]; // Track failed materials with retry information
 }
 
 export interface TiktokScraperOptions extends IBaseScraperOptions {
+  // Added properties for state recovery
+  resumePreviousTask?: boolean;
+  previousTaskId?: string;
+  forceRestart?: boolean;
+  processingFailedMaterialsOnly?: boolean;
+
+  // Existing options
   retryAttempts: number;
   userAgent?: string;
   timeout?: number;

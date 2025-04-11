@@ -101,7 +101,7 @@ export class ApiResponseAnalyzer extends AbstractApiResponseAnalyzer {
         isSuccess = true;
         errorType = ApiErrorType.NONE;
       }
-      
+
       // Check for malformed response (could use zod/yup validation)
       try {
         // Basic structure validation
@@ -194,10 +194,13 @@ export class ApiResponseAnalyzer extends AbstractApiResponseAnalyzer {
     let message = `Recommendation: Retry attempt ${currentAttempt + 1}/${maxAttempts} after ${delayMs}ms. Error: ${analysis.errorType}`;
 
     // Enhanced logic for rate limit handling
-    if (analysis.errorType === ApiErrorType.RATE_LIMIT || recentRateLimits >= 2) {
+    if (
+      analysis.errorType === ApiErrorType.RATE_LIMIT ||
+      recentRateLimits >= 2
+    ) {
       // If current error is rate limit OR there were >= 2 recent rate limits
       delayMs = Math.max(delayMs, 5000); // Increase minimum delay for rate limits
-      
+
       if (recentRateLimits >= 3) {
         action = 'reduce_batch';
         message = `Recommendation: Reduce batch size and retry. Multiple rate limits detected (${recentRateLimits} in last 5 requests)`;
@@ -205,8 +208,8 @@ export class ApiResponseAnalyzer extends AbstractApiResponseAnalyzer {
         action = 'delay';
         message = `Recommendation: Delaying and Retrying attempt ${currentAttempt + 1}/${maxAttempts} after ${delayMs}ms due to rate limiting.`;
       }
-    } 
-    
+    }
+
     // If experiencing multiple timeouts, change strategy
     else if (recentTimeouts >= 3) {
       action = 'delay';
@@ -224,7 +227,7 @@ export class ApiResponseAnalyzer extends AbstractApiResponseAnalyzer {
           rateLimits: recentRateLimits,
           timeouts: recentTimeouts,
           total: recentErrors.length,
-        }
+        },
       },
     };
   }
@@ -282,7 +285,7 @@ export class ApiResponseAnalyzer extends AbstractApiResponseAnalyzer {
 
     return calculatedDelay;
   }
-  
+
   /**
    * Analyzes error frequency by type over the last N requests
    * @returns Object with error types as keys and counts as values
@@ -290,17 +293,17 @@ export class ApiResponseAnalyzer extends AbstractApiResponseAnalyzer {
   getErrorFrequencyAnalysis(): Record<string, number> {
     const errors = this.errorStorage.getErrors();
     const result: Record<string, number> = {};
-    
+
     for (const error of errors) {
       if (!result[error.errorType]) {
         result[error.errorType] = 0;
       }
       result[error.errorType]++;
     }
-    
+
     return result;
   }
-  
+
   /**
    * Analyzes trends in error rates over time
    * @param timeWindowMinutes - Time window in minutes for trend analysis
@@ -309,38 +312,41 @@ export class ApiResponseAnalyzer extends AbstractApiResponseAnalyzer {
     const errors = this.errorStorage.getErrors();
     const now = new Date();
     const windowStart = new Date(now.getTime() - timeWindowMinutes * 60 * 1000);
-    
-    const recentErrors = errors.filter(e => e.timestamp >= windowStart);
-    const olderErrors = errors.filter(e => e.timestamp < windowStart);
-    
+
+    const recentErrors = errors.filter((e) => e.timestamp >= windowStart);
+    const olderErrors = errors.filter((e) => e.timestamp < windowStart);
+
     // Calculate error rates for recent and older errors
     const recentErrorTypes: Record<string, number> = {};
     const olderErrorTypes: Record<string, number> = {};
-    
+
     for (const error of recentErrors) {
       if (!recentErrorTypes[error.errorType]) {
         recentErrorTypes[error.errorType] = 0;
       }
       recentErrorTypes[error.errorType]++;
     }
-    
+
     for (const error of olderErrors) {
       if (!olderErrorTypes[error.errorType]) {
         olderErrorTypes[error.errorType] = 0;
       }
       olderErrorTypes[error.errorType]++;
     }
-    
+
     // Calculate trend (increase/decrease) for each error type
     const trends: Record<string, any> = {};
     const allErrorTypes = [
-      ...new Set([...Object.keys(recentErrorTypes), ...Object.keys(olderErrorTypes)]),
+      ...new Set([
+        ...Object.keys(recentErrorTypes),
+        ...Object.keys(olderErrorTypes),
+      ]),
     ];
-    
+
     for (const errorType of allErrorTypes) {
       const recentCount = recentErrorTypes[errorType] || 0;
       const olderCount = olderErrorTypes[errorType] || 0;
-      
+
       // Calculate relative change if older period had errors
       let trend = 0;
       if (olderCount > 0) {
@@ -348,7 +354,7 @@ export class ApiResponseAnalyzer extends AbstractApiResponseAnalyzer {
       } else if (recentCount > 0) {
         trend = 100; // 100% increase if there were no errors before
       }
-      
+
       trends[errorType] = {
         recent: recentCount,
         older: olderCount,
@@ -356,7 +362,7 @@ export class ApiResponseAnalyzer extends AbstractApiResponseAnalyzer {
         increasing: trend > 10, // Consider >10% increase as significant
       };
     }
-    
+
     return {
       timeWindowMinutes,
       recentTotal: recentErrors.length,

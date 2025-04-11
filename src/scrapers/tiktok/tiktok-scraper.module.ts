@@ -18,6 +18,9 @@ import { TiktokQueryTransformer } from './transformers/tiktok-query.transformer'
 import { PaginationStep as TiktokPaginationStep } from './steps/pagination-step';
 import { ReportingModule } from '@src/core/reporting/reporting.module';
 import { CoreModule } from '@src/core/core.module';
+import { ScraperStateModule } from '@src/core/storage/scraper-state/scraper-state.module';
+import { IScraperStateStorage } from '@src/core/storage/scraper-state/i-scraper-state-storage';
+import { SCRAPER_STATE_STORAGE } from '@src/core/storage/scraper-state/scraper-state-storage.token';
 
 @Module({
   imports: [
@@ -30,6 +33,7 @@ import { CoreModule } from '@src/core/core.module';
     }),
     ReportingModule,
     CoreModule,
+    ScraperStateModule,
   ],
   providers: [
     TikTokScraperFactory,
@@ -41,18 +45,30 @@ import { CoreModule } from '@src/core/core.module';
     TiktokQueryTransformer,
     {
       provide: TiktokInitializationStep,
-      useClass: TiktokInitializationStep,
+      useFactory: (logger: Logger, stateStorage: IScraperStateStorage) => {
+        return new TiktokInitializationStep(
+          'InitializationStep',
+          logger,
+          stateStorage,
+        );
+      },
+      inject: [Logger, SCRAPER_STATE_STORAGE],
     },
     {
       provide: TiktokProcessMaterialsStep,
-      useFactory: (logger: Logger, httpService: HttpService) => {
+      useFactory: (
+        logger: Logger,
+        httpService: HttpService,
+        stateStorage: IScraperStateStorage,
+      ) => {
         return new TiktokProcessMaterialsStep(
           'ProcessMaterialsStep',
           logger,
           httpService,
+          stateStorage,
         );
       },
-      inject: [Logger, HttpService],
+      inject: [Logger, HttpService, SCRAPER_STATE_STORAGE],
     },
     {
       provide: TiktokFilterMaterialsStep,

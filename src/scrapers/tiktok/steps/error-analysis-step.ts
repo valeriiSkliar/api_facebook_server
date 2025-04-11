@@ -33,7 +33,7 @@ export class ErrorAnalysisStep extends AbstractGenericScraperStep<TiktokScraperC
 
     // Log error statistics
     this.logger.log(`Analyzed and saved ${analysisResults.length} API errors`);
-    
+
     // Generate error frequency report
     const errorFrequency = this.getErrorFrequency(analysisResults);
     this.logger.log('Error frequency by type:', errorFrequency);
@@ -57,16 +57,18 @@ export class ErrorAnalysisStep extends AbstractGenericScraperStep<TiktokScraperC
     );
   }
 
-  private getErrorFrequency(analysisResults: ApiResponseAnalysis[]): Record<string, number> {
+  private getErrorFrequency(
+    analysisResults: ApiResponseAnalysis[],
+  ): Record<string, number> {
     const frequency: Record<string, number> = {};
-    
+
     for (const result of analysisResults) {
       if (!frequency[result.errorType]) {
         frequency[result.errorType] = 0;
       }
       frequency[result.errorType]++;
     }
-    
+
     return frequency;
   }
 }

@@ -1,6 +1,6 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { TiktokScraperStep } from './tiktok-scraper-step';
 import { TiktokScraperContext } from '../tiktok-scraper-types';
 import { HttpService } from '@nestjs/axios';
@@ -12,125 +12,9 @@ import {
 import { FailedMaterial } from '../tiktok-scraper-types';
 import { ApiResponseAnalyzer } from '@src/core/api/analyzer/base-api-response-analyzer';
 import { ErrorStorage } from '@src/core/error-handling/storage/error-storage';
-import { AxiosError } from 'axios';
-import { ActionRecommendation } from '@src/core/api/models/action-recommendation';
-
-class RetryHandler {
-  private readonly maxRetries = 3;
-  private readonly logger: Logger;
-  private readonly apiAnalyzer: ApiResponseAnalyzer;
-
-  constructor(logger: Logger, apiAnalyzer: ApiResponseAnalyzer) {
-    this.logger = logger;
-    this.apiAnalyzer = apiAnalyzer;
-  }
-
-  async executeWithRetry<T>(
-    operation: () => Promise<T>,
-    materialId: string,
-    endpoint: string,
-    errorHandler?: (
-      error: Error,
-      attempt: number,
-      recommendation: ActionRecommendation,
-    ) => void,
-  ): Promise<T | null> {
-    let attempt = 0;
-    let lastError: Error | null = null;
-
-    while (attempt <= this.maxRetries) {
-      try {
-        const requestTimestamp = new Date();
-
-        if (attempt > 0) {
-          // Use analyzer to calculate the optimal delay based on error pattern
-          if (lastError instanceof AxiosError) {
-            // Analyze the error
-            const analysis = this.apiAnalyzer.analyzeResponse(
-              materialId,
-              lastError,
-              endpoint,
-              requestTimestamp,
-            );
-
-            // Get recommendation for next steps
-            const recommendation =
-              this.apiAnalyzer.generateActionRecommendation(
-                analysis,
-                attempt,
-                this.maxRetries,
-              );
-
-            // Apply delay as recommended
-            const delay =
-              recommendation.delayMs || Math.pow(2, attempt - 1) * 1000;
-            this.logger.debug(
-              `Retry attempt ${attempt}/${this.maxRetries} for material ${materialId}. Waiting ${delay}ms before retry based on error analysis.`,
-            );
-            await new Promise((resolve) => setTimeout(resolve, delay));
-
-            // If recommendation suggests we abort, stop trying
-            if (recommendation.action === 'abort') {
-              this.logger.warn(
-                `Aborting retries for ${materialId}: ${recommendation.message}`,
-              );
-              throw new Error(`Aborted: ${recommendation.message}`);
-            }
-          } else {
-            // Default exponential backoff if not an Axios error
-            const delay = Math.pow(2, attempt - 1) * 1000;
-            this.logger.debug(
-              `Retry attempt ${attempt}/${this.maxRetries} for material ${materialId}. Waiting ${delay}ms before retry...`,
-            );
-            await new Promise((resolve) => setTimeout(resolve, delay));
-          }
-        }
-
-        return await operation();
-      } catch (error) {
-        lastError = error instanceof Error ? error : new Error(String(error));
-        attempt++;
-
-        // Analyze error and get recommendation
-        let recommendation: ActionRecommendation = {
-          action: 'retry',
-          message: 'Default retry recommendation',
-        };
-
-        if (error instanceof AxiosError) {
-          const analysis = this.apiAnalyzer.analyzeResponse(
-            materialId,
-            error,
-            endpoint,
-            new Date(),
-          );
-          recommendation = this.apiAnalyzer.generateActionRecommendation(
-            analysis,
-            attempt,
-            this.maxRetries,
-          );
-        }
-
-        if (errorHandler) {
-          errorHandler(lastError, attempt, recommendation);
-        }
-
-        if (attempt > this.maxRetries || recommendation.action === 'abort') {
-          this.logger.error(
-            `Failed to process material ${materialId} after ${attempt} attempts. Last error: ${lastError.message}`,
-          );
-          return null;
-        }
-
-        this.logger.warn(
-          `Error processing material ${materialId} (attempt ${attempt}/${this.maxRetries}): ${lastError.message}`,
-        );
-      }
-    }
-
-    return null;
-  }
-}
+import { RetryHandler } from '../services/retry-handler-service';
+import { SCRAPER_STATE_STORAGE } from '@src/core/storage/scraper-state/scraper-state-storage.token';
+import { IScraperStateStorage } from '@src/core/storage/scraper-state/i-scraper-state-storage';
 
 @Injectable()
 export class ProcessMaterialsStep extends TiktokScraperStep {
@@ -142,11 +26,25 @@ export class ProcessMaterialsStep extends TiktokScraperStep {
     protected readonly name: string,
     protected readonly logger: Logger,
     private readonly httpService: HttpService,
+    @Inject(SCRAPER_STATE_STORAGE)
+    private readonly stateStorage: IScraperStateStorage,
   ) {
     super(name, logger);
     this.errorStorage = ErrorStorage.getInstance();
     this.apiAnalyzer = new ApiResponseAnalyzer(this.errorStorage);
     this.retryHandler = new RetryHandler(logger, this.apiAnalyzer);
+  }
+
+  private checkRateLimiting(): boolean {
+    return this.errorStorage.isRateLimitingLikely();
+  }
+
+  private getErrorFrequency(): Record<string, number> {
+    return this.apiAnalyzer.getErrorFrequencyAnalysis();
+  }
+
+  private getErrorTrends(minutes: number = 10): Record<string, any> {
+    return this.apiAnalyzer.getErrorRateTrend(minutes);
   }
 
   async execute(context: TiktokScraperContext): Promise<boolean> {
@@ -170,12 +68,28 @@ export class ProcessMaterialsStep extends TiktokScraperStep {
       const baseDetailUrl =
         'https://ads.tiktok.com/creative_radar_api/v1/top_ads/v2/detail';
 
+      // Initialize tracking arrays if they don't exist
+      if (!context.state.processedMaterialIds) {
+        context.state.processedMaterialIds = [];
+      }
+
+      if (!context.state.failedMaterialIds) {
+        context.state.failedMaterialIds = [];
+      }
+
+      // Filter out materials that have already been processed
+      const materialsToProcess = context.state.materialsIds.filter(
+        (id) =>
+          !context.state.processedMaterialIds.includes(id) &&
+          !context.state.failedMaterialIds.includes(id),
+      );
+
       this.logger.log(
-        `Processing ${context.state.materialsIds.length} materials in parallel`,
+        `Processing ${materialsToProcess.length} out of ${context.state.materialsIds.length} materials (${context.state.processedMaterialIds.length} already processed, ${context.state.failedMaterialIds.length} previously failed)`,
       );
 
       // Check for rate limiting before processing
-      const isRateLimited = this.errorStorage.isRateLimitingLikely();
+      const isRateLimited = this.checkRateLimiting();
 
       // Set batch size to control concurrency - reduce if rate limiting is detected
       let batchSize = 5; // Default: Process 5 materials at a time
@@ -186,7 +100,6 @@ export class ProcessMaterialsStep extends TiktokScraperStep {
         );
       }
 
-      const materialIds = [...context.state.materialsIds];
       const results: DetailMaterial[] = [];
 
       // Initialize failed materials tracking if it doesn't exist
@@ -198,8 +111,8 @@ export class ProcessMaterialsStep extends TiktokScraperStep {
       let currentPage = 0;
 
       // Process materials in batches
-      while (materialIds.length > 0) {
-        const batch = materialIds.splice(0, batchSize);
+      while (materialsToProcess.length > 0) {
+        const batch = materialsToProcess.splice(0, batchSize);
         currentPage++;
 
         // Calculate dynamic delay with rate limit awareness
@@ -223,23 +136,24 @@ export class ProcessMaterialsStep extends TiktokScraperStep {
           ),
         );
         const batchResults = await Promise.all(batchPromises);
-
+        this.logger.log(`Batch ${currentPage} results:`, batchResults);
         // Filter out failures and add successful results
-        const validResults = batchResults.filter(
-          (result) => result !== null,
-        ) as DetailMaterial[];
-        const failedCount = batch.length - validResults.length;
+        const validResults = batchResults.filter((result) => result !== null);
 
-        if (failedCount > 0) {
-          this.logger.warn(
-            `Failed to process ${failedCount} materials in batch ${currentPage} after retries`,
-          );
+        // Track successfully processed materials
+        for (const result of validResults) {
+          context.state.processedMaterialIds.push(result.id);
+        }
+
+        // Update the state storage with newly processed materials
+        if (validResults.length > 0) {
+          await this.updateStateStorage(context);
         }
 
         results.push(...validResults);
 
         // Add a dynamic delay between batches to prevent rate limiting
-        if (materialIds.length > 0) {
+        if (materialsToProcess.length > 0) {
           await new Promise((resolve) => setTimeout(resolve, dynamicDelay));
         }
       }
@@ -267,11 +181,11 @@ export class ProcessMaterialsStep extends TiktokScraperStep {
         this.logger.warn('Common failure reasons:', failureReasons);
 
         // Report error frequency from the analyzer
-        const errorFrequency = this.apiAnalyzer.getErrorFrequencyAnalysis();
+        const errorFrequency = this.getErrorFrequency();
         this.logger.warn('API error frequency:', errorFrequency);
 
         // Check and report error trends
-        const trends = this.apiAnalyzer.getErrorRateTrend(10);
+        const trends = this.getErrorTrends(10);
         this.logger.warn('Error rate trends:', trends);
       }
 
@@ -287,13 +201,49 @@ export class ProcessMaterialsStep extends TiktokScraperStep {
         context.state.hasMoreResults = false;
       }
 
+      // Final state update
+      await this.updateStateStorage(context);
+
       return true;
     } catch (error) {
       this.logger.error(`Error in ${this.name}:`, error);
       context.state.errors.push(
         error instanceof Error ? error : new Error(String(error)),
       );
+
+      // Update state storage with error status
+      if (context.state.taskId) {
+        await this.stateStorage.markAsFailed(
+          context.state.taskId,
+          error instanceof Error ? error.message : String(error),
+        );
+      }
+
       return false;
+    }
+  }
+
+  /**
+   * Update the state storage with current context state
+   */
+  private async updateStateStorage(
+    context: TiktokScraperContext,
+  ): Promise<void> {
+    if (!context.state.taskId) {
+      this.logger.warn('Cannot update state storage: No taskId in context');
+      return;
+    }
+
+    try {
+      await this.stateStorage.updateState(context.state.taskId, {
+        currentPage: context.state.currentPage,
+        hasMoreResults: context.state.hasMoreResults,
+        processedMaterialIds: context.state.processedMaterialIds,
+        failedMaterialIds: context.state.failedMaterialIds,
+        lastUpdated: new Date(),
+      });
+    } catch (error) {
+      this.logger.error(`Error updating state storage:`, error);
     }
   }
 
@@ -410,13 +360,29 @@ export class ProcessMaterialsStep extends TiktokScraperStep {
     );
 
     // Track failed materials if context is provided
-    if (!result && context && context.state.failedMaterials) {
-      context.state.failedMaterials.push({
-        materialId,
-        attempts,
-        lastError,
-        timestamp: new Date(),
-      });
+    if (!result && context) {
+      // Add to failed materials list for analysis
+      if (context.state.failedMaterials) {
+        context.state.failedMaterials.push({
+          materialId,
+          attempts,
+          lastError,
+          timestamp: new Date(),
+        });
+      }
+
+      // Add to failed material IDs for state tracking
+      if (
+        context.state.failedMaterialIds &&
+        !context.state.failedMaterialIds.includes(materialId)
+      ) {
+        context.state.failedMaterialIds.push(materialId);
+
+        // Update the state storage
+        if (context.state.taskId) {
+          await this.updateStateStorage(context);
+        }
+      }
     }
 
     return result;

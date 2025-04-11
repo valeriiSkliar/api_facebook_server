@@ -57,7 +57,12 @@ export class TikTokScraperFactory extends GenericScraperFactory<
       query,
       options: this.mergeWithDefaultOptions(options),
       state: {
+        taskId: '',
+        processedMaterialIds: [],
+        failedMaterialIds: [],
         apiErrors: [],
+        failedMaterials: [],
+        startTime: new Date(),
         adsCollected: [],
         errors: [],
         forceStop: false,
@@ -65,7 +70,6 @@ export class TikTokScraperFactory extends GenericScraperFactory<
         currentPage: 0,
         apiConfig: null,
         permissionError: false,
-        // Tiktok-specific state initialization
       },
     };
   }

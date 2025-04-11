@@ -88,10 +88,7 @@ export class ApiRequestStep extends TiktokScraperStep {
     }
 
     if (query.adLanguages && query.adLanguages.length > 0) {
-      apiEndpoint.searchParams.set(
-        'ad_language',
-        query.adLanguages.join(','),
-      );
+      apiEndpoint.searchParams.set('ad_language', query.adLanguages.join(','));
     }
 
     this.logger.log(`Making API request to: ${apiEndpoint.toString()}`);
@@ -109,7 +106,7 @@ export class ApiRequestStep extends TiktokScraperStep {
 
     // Track request timestamp for response time measurement
     const requestTimestamp = new Date();
-    
+
     try {
       // Make the API request
       const response = await axios.get<TikTokApiResponse>(
@@ -118,7 +115,7 @@ export class ApiRequestStep extends TiktokScraperStep {
           headers: headersWithAuth,
         },
       );
-      
+
       // Analyze the successful response
       const analysis = this.apiAnalyzer.analyzeResponse(
         '',
@@ -127,7 +124,7 @@ export class ApiRequestStep extends TiktokScraperStep {
         requestTimestamp,
         response,
       );
-      
+
       // Log success details
       this.logger.log(
         `API request (ID: ${requestId}) completed in ${analysis.responseTime}ms with status ${response.status}`,
@@ -135,8 +132,12 @@ export class ApiRequestStep extends TiktokScraperStep {
 
       // Handle the response
       if (!analysis.isSuccess) {
-        this.logger.warn(`API request had logical error: ${analysis.errorMessage}`);
-        throw new Error(`API request failed with logical error: ${analysis.errorMessage}`);
+        this.logger.warn(
+          `API request had logical error: ${analysis.errorMessage}`,
+        );
+        throw new Error(
+          `API request failed with logical error: ${analysis.errorMessage}`,
+        );
       }
 
       // Extract data from the response
@@ -176,18 +177,18 @@ export class ApiRequestStep extends TiktokScraperStep {
         apiEndpoint.toString(),
         requestTimestamp,
       );
-      
+
       // Generate recommendation for action based on error analysis
       const recommendation = this.apiAnalyzer.generateActionRecommendation(
         analysis,
         1, // This is the first attempt in this step
         3, // Maximum attempts would be handled by RetryHandler
       );
-      
+
       this.logger.error(
         `API request (ID: ${requestId}) failed: ${analysis.errorMessage}. Recommendation: ${recommendation.message}`,
       );
-      
+
       // Check for specific Axios error with code 40101 (permission error)
       if (axios.isAxiosError(error)) {
         const axiosError = error as AxiosError<{ code?: number; msg?: string }>;
@@ -207,11 +208,11 @@ export class ApiRequestStep extends TiktokScraperStep {
         error:
           error instanceof AxiosError ? error : new AxiosError(String(error)),
       });
-      
+
       return false; // Indicate general step failure
     }
   }
-  
+
   /**
    * Apply throttling based on error patterns if needed
    */
@@ -220,15 +221,15 @@ export class ApiRequestStep extends TiktokScraperStep {
     if (this.errorStorage.isRateLimitingLikely()) {
       const currentPage = context.state.currentPage || 0;
       // Calculate dynamic delay based on both page number and rate limit detection
-      const baseDelay = 1000; // Base 1 second delay 
+      const baseDelay = 1000; // Base 1 second delay
       const pageMultiplier = Math.min(currentPage, 10); // Cap at page 10
-      const dynamicDelay = baseDelay + (pageMultiplier * 200);
-      
+      const dynamicDelay = baseDelay + pageMultiplier * 200;
+
       this.logger.warn(
         `Rate limiting detected! Adding preventive delay of ${dynamicDelay}ms before request`,
       );
-      
-      await new Promise(resolve => setTimeout(resolve, dynamicDelay));
+
+      await new Promise((resolve) => setTimeout(resolve, dynamicDelay));
     }
   }
 

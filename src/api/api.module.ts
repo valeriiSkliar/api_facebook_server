@@ -11,7 +11,7 @@ import { TiktokAccountModule } from './accounts/tiktok-account/tiktok-account.mo
 import { RequestManagerModule } from '@src/api/requests/requests.module';
 import { RequestController } from './requests/request-controller';
 import { AuthMiddleware } from '../middleware/auth.middleware';
-
+import { ScraperRecoveryModule } from '@src/scrapers/common/services/scraper-recovery.module';
 @Module({
   imports: [
     FacebookApiModule,
@@ -19,6 +19,7 @@ import { AuthMiddleware } from '../middleware/auth.middleware';
     TiktokAccountModule,
     EmailAccountModule,
     RequestManagerModule,
+    ScraperRecoveryModule,
   ],
   controllers: [RequestController],
   exports: [FacebookApiModule],
@@ -30,6 +31,7 @@ export class ApiModule implements NestModule {
       .forRoutes(
         { path: 'requests', method: RequestMethod.ALL },
         { path: 'requests/*', method: RequestMethod.ALL },
+        { path: 'api/scraper-recovery', method: RequestMethod.ALL },
       );
   }
 }

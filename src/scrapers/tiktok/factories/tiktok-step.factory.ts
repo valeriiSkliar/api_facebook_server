@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject } from '@nestjs/common';
 import { TiktokScraperStep } from '../steps/tiktok-scraper-step';
 import { InitializationStep } from '../steps/initialization-step';
 import { GetApiConfigStep } from '../steps/get-api-config-step';
@@ -14,6 +14,8 @@ import { PaginationStep } from '../steps/pagination-step';
 import { ErrorAnalysisStep } from '../steps/error-analysis-step';
 import { ErrorReportingService } from '@src/core/reporting/services/error-reporting-service';
 import { ApiResponseAnalyzer } from '@src/core/api/analyzer/base-api-response-analyzer';
+import { SCRAPER_STATE_STORAGE } from '@src/core/storage/scraper-state/scraper-state-storage.token';
+import { IScraperStateStorage } from '@src/core/storage/scraper-state/i-scraper-state-storage';
 
 @Injectable()
 export class TiktokStepFactory {
@@ -24,10 +26,16 @@ export class TiktokStepFactory {
     private readonly creativeService: TiktokCreativeService,
     private readonly errorReportingService: ErrorReportingService,
     private readonly apiResponseAnalyzer: ApiResponseAnalyzer,
+    @Inject(SCRAPER_STATE_STORAGE)
+    private readonly stateStorage: IScraperStateStorage,
   ) {}
 
   createInitializationStep(): TiktokScraperStep {
-    return new InitializationStep('InitializationStep', this.logger);
+    return new InitializationStep(
+      'InitializationStep',
+      this.logger,
+      this.stateStorage,
+    );
   }
 
   createGetApiConfigStep(): TiktokScraperStep {
@@ -68,6 +76,7 @@ export class TiktokStepFactory {
       'ProcessMaterialsStep',
       this.logger,
       this.httpService,
+      this.stateStorage,
     );
   }
 

@@ -7,10 +7,12 @@ export class RetryHandler {
   private readonly maxRetries = 3;
   private readonly logger: Logger;
   private readonly apiAnalyzer: ApiResponseAnalyzer;
+  private readonly context: any;
 
-  constructor(logger: Logger, apiAnalyzer: ApiResponseAnalyzer) {
+  constructor(logger: Logger, apiAnalyzer: ApiResponseAnalyzer, context?: any) {
     this.logger = logger;
     this.apiAnalyzer = apiAnalyzer;
+    this.context = context;
   }
 
   async executeWithRetry<T>(
@@ -97,6 +99,22 @@ export class RetryHandler {
             attempt,
             this.maxRetries,
           );
+          
+          // Ensure error is tracked in context when this handler is used
+          if (this.context && this.context.state && Array.isArray(this.context.state.apiErrors)) {
+            // Only add if materialId and endpoint exist to ensure valid entries
+            if (materialId && endpoint) {
+              this.context.state.apiErrors.push({
+                materialId,
+                error,
+                endpoint,
+                timestamp: new Date(),
+              });
+              
+              // Log that we've added an error to the context
+              this.logger.debug(`Added error to context.state.apiErrors: ${error.message} for ${materialId}`);
+            }
+          }
         }
 
         if (errorHandler) {

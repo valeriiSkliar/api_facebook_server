@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { TiktokScraperStep } from './tiktok-scraper-step';
 import { TiktokScraperContext } from '../tiktok-scraper-types';
@@ -15,6 +13,7 @@ import { ErrorStorage } from '@src/core/error-handling/storage/error-storage';
 import { RetryHandler } from '../services/retry-handler-service';
 import { SCRAPER_STATE_STORAGE } from '@src/core/storage/scraper-state/scraper-state-storage.token';
 import { IScraperStateStorage } from '@src/core/storage/scraper-state/i-scraper-state-storage';
+import { AxiosError } from 'axios';
 
 @Injectable()
 export class ProcessMaterialsStep extends TiktokScraperStep {
@@ -32,7 +31,7 @@ export class ProcessMaterialsStep extends TiktokScraperStep {
     super(name, logger);
     this.errorStorage = ErrorStorage.getInstance();
     this.apiAnalyzer = new ApiResponseAnalyzer(this.errorStorage);
-    this.retryHandler = new RetryHandler(logger, this.apiAnalyzer);
+    // RetryHandler will be initialized in execute() with context
   }
 
   private checkRateLimiting(): boolean {
@@ -49,6 +48,13 @@ export class ProcessMaterialsStep extends TiktokScraperStep {
 
   async execute(context: TiktokScraperContext): Promise<boolean> {
     this.logger.log(`Executing ${this.name}`);
+
+    // Initialize the retry handler with context for each execution
+    this.retryHandler = new RetryHandler(
+      this.logger,
+      this.apiAnalyzer,
+      context,
+    );
 
     if (
       !context.state.materialsIds ||
@@ -75,6 +81,11 @@ export class ProcessMaterialsStep extends TiktokScraperStep {
 
       if (!context.state.failedMaterialIds) {
         context.state.failedMaterialIds = [];
+      }
+
+      // Initialize API errors tracking array if it doesn't exist
+      if (!context.state.apiErrors) {
+        context.state.apiErrors = [];
       }
 
       // Filter out materials that have already been processed
@@ -332,6 +343,25 @@ export class ProcessMaterialsStep extends TiktokScraperStep {
           requestTimestamp,
           response,
         );
+
+        // Explicitly track any API error in context.state.apiErrors, even for 200 responses with logical errors
+        if (!analysis.isSuccess && context) {
+          // Create Axios error with proper structure
+          const axiosError = new AxiosError(
+            analysis.errorMessage,
+            'EREQUEST',
+            undefined,
+            undefined,
+            response,
+          );
+
+          context.state.apiErrors.push({
+            materialId,
+            error: axiosError,
+            endpoint: url.toString(),
+            timestamp: new Date(),
+          });
+        }
 
         // Log response time for monitoring
         this.logger.debug(

@@ -20,6 +20,20 @@ export class ErrorAnalysisStep extends AbstractGenericScraperStep<TiktokScraperC
 
     // Get accumulated errors from context
     const apiErrors = context.state.apiErrors || [];
+    
+    // Log detailed information about apiErrors to diagnose issues
+    this.logger.log(`Found ${apiErrors.length} API errors to analyze`);
+    
+    if (apiErrors.length > 0) {
+      // Log a sample of the first error to help diagnose structure issues
+      this.logger.debug(`Sample error: ${JSON.stringify({
+        materialId: apiErrors[0].materialId,
+        endpoint: apiErrors[0].endpoint,
+        timestamp: apiErrors[0].timestamp,
+        error: apiErrors[0].error ? apiErrors[0].error.message : 'No error message'
+      })}`);
+    }
+    
     if (apiErrors.length === 0) {
       this.logger.log('No errors to analyze');
       return true;
@@ -34,6 +48,18 @@ export class ErrorAnalysisStep extends AbstractGenericScraperStep<TiktokScraperC
         this.logger.log(
           `Attempting to save ${analysisResults.length} API errors to database`,
         );
+        
+        // Log some sample analysis results to help diagnose issues
+        if (analysisResults.length > 0) {
+          const sample = analysisResults[0];
+          this.logger.debug(`Sample analysis result to be saved:`, {
+            materialId: sample.materialId,
+            endpoint: sample.endpoint,
+            errorType: sample.errorType,
+            errorMessage: sample.errorMessage ? sample.errorMessage.substring(0, 100) : 'None',
+            statusCode: sample.statusCode
+          });
+        }
 
         try {
           await this.errorReportingService.saveErrors(analysisResults);
@@ -42,10 +68,17 @@ export class ErrorAnalysisStep extends AbstractGenericScraperStep<TiktokScraperC
           );
         } catch (saveError) {
           this.logger.error(`Failed to save errors to database:`, saveError);
+          this.logger.debug(`Details of save error:`, saveError instanceof Error ? 
+            { message: saveError.message, stack: saveError.stack } : saveError);
           // Continue execution even if saving fails
         }
       } else {
         this.logger.warn('No valid API error analysis results to save');
+        
+        // Additional logging to help diagnose why no results were produced
+        if (context.state.apiErrors && context.state.apiErrors.length > 0) {
+          this.logger.debug(`${context.state.apiErrors.length} API errors exist in context but no valid analysis results were generated`);
+        }
       }
 
       // Generate error frequency report

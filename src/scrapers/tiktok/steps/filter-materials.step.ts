@@ -21,7 +21,9 @@ export class FilterMaterialsStep extends TiktokScraperStep {
 
     if (!state.materialsIds || state.materialsIds.length === 0) {
       this.logger.warn('No material IDs to filter');
-      return false;
+      // Update to store empty array rather than failing
+      state.materialsIds = [];
+      return true;
     }
 
     try {
@@ -43,10 +45,26 @@ export class FilterMaterialsStep extends TiktokScraperStep {
         (id) => !existingMaterialIds.has(id),
       );
 
+      this.logger.log(
+        `Filtered ${existingMaterialIds.size} existing materials, ${state.materialsIds.length} new materials remain`,
+      );
       return true;
     } catch (error) {
       this.logger.error('Failed to filter materials:', error);
-      return false;
+      // Store the error in the state for diagnostic purposes
+      if (!state.apiErrors) {
+        state.apiErrors = [];
+      }
+      state.apiErrors.push({
+        materialId: 'filter_step',
+        error: error,
+        endpoint: 'database_query',
+        timestamp: new Date(),
+      });
+
+      // Initialize to empty array to allow pipeline to continue
+      state.materialsIds = [];
+      return true;
     }
   }
 }

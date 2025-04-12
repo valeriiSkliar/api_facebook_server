@@ -1,8 +1,6 @@
 import { ErrorReportingService } from '@src/core/reporting/services/error-reporting-service';
-
 import { ApiResponseAnalyzer } from '@src/core/api/analyzer/base-api-response-analyzer';
 import { TiktokScraperContext } from '../tiktok-scraper-types';
-import { ActionRecommendation } from '@src/core/api/models/action-recommendation';
 import { AbstractGenericScraperStep } from '@src/scrapers/common/interfaces/abstract-generic-scraper-step';
 import { Logger } from '@nestjs/common';
 import { ApiResponseAnalysis } from '@src/core/api/models/api-response-analysis';
@@ -26,35 +24,70 @@ export class ErrorAnalysisStep extends AbstractGenericScraperStep<TiktokScraperC
       this.logger.log('No errors to analyze');
       return true;
     }
-    // Analyze errors
-    const analysisResults = await this.analyzeErrors(context);
 
-    await this.errorReportingService.saveErrors(analysisResults);
+    try {
+      // Analyze errors
+      const analysisResults = await this.analyzeErrors(context);
 
-    // Log error statistics
-    this.logger.log(`Analyzed and saved ${analysisResults.length} API errors`);
+      if (analysisResults.length > 0) {
+        // Log before saving to help with debugging
+        this.logger.log(
+          `Attempting to save ${analysisResults.length} API errors to database`,
+        );
 
-    // Generate error frequency report
-    const errorFrequency = this.getErrorFrequency(analysisResults);
-    this.logger.log('Error frequency by type:', errorFrequency);
+        try {
+          await this.errorReportingService.saveErrors(analysisResults);
+          this.logger.log(
+            `Successfully saved ${analysisResults.length} API errors to database`,
+          );
+        } catch (saveError) {
+          this.logger.error(`Failed to save errors to database:`, saveError);
+          // Continue execution even if saving fails
+        }
+      } else {
+        this.logger.warn('No valid API error analysis results to save');
+      }
 
-    return true;
+      // Generate error frequency report
+      const errorFrequency = this.getErrorFrequency(analysisResults);
+      this.logger.log('Error frequency by type:', errorFrequency);
+
+      return true;
+    } catch (error) {
+      this.logger.error(`Error in ${this.name}:`, error);
+      // Don't fail the pipeline because of error analysis issues
+      return true;
+    }
   }
 
   private async analyzeErrors(
     context: TiktokScraperContext,
   ): Promise<ApiResponseAnalysis[]> {
     // Analyze errors
-    return Promise.all(
-      context.state.apiErrors.map((error) =>
-        this.apiResponseAnalyzer.analyzeResponse(
-          error.materialId,
+    const analysisResults: ApiResponseAnalysis[] = [];
+
+    for (const error of context.state.apiErrors) {
+      try {
+        const analysis = this.apiResponseAnalyzer.analyzeResponse(
+          error.materialId || '',
           error.error,
           error.endpoint,
           error.timestamp || new Date(), // Provide a default timestamp if missing
-        ),
-      ),
-    );
+        );
+
+        // Ensure all required fields are present
+        if (!analysis.requestUrl) {
+          analysis.requestUrl = error.endpoint;
+        }
+
+        analysisResults.push(analysis);
+      } catch (analysisError) {
+        this.logger.error(`Error analyzing API error:`, analysisError);
+        // Continue with other errors
+      }
+    }
+
+    return await Promise.all(analysisResults);
   }
 
   private getErrorFrequency(

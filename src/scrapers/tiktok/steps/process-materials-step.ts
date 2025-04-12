@@ -102,12 +102,17 @@ export class ProcessMaterialsStep extends TiktokScraperStep {
       // Check for rate limiting before processing
       const isRateLimited = this.checkRateLimiting();
 
-      // Set batch size to control concurrency - reduce if rate limiting is detected
-      let batchSize = 5; // Default: Process 5 materials at a time
-      if (isRateLimited) {
-        batchSize = 2; // Reduce batch size if rate limiting is detected
+      // Set batch size to control concurrency - significantly reduce to address rate limiting issues
+      let batchSize = 2; // Reduced default batch size from 5 to 2
+
+      // Check error frequency to determine if we should be even more conservative
+      const errorFrequency = this.getErrorFrequency();
+      const tooManyRequestsCount = errorFrequency['RATE_LIMIT'] || 0;
+
+      if (isRateLimited || tooManyRequestsCount > 10) {
+        batchSize = 1; // Process only 1 material at a time when rate limited
         this.logger.warn(
-          `Reducing batch size to ${batchSize} due to detected rate limiting`,
+          `Using minimal batch size of ${batchSize} due to detected rate limiting (${tooManyRequestsCount} rate limit errors)`,
         );
       }
 
@@ -126,14 +131,35 @@ export class ProcessMaterialsStep extends TiktokScraperStep {
         const batch = materialsToProcess.splice(0, batchSize);
         currentPage++;
 
-        // Calculate dynamic delay with rate limit awareness
-        let dynamicDelay = Math.min(500 + (currentPage - 1) * 100, 2000);
-        if (isRateLimited) {
-          // Increase delay when rate limiting is detected
-          dynamicDelay = Math.min(1000 + (currentPage - 1) * 300, 5000);
+        // Calculate much more aggressive dynamic delay with rate limit awareness
+        // Base delay starts higher and grows more quickly between pages
+        let dynamicDelay = Math.min(2000 + (currentPage - 1) * 500, 10000);
+
+        // Check error statistics to adjust delay dynamically based on recent performance
+        const errorTrends = this.getErrorTrends(5); // Last 5 minutes of errors
+        const recentErrors = (errorTrends.recentTotal as number) || 0;
+
+        // If we're experiencing a high error rate, increase delay further
+        if (isRateLimited || recentErrors > 5 || tooManyRequestsCount > 10) {
+          // Much more aggressive backoff when rate limiting is detected
+          dynamicDelay = Math.min(5000 + (currentPage - 1) * 1000, 30000);
+
+          // Add additional delay proportional to the error rate
+          const errorFactor = Math.min(3, 1 + recentErrors / 10);
+          dynamicDelay = Math.min(
+            30000,
+            Math.round(dynamicDelay * errorFactor),
+          );
         }
+
+        // Add jitter to prevent synchronized retries
+        const jitter = Math.floor(Math.random() * 1000);
+        dynamicDelay += jitter;
+
         this.logger.debug(
-          `Using dynamic delay of ${dynamicDelay}ms for page ${currentPage}${isRateLimited ? ' (rate limit mode)' : ''}`,
+          `Using dynamic delay of ${dynamicDelay}ms for page ${currentPage}${
+            isRateLimited ? ' (rate limit mode)' : ''
+          } with ${recentErrors} recent errors`,
         );
 
         // Process batch in parallel
@@ -283,18 +309,37 @@ export class ProcessMaterialsStep extends TiktokScraperStep {
    * Categorize errors to find patterns
    */
   private categorizeError(errorMessage: string): string {
-    if (errorMessage.includes('timeout')) {
+    const errorLower = errorMessage.toLowerCase();
+
+    if (errorLower.includes('timeout')) {
       return 'Request timeout';
-    } else if (errorMessage.includes('429')) {
+    } else if (
+      errorLower.includes('429') ||
+      errorLower.includes('too many requests')
+    ) {
       return 'Rate limiting (429)';
-    } else if (errorMessage.includes('403')) {
+    } else if (errorLower.includes('403') || errorLower.includes('forbidden')) {
       return 'Access denied (403)';
-    } else if (errorMessage.includes('404')) {
+    } else if (errorLower.includes('404') || errorLower.includes('not found')) {
       return 'Resource not found (404)';
-    } else if (errorMessage.includes('500')) {
+    } else if (
+      errorLower.includes('500') ||
+      errorLower.includes('server error')
+    ) {
       return 'Server error (500)';
-    } else if (errorMessage.includes('network')) {
+    } else if (
+      errorLower.includes('network') ||
+      errorLower.includes('socket') ||
+      errorLower.includes('connect')
+    ) {
       return 'Network error';
+    } else if (
+      errorLower.includes('permission') ||
+      errorLower.includes('no permission')
+    ) {
+      return 'Permission denied';
+    } else if (errorLower.match(/empty|invalid|malformed|response/)) {
+      return 'Invalid response';
     } else {
       return 'Other error';
     }
@@ -323,8 +368,17 @@ export class ProcessMaterialsStep extends TiktokScraperStep {
 
     const result = await this.retryHandler.executeWithRetry(
       async () => {
-        // Apply dynamic delay based on page number to prevent rate limiting
-        const requestDelay = Math.min(500 + (pageNumber - 1) * 100, 2000);
+        // Apply more aggressive dynamic delay based on page number to prevent rate limiting
+        // Start with a higher base delay that increases more rapidly with page number
+        const baseDelay = Math.min(1000 + (pageNumber - 1) * 500, 5000);
+
+        // Apply jitter to prevent synchronized requests
+        const jitter = Math.floor(Math.random() * 500);
+        const requestDelay = baseDelay + jitter;
+
+        this.logger.debug(
+          `Applying pre-request delay of ${requestDelay}ms for material ${materialId} on page ${pageNumber}`,
+        );
         await new Promise((resolve) => setTimeout(resolve, requestDelay));
 
         // Track request time for performance monitoring

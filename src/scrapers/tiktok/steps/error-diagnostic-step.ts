@@ -2,7 +2,7 @@ import { Logger } from '@nestjs/common';
 import { TiktokScraperContext } from '../tiktok-scraper-types';
 import { TiktokScraperStep } from './tiktok-scraper-step';
 import { PrismaService } from '@src/database';
-import { Prisma } from '@prisma/client';
+// import { Prisma } from '@prisma/client';
 
 export class ErrorDiagnosticStep extends TiktokScraperStep {
   constructor(
@@ -35,23 +35,23 @@ export class ErrorDiagnosticStep extends TiktokScraperStep {
     try {
       this.logger.log('Attempting to create a test error record...');
 
-      await this.prisma.apiErrorRecord.create({
-        data: {
-          materialId: 'test-material',
-          requestUrl: 'https://test-endpoint.com/api/test',
-          timestamp: new Date(),
-          endpoint: '/api/test',
-          statusCode: 503,
-          errorType: 'TEST_ERROR',
-          errorMessage: 'This is a test error to verify database connectivity',
-          headers: Prisma.JsonNull,
-          retryCount: 0,
-          wasResolved: false,
-          responseTimeMs: 500,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-      });
+      // await this.prisma.apiErrorRecord.create({
+      //   data: {
+      //     materialId: 'test-material',
+      //     requestUrl: 'https://test-endpoint.com/api/test',
+      //     timestamp: new Date(),
+      //     endpoint: '/api/test',
+      //     statusCode: 503,
+      //     errorType: 'TEST_ERROR',
+      //     errorMessage: 'This is a test error to verify database connectivity',
+      //     headers: Prisma.JsonNull,
+      //     retryCount: 0,
+      //     wasResolved: false,
+      //     responseTimeMs: 500,
+      //     createdAt: new Date(),
+      //     updatedAt: new Date(),
+      //   },
+      // });
 
       this.logger.log('Successfully created test error record');
 

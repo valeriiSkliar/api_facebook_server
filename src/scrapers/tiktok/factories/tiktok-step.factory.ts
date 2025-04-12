@@ -12,6 +12,7 @@ import { HttpService } from '@nestjs/axios';
 import { TiktokCreativeService } from '../services/tiktok-creative.service';
 import { PaginationStep } from '../steps/pagination-step';
 import { ErrorAnalysisStep } from '../steps/error-analysis-step';
+import { ErrorDiagnosticStep } from '../steps/error-diagnostic-step';
 import { ErrorReportingService } from '@src/core/reporting/services/error-reporting-service';
 import { ApiResponseAnalyzer } from '@src/core/api/analyzer/base-api-response-analyzer';
 import { SCRAPER_STATE_STORAGE } from '@src/core/storage/scraper-state/scraper-state-storage.token';
@@ -57,6 +58,14 @@ export class TiktokStepFactory {
   createFilterMaterialsStep(): TiktokScraperStep {
     return new FilterMaterialsStep(
       'FilterMaterialsStep',
+      this.logger,
+      this.prisma,
+    );
+  }
+
+  createErrorDiagnosticStep(): TiktokScraperStep {
+    return new ErrorDiagnosticStep(
+      'ErrorDiagnosticStep',
       this.logger,
       this.prisma,
     );

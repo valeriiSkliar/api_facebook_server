@@ -21,6 +21,10 @@ import { CoreModule } from '@src/core/core.module';
 import { ScraperStateModule } from '@src/core/storage/scraper-state/scraper-state.module';
 import { IScraperStateStorage } from '@src/core/storage/scraper-state/i-scraper-state-storage';
 import { SCRAPER_STATE_STORAGE } from '@src/core/storage/scraper-state/scraper-state-storage.token';
+import { ErrorDiagnosticStep } from './steps/error-diagnostic-step';
+import { ErrorReportingService } from '@src/core/reporting/services/error-reporting-service';
+import { ApiResponseAnalyzer } from '@src/core/api/analyzer/base-api-response-analyzer';
+import { ErrorAnalysisStep } from './steps/error-analysis-step';
 
 @Module({
   imports: [
@@ -43,6 +47,7 @@ import { SCRAPER_STATE_STORAGE } from '@src/core/storage/scraper-state/scraper-s
     TiktokApiScraper,
     TiktokCreativeService,
     TiktokQueryTransformer,
+
     {
       provide: TiktokInitializationStep,
       useFactory: (logger: Logger, stateStorage: IScraperStateStorage) => {
@@ -106,6 +111,29 @@ import { SCRAPER_STATE_STORAGE } from '@src/core/storage/scraper-state/scraper-s
       provide: TiktokGetApiConfigStep,
       useFactory: (logger: Logger, prisma: PrismaService) => {
         return new TiktokGetApiConfigStep('GetApiConfigStep', logger, prisma);
+      },
+      inject: [Logger, PrismaService],
+    },
+    {
+      provide: 'ErrorAnalysisStep',
+      useFactory: (
+        logger: Logger,
+        errorReportingService: ErrorReportingService,
+        apiResponseAnalyzer: ApiResponseAnalyzer,
+      ) => {
+        return new ErrorAnalysisStep(
+          'ErrorAnalysisStep',
+          logger,
+          errorReportingService,
+          apiResponseAnalyzer,
+        );
+      },
+      inject: [Logger, ErrorReportingService, ApiResponseAnalyzer],
+    },
+    {
+      provide: ErrorDiagnosticStep,
+      useFactory: (logger: Logger, prisma: PrismaService) => {
+        return new ErrorDiagnosticStep('ErrorDiagnosticStep', logger, prisma);
       },
       inject: [Logger, PrismaService],
     },

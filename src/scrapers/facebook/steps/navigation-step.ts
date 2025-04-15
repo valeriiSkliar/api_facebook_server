@@ -1,8 +1,8 @@
-import { AbstractScraperStep } from '@src/scrapers/common/interfaces/abstract-scraper-step';
 import { ScraperContext } from '@src/scrapers/facebook/models/facebook-scraper-context';
 import { AdLibraryQuery } from '@src/scrapers/facebook/models/facebook-ad-lib-query';
+import { FacebookScraperStep } from './facebook-scraper-step';
 
-export class NavigationStep extends AbstractScraperStep {
+export class NavigationStep extends FacebookScraperStep {
   async execute(context: ScraperContext): Promise<boolean> {
     if (!context.state.page) {
       throw new Error('Page not initialized');

@@ -1,26 +1,26 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+// src/scrapers/facebook/facebook-browser.scraper.ts
+
 import { Injectable, Logger } from '@nestjs/common';
 import { BrowserLifecycleManager } from '@src/core';
-import { Page } from 'playwright-core';
-import { IScraper } from '../common/interfaces';
 import { BrowserPoolService } from '@src/core';
-import { FacebookAdScraperService } from '@src/services';
+import { IScraper } from '../common/interfaces';
 import { RequestMetadata } from '@src/api/requests/request-manager-service';
-// import { ScraperResult } from './models/facebook-scraper-result';
-import { AdLibraryQuery } from './models/facebook-ad-lib-query';
-import { ScraperOptions } from './models/facebook-scraper-options';
 import { FacebookScraperOptionsDto } from '@src/api/facebook/dto';
 import { IBaseScraperResult } from '../common/interfaces/base-scraper-result';
 import { AdData } from './models/facebook-ad-data';
+import { AdLibraryQuery } from './models/facebook-ad-lib-query';
+import { FacebookScraperFactory } from './factories/facebook-scraper-factory';
 
 @Injectable()
-export class FacebookBrowserScraper implements IScraper {
+export class FacebookBrowserScraper
+  implements IScraper<FacebookScraperOptionsDto, AdData>
+{
   private readonly logger = new Logger(FacebookBrowserScraper.name);
 
   constructor(
     private readonly browserPoolService: BrowserPoolService,
     private readonly lifecycleManager: BrowserLifecycleManager,
-    private readonly facebookAdScraperService: FacebookAdScraperService, // Placeholder service
+    private readonly facebookScraperFactory: FacebookScraperFactory,
   ) {}
 
   async scrape(
@@ -30,18 +30,18 @@ export class FacebookBrowserScraper implements IScraper {
     let tabId: string | null = null;
 
     try {
-      this.logger.log(`[${request.id}] Starting Facebook browser scrape task.`);
+      this.logger.log(`[${request.id}] Starting Facebook browser scrape task`);
 
-      // 1. Get browserId and tabId
+      // 1. Get browser and tab
       const tabCreationResult =
         await this.browserPoolService.createTabForRequest(
           request.id,
           request.user_id,
           request.user_email,
         );
+
       if (!tabCreationResult) {
-        this.logger.error(`[${request.id}] Failed to create browser tab.`);
-        // TODO: Define a more specific error structure for ScraperResult
+        this.logger.error(`[${request.id}] Failed to create browser tab`);
         return {
           success: false,
           errors: [new Error('Failed to create browser tab')],
@@ -50,19 +50,21 @@ export class FacebookBrowserScraper implements IScraper {
           executionTime: 0,
         };
       }
+
       browserId = tabCreationResult.browserId;
       tabId = tabCreationResult.tabId;
+
       this.logger.log(
         `[${request.id}] Created tab ${tabId} in browser ${browserId}`,
       );
 
       // 2. Get Page object
-      const page: Page | null = this.lifecycleManager.getPageForTab(tabId);
+      const page = this.lifecycleManager.getPageForTab(tabId);
+
       if (!page || page.isClosed()) {
         this.logger.error(
           `[${request.id}] Failed to get valid Page object for tab ${tabId}. Page is ${page ? 'closed' : 'null'}.`,
         );
-        // TODO: Implement retry logic or fail request based on strategy
         return {
           success: false,
           errors: [new Error('Failed to get valid Page object')],
@@ -71,66 +73,51 @@ export class FacebookBrowserScraper implements IScraper {
           executionTime: 0,
         };
       }
-      this.logger.log(`[${request.id}] Obtained Page object for tab ${tabId}.`);
 
-      // 3. Prepare parameters for the ad scraper service
-      // Assuming request.parameters contains necessary fields for query and options
-      // Needs specific implementation based on actual RequestMetadata structure
-      const query: AdLibraryQuery = this.buildQuery(request.parameters);
-      const options: ScraperOptions = {
-        // ... ScraperOptions fields from request.parameters
+      this.logger.log(`[${request.id}] Obtained Page object for tab ${tabId}`);
+
+      // 3. Convert request parameters to our query format
+      const query = this.buildQuery(request.parameters);
+
+      // 4. Prepare options with browser information
+      const options = {
+        ...request.parameters,
+        useExternalBrowser: true,
+        storage: {
+          enabled: true,
+          outputPath: `./data/facebook/${request.id}`,
+          format: 'json',
+        },
       };
-      this.logger.log(
-        `[${request.id}] Prepared AdLibraryQuery and ScraperOptions.`,
-      );
 
-      // 4. Call the core scraping logic
-      // Assuming FacebookAdScraperService has a method like scrapeAds
-      const scrapeResult =
-        await this.facebookAdScraperService.executeScrapingLogic(
-          query,
-          page,
-          options,
-          undefined,
-          browserId,
-          request.id,
-        );
+      // 5. Create context with external browser info
+      const context = this.facebookScraperFactory.createContext(query, options);
+      context.state.browserId = browserId;
+      context.state.page = page;
+      context.state.externalBrowser = true;
+
+      // 6. Create scraper pipeline
+      const scraper = this.facebookScraperFactory.createScraper(options);
+
+      // 7. Execute scraper pipeline
+      this.logger.log(`[${request.id}] Executing Facebook scraper pipeline`);
+      const result = await scraper.execute(context);
 
       this.logger.log(
-        `[${request.id}] FacebookAdScraperService returned result.`,
+        `[${request.id}] Scraping completed with ${result.ads.length} ads collected`,
       );
 
-      // 5. Process result and transform to ScraperResult
-      // This part depends heavily on the structure returned by facebookAdScraperService.scrapeAds
-      if (scrapeResult.success) {
-        return {
-          success: true,
-          ads: scrapeResult.ads, // Use ads from scrapeResult
-          totalCount: scrapeResult.totalCount, // Use totalCount from scrapeResult
-          executionTime: scrapeResult.executionTime, // Use executionTime from scrapeResult
-          errors: [], // Keep errors as empty array for success
-          // requestId: request.id,        // Remove requestId if not part of ScraperResult
-        };
-      } else {
-        this.logger.error(
-          `[${request.id}] Scraping failed: ${scrapeResult.errors[0]}`,
-        );
-        return {
-          success: false,
-          errors: [new Error('Facebook scraping failed')],
-          ads: [],
-          totalCount: 0,
-          executionTime: 0,
-        };
-      }
+      return result;
     } catch (error: unknown) {
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error occurred';
       const errorStack = error instanceof Error ? error.stack : undefined;
+
       this.logger.error(
         `[${request.id}] Unhandled error during Facebook scrape: ${errorMessage}`,
         errorStack,
       );
+
       return {
         success: false,
         errors: [new Error(`Unhandled error: ${errorMessage}`)],
@@ -139,33 +126,29 @@ export class FacebookBrowserScraper implements IScraper {
         executionTime: 0,
       };
     } finally {
-      // 6. Ensure tab is closed
+      // 8. Ensure tab is closed
       if (browserId && tabId) {
         this.logger.log(
-          `[${request.id}] Closing tab ${tabId} in browser ${browserId}.`,
+          `[${request.id}] Closing tab ${tabId} in browser ${browserId}`,
         );
+
         try {
           await this.browserPoolService.closeTab(browserId, tabId, {
             deleteRedisKeys: true,
           });
-          this.logger.log(`[${request.id}] Successfully closed tab ${tabId}.`);
+
+          this.logger.log(`[${request.id}] Successfully closed tab ${tabId}`);
         } catch (closeError: unknown) {
           const closeErrorMessage =
             closeError instanceof Error
               ? closeError.message
               : 'Unknown error closing tab';
-          const closeErrorStack =
-            closeError instanceof Error ? closeError.stack : undefined;
+
           this.logger.error(
             `[${request.id}] Error closing tab ${tabId} in browser ${browserId}: ${closeErrorMessage}`,
-            closeErrorStack,
+            closeError instanceof Error ? closeError.stack : undefined,
           );
-          // Log error but don't overwrite the original scrape result/error
         }
-      } else {
-        this.logger.warn(
-          `[${request.id}] Could not close tab because browserId (${browserId}) or tabId (${tabId}) is missing.`,
-        );
       }
     }
   }
@@ -180,7 +163,7 @@ export class FacebookBrowserScraper implements IScraper {
       isTargetedCountry: parameters.query?.isTargetedCountry || false,
       mediaType: parameters.query?.mediaType || 'all',
       searchType: parameters.query?.searchType || 'keyword_unordered',
-      filters: parameters.query?.filters || {},
+      // filters: parameters.query?.filters || {},
     };
   }
 }

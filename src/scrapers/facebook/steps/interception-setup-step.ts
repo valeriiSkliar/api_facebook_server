@@ -1,4 +1,3 @@
-import { AbstractScraperStep } from '../../common/interfaces/abstract-scraper-step';
 import { ScraperContext } from '../models/facebook-scraper-context';
 import { AdData } from '../models/facebook-ad-data';
 import { ResponseCacheService } from '../../../services/ResponseCacheService';
@@ -8,6 +7,7 @@ import { plainToInstance } from 'class-transformer';
 import { validateOrReject } from 'class-validator';
 import { AdDataDto } from '@src/api/facebook/dto';
 import { RequestCaptureService } from '@src/services';
+import { FacebookScraperStep } from './facebook-scraper-step';
 const SnapshotSchema = z
   .object({
     body: z
@@ -61,7 +61,7 @@ const AdResponseSchema = z.object({
   }),
 });
 
-export class InterceptionSetupStep extends AbstractScraperStep {
+export class InterceptionSetupStep extends FacebookScraperStep {
   private requestCapture: RequestCaptureService;
   private responseCache: ResponseCacheService;
 
@@ -183,7 +183,9 @@ export class InterceptionSetupStep extends AbstractScraperStep {
 
             const maxAds = context.options.behavior?.maxAdsToCollect || 200;
             if (context.state.adsCollected.length >= maxAds) {
-              this.logger.log(`Reached maximum of ${maxAds} ads to collect`);
+              this.logger.log(
+                `[InterceptionSetupStep] Reached maximum of ${maxAds} ads to collect`,
+              );
               context.state.hasMoreResults = false;
             }
           }

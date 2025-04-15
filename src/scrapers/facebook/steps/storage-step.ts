@@ -1,15 +1,24 @@
 /* eslint-disable @typescript-eslint/require-await */
 import fs from 'fs';
 import path from 'path';
-import { AbstractScraperStep } from '@src/scrapers/common/interfaces/abstract-scraper-step';
 import { ScraperContext } from '@src/scrapers/facebook/models/facebook-scraper-context';
+import { FacebookScraperStep } from './facebook-scraper-step';
 
-export class StorageStep extends AbstractScraperStep {
+export class StorageStep extends FacebookScraperStep {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  shouldExecute(context: ScraperContext): boolean {
+    // Гарантируем вызов StorageStep всегда
+    return true;
+  }
+
   async execute(context: ScraperContext): Promise<boolean> {
+    this.logger.log(
+      `[StorageStep] shouldExecute: ${this.shouldExecute(context)}`,
+    );
     const { adsCollected } = context.state;
-
+    this.logger.log(`[StorageStep] Ads collected: ${adsCollected.length}`);
     if (adsCollected.length === 0) {
-      this.logger.warn('No ads collected, skipping storage');
+      this.logger.warn('[StorageStep] No ads collected, skipping storage');
       return true;
     }
 
@@ -27,7 +36,9 @@ export class StorageStep extends AbstractScraperStep {
     const filePath = path.join(outputDir, filename);
     fs.writeFileSync(filePath, JSON.stringify(adsCollected, null, 2));
 
-    this.logger.log(`Saved ${adsCollected.length} ads to ${filePath}`);
+    this.logger.log(
+      `[StorageStep] Saved ${adsCollected.length} ads to ${filePath}`,
+    );
     if (!context.options.storage) {
       context.options.storage = {};
     }

@@ -1,7 +1,7 @@
-import { AbstractScraperStep } from '@src/scrapers/common/interfaces/abstract-scraper-step';
 import { ScraperContext } from '@src/scrapers/facebook/models/facebook-scraper-context';
+import { FacebookScraperStep } from './facebook-scraper-step';
 
-export class PaginationStep extends AbstractScraperStep {
+export class PaginationStep extends FacebookScraperStep {
   shouldExecute(context: ScraperContext): boolean {
     const maxAdsReached =
       context.state.adsCollected.length >=

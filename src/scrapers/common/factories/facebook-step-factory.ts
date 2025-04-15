@@ -5,13 +5,18 @@ import { InterceptionSetupStep } from '../../facebook/steps/interception-setup-s
 import { PaginationStep } from '../../facebook/steps/pagination-step';
 import { StorageStep } from '../../facebook/steps/storage-step';
 import { NavigationStep } from '../../facebook/steps/navigation-step';
+import { AuthStepType } from '../interfaces/i-authentication-step';
 
 export class FacebookStepFactory {
   constructor(@Inject(Logger) private readonly logger: Logger) {}
 
   createInitializationStep(): IScraperStep {
     this.logger.log('Creating InitializationStep');
-    return new InitializationStep('InitializationStep', this.logger);
+    return new InitializationStep(
+      'InitializationStep',
+      this.logger,
+      AuthStepType.PRE_SESSION,
+    );
   }
 
   createNavigationStep(): IScraperStep {

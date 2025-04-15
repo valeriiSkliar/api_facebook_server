@@ -1,12 +1,16 @@
 import { ScraperContext } from '@src/scrapers/facebook/models/facebook-scraper-context';
-import {
-  AbstractScraperStep,
-  AuthStepType,
-} from '@src/scrapers/common/interfaces';
+import { AuthStepType } from '@src/scrapers/common/interfaces';
+import { FacebookScraperStep } from './facebook-scraper-step';
+import { Logger } from '@nestjs/common';
 
 // steps/InitializationStep.ts
-export class InitializationStep extends AbstractScraperStep {
+export class InitializationStep extends FacebookScraperStep {
   private readonly stepType: AuthStepType;
+
+  constructor(name: string, logger: Logger, stepType: AuthStepType) {
+    super(name, logger);
+    this.stepType = stepType;
+  }
 
   getType(): AuthStepType {
     return this.stepType;

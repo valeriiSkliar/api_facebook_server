@@ -234,7 +234,9 @@ export class ProcessMaterialsStep extends TiktokScraperStep {
       // Check if max ads limit is reached
       const maxAds = context.options.behavior?.maxAdsToCollect || 200;
       if (context.state.adsCollected.length >= maxAds) {
-        this.logger.log(`Reached maximum of ${maxAds} ads to collect`);
+        this.logger.log(
+          `[ProcessMaterialsStep] Reached maximum of ${maxAds} ads to collect`,
+        );
         context.state.hasMoreResults = false;
       }
 

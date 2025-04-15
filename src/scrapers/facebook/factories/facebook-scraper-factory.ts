@@ -90,11 +90,11 @@ export class FacebookScraperFactory extends GenericScraperFactory<
    */
   getSteps(): FacebookScraperStep[] {
     return [
-      this.stepFactory.createInitializationStep(),
-      this.stepFactory.createNavigationStep(),
-      this.stepFactory.createInterceptionSetupStep(),
-      this.stepFactory.createPaginationStep(),
-      this.stepFactory.createStorageStep(),
+      // this.stepFactory.createInitializationStep(),
+      // this.stepFactory.createNavigationStep(),
+      // this.stepFactory.createInterceptionSetupStep(),
+      // this.stepFactory.createPaginationStep(),
+      // this.stepFactory.createStorageStep(),
     ];
   }
 

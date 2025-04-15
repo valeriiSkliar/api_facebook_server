@@ -8,6 +8,7 @@ import { FacebookBrowserScraper } from './facebook/facebook-browser.scraper';
 import { FacebookStepFactory } from './common/factories/facebook-step-factory';
 import { TiktokScraperModule } from './tiktok/tiktok-scraper.module';
 import { TiktokQueryTransformer } from './tiktok/transformers/tiktok-query.transformer';
+import { FacebookScraperModule } from './facebook/facebook-scraper-module';
 // import { FacebookScraperModule } from './facebook/facebook-scraper.module';
 // Импортируйте другие реализации IScraper по мере необходимости
 
@@ -16,7 +17,7 @@ import { TiktokQueryTransformer } from './tiktok/transformers/tiktok-query.trans
     forwardRef(() => CoreModule), // Используем forwardRef для CoreModule
     HttpModule,
     TiktokScraperModule,
-    // FacebookScraperModule,
+    FacebookScraperModule,
   ],
   providers: [
     Logger,
@@ -34,6 +35,7 @@ import { TiktokQueryTransformer } from './tiktok/transformers/tiktok-query.trans
     ScraperRegistry,
     FacebookScraperFactory,
     TiktokScraperModule,
+    FacebookScraperModule,
     FacebookAdScraperService,
     FacebookBrowserScraper,
     // TiktokApiScraper,

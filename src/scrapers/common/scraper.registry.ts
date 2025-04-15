@@ -2,22 +2,26 @@ import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
 import { IScraper } from './interfaces';
 import { FacebookBrowserScraper } from '../facebook/facebook-browser.scraper';
 import { TiktokApiScraper } from '../tiktok/tiktok-api.scraper';
-import { AdData } from '../facebook/models/facebook-ad-data';
 import { ScraperType } from '@src/api/requests/dto/create-request.dto';
-import { TiktokLibraryQuery } from '../tiktok/models/tiktok-library-query';
-import { FacebookScraperOptionsDto } from '@src/api/facebook/dto';
-import { TikTokAdData } from '../tiktok/models/tiktok-ad-data';
+import {
+  TiktokScraperQuery,
+  TiktokScraperResult,
+} from '../tiktok/tiktok-scraper-types';
+import {
+  FacebookScraperQuery,
+  FacebookScraperResult,
+} from '../facebook/facebook-scraper-types';
 
 // Type mappings for strong typing - this maps scraper types to their input parameter types
 export interface ScraperParamsMap {
-  facebook_scraper: FacebookScraperOptionsDto;
-  tiktok_scraper: TiktokLibraryQuery;
+  facebook_scraper: FacebookScraperQuery;
+  tiktok_scraper: TiktokScraperQuery;
 }
 
 // Type mappings for result types
 export interface ScraperResultMap {
-  facebook_scraper: AdData;
-  tiktok_scraper: TikTokAdData;
+  facebook_scraper: FacebookScraperResult;
+  tiktok_scraper: TiktokScraperResult;
 }
 
 @Injectable()

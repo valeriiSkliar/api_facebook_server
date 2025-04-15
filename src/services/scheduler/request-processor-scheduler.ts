@@ -42,9 +42,11 @@ export class RequestProcessorScheduler {
 
         // Process the request asynchronously with retry logic
         // Pass initial retry attempt as 0
-        this.processRequest(requestId, 0).finally(
-          () => this.currentProcessingCount--,
-        );
+        this.processRequest(requestId, 0)
+          .finally(() => this.currentProcessingCount--)
+          .catch((error) => {
+            this.logger.error('Error processing request', error);
+          });
       }
     } catch (error) {
       this.logger.error('Error processing queued requests', error);

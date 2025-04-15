@@ -235,6 +235,35 @@ export class GenericScraperPipeline<
         this.logger.log(
           `Force stop requested, halting pipeline after step: ${stepName}`,
         );
+
+        // Check if there's a StorageStep that needs to be executed
+        const storageStepIndex = steps.findIndex((step) =>
+          step.getName().includes('Storage'),
+        );
+        if (
+          storageStepIndex > -1 &&
+          !executedSteps.includes(steps[storageStepIndex].getName())
+        ) {
+          const storageStep = steps[storageStepIndex];
+          this.logger.log(
+            `Force stop requested, but continuing with storage operations`,
+          );
+
+          // Execute the storage step
+          const shouldExecuteStorage = await storageStep.shouldExecute(context);
+          if (shouldExecuteStorage) {
+            this.logStepExecution(storageStep.getName());
+            const success = await storageStep.execute(context);
+            executedSteps.push(storageStep.getName());
+
+            if (!success) {
+              this.logger.warn(
+                `Storage step failed but pipeline will continue`,
+              );
+            }
+          }
+        }
+
         break;
       }
     }

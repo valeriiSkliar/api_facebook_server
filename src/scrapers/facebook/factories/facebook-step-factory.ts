@@ -2,11 +2,6 @@
 
 import { Injectable, Logger } from '@nestjs/common';
 import { FacebookScraperStep } from '../steps/facebook-scraper-step';
-// import { InitializationStep } from '../steps/initialization.step';
-// import { NavigationStep } from '../steps/navigation.step';
-// import { InterceptionSetupStep } from '../steps/interception-setup.step';
-// import { PaginationStep } from '../steps/pagination.step';
-// import { StorageStep } from '../steps/storage.step';
 import { ResponseCacheService } from '@src/services/ResponseCacheService';
 import { SCRAPER_STATE_STORAGE } from '@src/core/storage/scraper-state/scraper-state-storage.token';
 import { IScraperStateStorage } from '@src/core/storage/scraper-state/i-scraper-state-storage';
@@ -20,6 +15,8 @@ import {
   PaginationStep,
   StorageStep,
 } from '../steps';
+import { StorageFacebookCreativesStep } from '../steps/store-facebook-creatives-step';
+import { FacebookCreativeService } from '../services/facebook-creative-service';
 
 @Injectable()
 export class FacebookStepFactory {
@@ -27,6 +24,7 @@ export class FacebookStepFactory {
     private readonly logger: Logger,
     private readonly responseCacheService: ResponseCacheService,
     private readonly requestCaptureService: RequestCaptureService,
+    private readonly creativeService: FacebookCreativeService,
     @Optional()
     @Inject(SCRAPER_STATE_STORAGE)
     private readonly stateStorage?: IScraperStateStorage,
@@ -50,6 +48,14 @@ export class FacebookStepFactory {
 
   createPaginationStep(): FacebookScraperStep {
     return new PaginationStep('PaginationStep', this.logger);
+  }
+
+  createStorageFacebookCreativesStep(): FacebookScraperStep {
+    return new StorageFacebookCreativesStep(
+      'StorageFacebookCreativesStep',
+      this.logger,
+      this.creativeService,
+    );
   }
 
   createStorageStep(): FacebookScraperStep {

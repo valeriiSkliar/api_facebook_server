@@ -94,7 +94,7 @@ export class FacebookScraperFactory extends GenericScraperFactory<
       this.stepFactory.createNavigationStep(),
       this.stepFactory.createInterceptionSetupStep(),
       this.stepFactory.createPaginationStep(),
-      this.stepFactory.createStorageStep(),
+      this.stepFactory.createStorageFacebookCreativesStep(),
     ];
   }
 

@@ -10,7 +10,7 @@ export class PaginationStep extends FacebookScraperStep {
     if (maxAdsReached) {
       context.state.forceStop = true;
       context.state.hasMoreResults = false;
-      this.logger.log('Max ads reached, stopping pagination');
+      this.logger.log('[PaginationStep] Max ads reached, stopping pagination');
       return false;
     }
 
@@ -22,7 +22,7 @@ export class PaginationStep extends FacebookScraperStep {
       throw new Error('Page not initialized');
     }
 
-    this.logger.log('Scrolling to load more content');
+    this.logger.log('[PaginationStep] Scrolling to load more content');
 
     let previousAdCount = context.state.adsCollected.length;
     let noNewAdsCount = 0;
@@ -36,7 +36,9 @@ export class PaginationStep extends FacebookScraperStep {
       ) {
         context.state.forceStop = true;
         context.state.hasMoreResults = false;
-        this.logger.log('Max ads reached during pagination, stopping');
+        this.logger.log(
+          '[PaginationStep] Max ads reached during pagination, stopping',
+        );
         break;
       }
 
@@ -72,7 +74,9 @@ export class PaginationStep extends FacebookScraperStep {
           });
 
           if (stillAtBottom) {
-            this.logger.log('Reached bottom of page with no new ads');
+            this.logger.log(
+              '[PaginationStep] Reached bottom of page with no new ads',
+            );
             context.state.hasMoreResults = false;
             break;
           }
@@ -81,7 +85,7 @@ export class PaginationStep extends FacebookScraperStep {
         // Reset counter if we found new ads
         noNewAdsCount = 0;
         const newAdsFound = currentAdCount - previousAdCount;
-        this.logger.log(`Found ${newAdsFound} new ads`);
+        this.logger.log(`[PaginationStep] Found ${newAdsFound} new ads`);
         previousAdCount = currentAdCount;
       }
 
@@ -98,17 +102,21 @@ export class PaginationStep extends FacebookScraperStep {
         return count;
       });
 
-      this.logger.debug(`Visible ads on screen: ${visibleAds}`);
+      this.logger.debug(
+        `[PaginationStep] Visible ads on screen: ${visibleAds}`,
+      );
 
       if (isAtBottom && visibleAds === 0) {
-        this.logger.log('No more ads visible on page');
+        this.logger.log('[PaginationStep] No more ads visible on page');
         context.state.hasMoreResults = false;
         break;
       }
     }
 
     if (noNewAdsCount >= maxNoNewAdsAttempts) {
-      this.logger.log('No new ads found after multiple attempts');
+      this.logger.log(
+        '[PaginationStep] No new ads found after multiple attempts',
+      );
       context.state.hasMoreResults = false;
     }
 

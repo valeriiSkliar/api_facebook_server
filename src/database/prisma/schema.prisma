@@ -398,3 +398,132 @@ model VideoInfo {
   detailMaterialId String        @unique @map("detail_material_id")
 } 
 
+//=============================================================================
+// Facebook Models
+//=============================================================================
+
+// Facebook Ad Models
+model FacebookAdMaterial {
+  id               String            @id
+  adArchiveId      String            @unique @map("ad_archive_id")
+  adId             String?           @map("ad_id")
+  pageId           String            @map("page_id")
+  pageName         String            @map("page_name")
+  startDate        DateTime          @map("start_date")
+  endDate          DateTime          @map("end_date")
+  status           String 
+  
+  // Relations to component entities
+  body             FacebookAdBody?
+  images           FacebookAdImage[]
+  videos           FacebookAdVideo[]
+  platforms        FacebookAdPlatform[]
+  categories       FacebookAdCategory[]
+  metrics          FacebookAdMetrics?
+  
+  // Additional metadata fields
+  caption          String?
+  ctaText          String?           @map("cta_text")
+  ctaType          String?           @map("cta_type")
+  linkDescription  String?           @map("link_description") @db.Text
+  linkUrl          String?           @map("link_url")        @db.Text
+  
+  // Standard timestamps
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt      @map("updated_at")
+  
+  // Indexes for common queries
+  @@index([pageId])
+  @@index([status])
+  @@index([startDate])
+  @@index([endDate])
+}
+
+model FacebookAdBody {
+  id               Int               @id @default(autoincrement()) 
+  text             String?           @db.Text
+  facebookAdId     String            @unique @map("facebook_ad_id")
+  
+  // Relation back to parent
+  facebookAd       FacebookAdMaterial @relation(fields: [facebookAdId], references: [id], onDelete: Cascade)
+  
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt      @map("updated_at")
+}
+
+model FacebookAdImage {
+  id               Int               @id @default(autoincrement())
+  url              String?           @db.Text
+  facebookAdId     String            @map("facebook_ad_id")
+  
+  // Relation back to parent
+  facebookAd       FacebookAdMaterial @relation(fields: [facebookAdId], references: [id], onDelete: Cascade)
+  
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt      @map("updated_at")
+  
+  @@index([facebookAdId])
+}
+
+model FacebookAdVideo {
+  id               Int               @id @default(autoincrement())
+  url              String?           @db.Text
+  thumbnailUrl     String?           @map("thumbnail_url") @db.Text
+  duration         Float?
+  width            Int?
+  height           Int?
+  facebookAdId     String            @map("facebook_ad_id")
+  
+  // Relation back to parent
+  facebookAd       FacebookAdMaterial @relation(fields: [facebookAdId], references: [id], onDelete: Cascade)
+  
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt      @map("updated_at")
+  
+  @@index([facebookAdId])
+}
+
+model FacebookAdPlatform {
+  id               Int               @id @default(autoincrement())
+  platform         String
+  facebookAdId     String            @map("facebook_ad_id")
+  
+  // Relation back to parent
+  facebookAd       FacebookAdMaterial @relation(fields: [facebookAdId], references: [id], onDelete: Cascade)
+  
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt      @map("updated_at")
+  
+  @@index([facebookAdId])
+}
+
+model FacebookAdCategory {
+  id               Int               @id @default(autoincrement())
+  category         String
+  facebookAdId     String            @map("facebook_ad_id")
+  
+  // Relation back to parent
+  facebookAd       FacebookAdMaterial @relation(fields: [facebookAdId], references: [id], onDelete: Cascade)
+  
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt      @map("updated_at")
+  
+  @@index([facebookAdId])
+}
+
+// Analytics models to track ad performance metrics
+model FacebookAdMetrics {
+  id               Int               @id @default(autoincrement())
+  facebookAdId     String            @unique @map("facebook_ad_id")
+  impressions      Int?
+  clicks           Int?
+  ctr              Float?
+  reach            Int?
+  frequency        Float?
+  
+  // Relation back to parent
+  facebookAd       FacebookAdMaterial @relation(fields: [facebookAdId], references: [id], onDelete: Cascade)
+  
+  createdAt        DateTime          @default(now()) @map("created_at")
+  updatedAt        DateTime          @updatedAt      @map("updated_at")
+}

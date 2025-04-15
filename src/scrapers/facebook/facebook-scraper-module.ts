@@ -10,9 +10,15 @@ import { FacebookScraperFactory } from './factories/facebook-scraper-factory';
 import { FacebookStepFactory } from './factories/facebook-step-factory';
 import { RequestCaptureService } from '@src/services';
 import { FacebookAdScraperService } from '@src/services/facebook-ad-scraper-service';
+import { FacebookCreativeModule } from './services/facebook-creative-module';
 
 @Module({
-  imports: [forwardRef(() => CoreModule), HttpModule, ScraperStateModule],
+  imports: [
+    forwardRef(() => CoreModule),
+    HttpModule,
+    ScraperStateModule,
+    FacebookCreativeModule,
+  ],
   providers: [
     Logger,
     FacebookBrowserScraper,

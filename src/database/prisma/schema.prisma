@@ -177,10 +177,23 @@ model VerificationCode {
 model ApiConfiguration {
   id                    Int           @id @default(autoincrement())
   api_version            String
+  accountId         Int
+  endpoint          String
+  method            String
+  headers           Json
   parameters            Json
-  updated_at             DateTime      @updatedAt
+  status            String    @default("ACTIVE") // ACTIVE, EXPIRED, COOLING_DOWN
+  responseData      Json?
   is_active              Boolean       @default(true)
+  createdAt         DateTime  @default(now())
+  updated_at             DateTime      @updatedAt
+  lastUsedAt        DateTime?
+  expiresAt         DateTime
+  usageCount        Int       @default(0)
   update_frequency       Int
+
+  @@index([accountId, status])
+  @@index([status, expiresAt])
 
   // Relations
   sessions             Session[]     @relation("applies_to")

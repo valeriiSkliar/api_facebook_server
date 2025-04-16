@@ -26,6 +26,7 @@ export const Env = createEnv({
    */
   server: {
     IS_PRODUCTION: z.boolean().default(false),
+    SESSION_STORAGE_PATH: z.string().default('./storage/sessions'),
     // API Keys
     API_KEY: z.string().transform((val) => (val ? val : 'your-api-key-here')),
     OPENAI_API_KEY: z.string().optional(),
@@ -124,6 +125,7 @@ export const Env = createEnv({
    * Environment variables available on the client and server
    */
   runtimeEnv: {
+    SESSION_STORAGE_PATH: process.env.SESSION_STORAGE_PATH,
     // API Keys
     API_KEY: process.env.API_KEY,
     OPENAI_API_KEY: process.env.OPENAI_API_KEY,

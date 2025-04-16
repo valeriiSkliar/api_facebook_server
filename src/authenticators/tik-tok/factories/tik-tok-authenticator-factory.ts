@@ -7,7 +7,7 @@ import { FileSystemSessionManager } from '@src/services/tik-tok/session-refresh/
 import { EmailService } from '@src/services/common/email/email-service';
 import { BrowserPoolService } from '@core/browser/browser-pool/browser-pool-service';
 import { TabManager } from '@src/core/browser/tab-manager/tab-manager';
-import { PrismaClient } from '@prisma/client';
+import { PrismaService } from '@src/database';
 import { Env } from '@src/config';
 import {
   IAuthenticator,
@@ -43,11 +43,19 @@ export class TikTokAuthenticatorFactory implements IAuthenticatorFactory {
     );
 
     // Create email service with required account details
-    const prismaClient = new PrismaClient();
+    const prismaService = new PrismaService();
     const emailAccount = {
-      id: 1,
+      id: 0,
+      status: 'active',
+      created_at: new Date(),
+      updated_at: new Date(),
       email_address: Env.UKR_NET_EMAIL || '',
+      provider: 'ukr.net',
+      imap_password: Env.UKR_NET_APP_PASSWORD || '',
+      username: Env.UKR_NET_EMAIL || '',
       password: Env.UKR_NET_APP_PASSWORD || '',
+      last_check_timestamp: null,
+      is_associated: false,
       connection_details: {
         imap_host: Env.UKR_NET_IMAP_HOST || '',
         imap_port: 993,
@@ -55,7 +63,7 @@ export class TikTokAuthenticatorFactory implements IAuthenticatorFactory {
       },
     };
 
-    const emailService = new EmailService(prismaClient, logger, emailAccount);
+    const emailService = new EmailService(prismaService, logger, emailAccount);
 
     // Create and return the TikTok authenticator
     return new TikTokAuthenticator(

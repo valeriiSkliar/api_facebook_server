@@ -52,7 +52,7 @@ export class EmailService implements IEmailService {
       secure: true,
       auth: {
         user: emailAccount.email_address,
-        pass: Env.UKR_NET_APP_PASSWORD,
+        pass: emailAccount.imap_password,
       },
       logger: false,
       tls: {

@@ -14,6 +14,7 @@ export class EmailVerificationStep implements IAuthenticationStep {
   private readonly logger: Logger;
   private readonly emailService: EmailService;
   private readonly browserHelper: BrowserHelperService;
+  private readonly maxRetries: number = 3;
 
   constructor(logger: Logger, emailService: EmailService) {
     this.logger = logger;
@@ -38,10 +39,10 @@ export class EmailVerificationStep implements IAuthenticationStep {
       this.logger.error('Page is not initialized');
       return false;
     }
+
     try {
       this.logger.log('Checking for email verification...');
 
-      // Check if email verification is required
       const isVerificationRequired =
         await this.isEmailVerificationRequired(page);
 
@@ -50,7 +51,6 @@ export class EmailVerificationStep implements IAuthenticationStep {
         return true;
       }
 
-      // Email verification is required, get the verification code
       this.logger.log('Email verification required, waiting for code...');
 
       if (!credentials?.email) {
@@ -58,45 +58,69 @@ export class EmailVerificationStep implements IAuthenticationStep {
         return false;
       }
 
-      // Wait for the verification code
-      const code = await this.emailService.waitForVerificationCode(
-        credentials.email,
-        60000, // 1 minute timeout
-        5000, // Poll every 5 seconds
-      );
+      let retryCount = 0;
+      let lastError: Error | null = null;
 
-      if (!code) {
-        this.logger.error('Failed to get verification code');
-        return false;
+      while (retryCount < this.maxRetries) {
+        try {
+          // Wait for the verification code
+          const code = await this.emailService.waitForVerificationCode(
+            credentials.email,
+            120000, // 2 minutes timeout
+            10000, // Poll every 10 seconds
+          );
+
+          if (!code) {
+            this.logger.warn(
+              `Failed to get verification code (attempt ${retryCount + 1}/${this.maxRetries})`,
+            );
+            retryCount++;
+            continue;
+          }
+
+          this.logger.log('Verification code received', { code });
+
+          // Enter the verification code
+          const codeEntered = await this.enterVerificationCode(page, code);
+          if (!codeEntered) {
+            this.logger.error('Failed to enter verification code');
+            return false;
+          }
+
+          // Mark the code as used
+          await this.emailService.markCodeAsUsed(code);
+
+          // Wait for navigation or success indication
+          await this.waitForVerificationResult(page);
+
+          return true;
+        } catch (error) {
+          lastError = error instanceof Error ? error : new Error(String(error));
+          this.logger.error(
+            `Error during verification attempt ${retryCount + 1}:`,
+            {
+              error: lastError.message,
+              stack: lastError.stack,
+            },
+          );
+          retryCount++;
+        }
       }
 
-      this.logger.log('Verification code received', { code });
-
-      // Enter the verification code
-      const codeEntered = await this.enterVerificationCode(page, code);
-      if (!codeEntered) {
-        this.logger.error('Failed to enter verification code');
-        return false;
-      }
-
-      // Mark the code as used
-      await this.emailService.markCodeAsUsed(code);
-
-      // Wait for navigation or success indication
-      await this.waitForVerificationResult(page);
-
-      return true;
+      this.logger.error('All verification attempts failed', {
+        attempts: retryCount,
+        lastError: lastError?.message,
+      });
+      return false;
     } catch (error) {
       this.logger.error('Error during email verification:', {
         error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
       });
       return false;
     }
   }
 
-  /**
-   * Checks if email verification is required
-   */
   private async isEmailVerificationRequired(page: Page): Promise<boolean> {
     const verificationSelectors = [
       'div.tiktokads-common-login-code-form',
@@ -104,6 +128,9 @@ export class EmailVerificationStep implements IAuthenticationStep {
       'div:has-text("Verification code")',
       'div:has-text("For security reasons, a verification code has been sent to")',
       '#TikTok_Ads_SSO_Login_Code_Content',
+      'div[class*="verification-code"]',
+      'div[class*="verification_code"]',
+      'div[class*="verificationCode"]',
     ];
 
     for (const selector of verificationSelectors) {
@@ -118,36 +145,29 @@ export class EmailVerificationStep implements IAuthenticationStep {
             return true;
           }
         }
-      } catch (error: unknown) {
+      } catch (error) {
         this.logger.debug('Error checking selector:', {
           selector,
-          error: (error as Error).message,
+          error: error instanceof Error ? error.message : String(error),
         });
-        // Continue checking other selectors
       }
     }
 
     return false;
   }
 
-  /**
-   * Enters the verification code into the form
-   */
   private async enterVerificationCode(
     page: Page,
     code: string,
   ): Promise<boolean> {
     try {
-      // Find the input field for the verification code
       const codeInputSelector =
-        'input[name="code"], input[placeholder="Verification code"], input[placeholder="Enter verification code"], input.verification-code-input, #TikTok_Ads_SSO_Code_Code_Input, #TikTok_Ads_SSO_Login_Code_Input';
+        'input[name="code"], input[placeholder="Verification code"], input[placeholder="Enter verification code"], input.verification-code-input, #TikTok_Ads_SSO_Code_Code_Input, #TikTok_Ads_SSO_Login_Code_Input, input[class*="verification-code"], input[class*="verification_code"]';
 
-      // Try to find and interact with the input field
       const inputExists = await page.evaluate(
         ({ selector, codeValue }) => {
           const inputs = Array.from(document.querySelectorAll(selector));
 
-          // Try to find visible inputs first
           let input = inputs.find((el) => {
             const rect = el.getBoundingClientRect();
             return (
@@ -157,19 +177,14 @@ export class EmailVerificationStep implements IAuthenticationStep {
             );
           }) as HTMLInputElement;
 
-          // If no visible input, try any input
           if (!input && inputs.length > 0) {
             input = inputs[0] as HTMLInputElement;
           }
 
           if (input) {
-            // Set the value directly
             input.value = codeValue;
-
-            // Dispatch events to simulate user interaction
             input.dispatchEvent(new Event('input', { bubbles: true }));
             input.dispatchEvent(new Event('change', { bubbles: true }));
-
             return true;
           }
 
@@ -187,15 +202,13 @@ export class EmailVerificationStep implements IAuthenticationStep {
 
       this.logger.log('Successfully entered verification code');
 
-      // Find and click the submit button
       const submitButtonSelector =
-        'button[name="CodeloginBtn"], #TikTok_Ads_SSO_Login_Code_Btn, button.btn.primary';
+        'button[name="CodeloginBtn"], #TikTok_Ads_SSO_Login_Code_Btn, button.btn.primary, button[class*="submit"], button[class*="verify"], button[type="submit"]';
 
       const submitClicked = await page.evaluate(
         ({ selector }) => {
           const buttons = Array.from(document.querySelectorAll(selector));
 
-          // Try to find visible buttons first
           let button = buttons.find((el) => {
             const rect = el.getBoundingClientRect();
             return (
@@ -205,7 +218,6 @@ export class EmailVerificationStep implements IAuthenticationStep {
             );
           }) as HTMLButtonElement;
 
-          // If no visible button, try any button
           if (!button && buttons.length > 0) {
             button = buttons[0] as HTMLButtonElement;
           }
@@ -221,7 +233,6 @@ export class EmailVerificationStep implements IAuthenticationStep {
       );
 
       if (!submitClicked) {
-        // Try pressing Enter as a fallback
         this.logger.log('Could not find submit button, trying Enter key');
         await page.keyboard.press('Enter');
       } else {
@@ -232,30 +243,40 @@ export class EmailVerificationStep implements IAuthenticationStep {
     } catch (error) {
       this.logger.error('Error entering verification code:', {
         error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
       });
       return false;
     }
   }
 
-  /**
-   * Waits for the verification result
-   */
   private async waitForVerificationResult(page: Page): Promise<void> {
-    // Wait for navigation or success indicator
-    await Promise.race([
-      page.waitForNavigation({ timeout: 20000 }).catch(() => {
-        this.logger.log('No navigation detected after submit');
-      }),
-      page
-        .waitForSelector('div:has-text("Verification successful")', {
-          timeout: 20000,
-        })
-        .catch(() => {
-          this.logger.log('No success message detected');
+    try {
+      await Promise.race([
+        page.waitForNavigation({ timeout: 30000 }).catch(() => {
+          this.logger.log('No navigation detected after submit');
         }),
-    ]);
+        page
+          .waitForSelector('div:has-text("Verification successful")', {
+            timeout: 30000,
+          })
+          .catch(() => {
+            this.logger.log('No success message detected');
+          }),
+        page
+          .waitForSelector('div:has-text("Invalid verification code")', {
+            timeout: 30000,
+          })
+          .catch(() => {
+            this.logger.log('No error message detected');
+          }),
+      ]);
 
-    // Wait for additional processing time
-    await page.waitForTimeout(5000);
+      await page.waitForTimeout(5000);
+    } catch (error) {
+      this.logger.error('Error waiting for verification result:', {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+      });
+    }
   }
 }

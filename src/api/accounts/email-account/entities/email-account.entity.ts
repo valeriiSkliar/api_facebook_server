@@ -10,6 +10,7 @@ export class EmailAccount {
   id: number;
   password: string;
   email_address: string;
+  imap_password?: string;
   connection_details: EmailConnectionDetails | Prisma.InputJsonValue;
 }
 
@@ -20,6 +21,7 @@ export class Email {
   connection_details?: EmailConnectionDetails | Prisma.InputJsonValue;
   username: string;
   password: string;
+  imap_password: string;
   status: string;
   last_check_timestamp?: Date;
   is_associated: boolean;

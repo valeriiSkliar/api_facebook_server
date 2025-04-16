@@ -13,55 +13,67 @@ export class InitializationStep implements IAuthenticationStep {
   getType(): AuthStepType {
     return AuthStepType.PRE_SESSION;
   }
+
   getName(): string {
     return 'Initialization';
   }
+
   async execute(context: AuthenticatorContext): Promise<boolean> {
     this.logger.log('Initializing TikTok authentication');
 
-    // Проверяем, что браузер и страница уже есть в контексте
-    if (context.state.browser && context.state.page) {
-      this.logger.log('Using existing browser and page from context');
-
-      const page = context.state.page;
-      try {
-        if (!page || page.isClosed()) {
-          throw new Error('Page not found or is closed');
-        }
-
-        await page.setViewportSize(
-          context.options.browser?.viewport || { width: 1280, height: 800 },
-        );
-
-        this.logger.log('Successfully initialized existing page');
-      } catch (vpError: unknown) {
-        const errorMessage =
-          vpError instanceof Error ? vpError.message : 'Unknown error';
-        this.logger.warn(
-          `[InitializationStep.execute] Could not set viewport: ${errorMessage}`,
-        );
-
-        // Не будем пытаться создать новый браузер в этом шаге
+    try {
+      // Проверяем наличие браузера и страницы
+      if (!context.state.browser) {
+        this.logger.error('Browser not found in context');
         return false;
       }
 
-      // Помечаем как внешние компоненты только если они валидны
-      if (
-        context.state.browser &&
-        context.state.page &&
-        !context.state.page.isClosed()
-      ) {
-        context.state.externalBrowser = true;
-        return true;
+      if (!context.state.page) {
+        this.logger.error('Page not found in context');
+        return false;
       }
-    } else {
-      // Если браузер или страница отсутствуют в контексте, просто логируем это
-      this.logger.warn(
-        '[InitializationStep.execute] No browser or page available in context. This step expects them to be created previously.',
-      );
+
+      const page = context.state.page;
+
+      // Проверяем состояние страницы
+      if (page.isClosed()) {
+        this.logger.error('Page is closed');
+        return false;
+      }
+
+      // Устанавливаем размер viewport
+      try {
+        await page.setViewportSize(
+          context.options.browser?.viewport || { width: 1280, height: 800 },
+        );
+        this.logger.log('Viewport size set successfully');
+      } catch (vpError) {
+        this.logger.error('Failed to set viewport size', {
+          error: vpError instanceof Error ? vpError.message : String(vpError),
+        });
+        return false;
+      }
+
+      // Проверяем доступность страницы
+      try {
+        await page.evaluate(() => document.readyState);
+        this.logger.log('Page is accessible');
+      } catch (evalError) {
+        this.logger.error('Page is not accessible', {
+          error:
+            evalError instanceof Error ? evalError.message : String(evalError),
+        });
+        return false;
+      }
+
+      context.state.externalBrowser = true;
+      this.logger.log('Initialization completed successfully');
+      return true;
+    } catch (error) {
+      this.logger.error('Initialization failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
       return false;
     }
-
-    return false;
   }
 }

@@ -29,7 +29,7 @@ import { EmailVerificationStep } from './steps/email-verification-step';
 import { Session } from '@src/core/common/models/session';
 import { AuthCredentials } from '@src/authenticators/common/models/auth-credentials';
 import { AuthenticationPipeline } from '../common/pipelines/authentication-pipeline';
-import { NaturalScrollingStep } from './steps/natural-scrolling-step';
+// import { NaturalScrollingStep } from './steps/natural-scrolling-step';
 // import { IntegratedRequestCaptureService } from '@src/services/integrated-request-capture-service';
 /**
  * TikTok authenticator implementation that extends BaseAuthenticator
@@ -91,14 +91,14 @@ export class TikTokAuthenticator extends BaseAuthenticator {
    */
   private initializeAuthPipeline(): void {
     // Initialize NaturalScrollingStep first so we can reference it
-    const naturalScrollingStep = new NaturalScrollingStep(this.logger);
+    // const naturalScrollingStep = new NaturalScrollingStep(this.logger);
 
     // Create RequestInterceptionSetupStep with reference to NaturalScrollingStep
-    const requestInterceptionStep = new RequestInterceptionSetupStep(
-      this.logger,
-      undefined,
-      naturalScrollingStep,
-    );
+    // const requestInterceptionStep = new RequestInterceptionSetupStep(
+    //   this.logger,
+    //   undefined,
+    //   naturalScrollingStep,
+    // );
 
     // Add authentication steps to the pipeline
     this.authPipeline.addStep(new InitializationStep(this.logger));
@@ -115,8 +115,8 @@ export class TikTokAuthenticator extends BaseAuthenticator {
     this.authPipeline.addStep(
       new EmailVerificationStep(this.logger, this.emailService),
     );
-    this.authPipeline.addStep(requestInterceptionStep);
-    this.authPipeline.addStep(naturalScrollingStep);
+    // this.authPipeline.addStep(requestInterceptionStep);
+    // this.authPipeline.addStep(naturalScrollingStep);
     this.authPipeline.addStep(new SaveSessionStep(this.logger));
 
     this.logger.log('Authentication pipeline initialized');

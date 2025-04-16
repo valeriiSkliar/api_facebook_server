@@ -12,6 +12,7 @@ import { RequestManagerModule } from '@src/api/requests/requests.module';
 import { RequestController } from './requests/request-controller';
 import { AuthMiddleware } from '../middleware/auth.middleware';
 import { ScraperRecoveryModule } from '@src/scrapers/common/services/scraper-recovery.module';
+// import { AuthModule } from './accounts/auth/auth.module';
 @Module({
   imports: [
     FacebookApiModule,
@@ -20,6 +21,7 @@ import { ScraperRecoveryModule } from '@src/scrapers/common/services/scraper-rec
     EmailAccountModule,
     RequestManagerModule,
     ScraperRecoveryModule,
+    // AuthModule,
   ],
   controllers: [RequestController],
   exports: [FacebookApiModule],

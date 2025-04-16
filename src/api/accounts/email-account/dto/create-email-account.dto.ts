@@ -1,3 +1,5 @@
+// src/api/accounts/email-account/dto/create-email-account.dto.ts
+
 import {
   IsString,
   IsEmail,
@@ -29,6 +31,10 @@ export class CreateEmailAccountDto {
 
   @IsString()
   password: string;
+
+  @IsString()
+  @IsOptional()
+  imap_password?: string;
 
   @IsString()
   status: string;

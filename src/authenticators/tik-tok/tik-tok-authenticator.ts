@@ -1,15 +1,18 @@
 // src/services/tik-tok/authenticator/TikTokAuthenticator.ts
-import { Logger } from '@nestjs/common';
+import { Logger, Injectable } from '@nestjs/common';
 import { Page } from 'playwright';
 
-import { BrowserHelperService } from '@src/services';
+import {
+  BrowserHelperService,
+  getBrowserHelperService,
+} from '@src/core/browser/helpers/BrowserHelperService';
 import { BrowserPoolService } from '@core/browser/browser-pool/browser-pool-service';
 import { TabManager } from '@src/core/browser/tab-manager/tab-manager';
 import {
   ICaptchaSolver,
   ISessionManager,
 } from '@src/scrapers/common/interfaces';
-import { PrismaClient } from '@prisma/client';
+import { PrismaService } from '@src/database';
 import {
   CookieConsentStep,
   InitializationStep,
@@ -29,12 +32,15 @@ import { EmailVerificationStep } from './steps/email-verification-step';
 import { Session } from '@src/core/common/models/session';
 import { AuthCredentials } from '@src/authenticators/common/models/auth-credentials';
 import { AuthenticationPipeline } from '../common/pipelines/authentication-pipeline';
+import { SadCaptchaSolverService } from '@src/services/common/captcha-solver/sad-captcha-solver-service';
+import { FileSystemSessionManager } from '@src/services/tik-tok/session-refresh/file-system-session-manager';
 // import { NaturalScrollingStep } from './steps/natural-scrolling-step';
 // import { IntegratedRequestCaptureService } from '@src/services/integrated-request-capture-service';
 /**
  * TikTok authenticator implementation that extends BaseAuthenticator
  * Handles the authentication process for TikTok
  */
+@Injectable()
 export class TikTokAuthenticator extends BaseAuthenticator {
   private captchaSolver: ICaptchaSolver;
   private sessionManager: ISessionManager;
@@ -44,14 +50,12 @@ export class TikTokAuthenticator extends BaseAuthenticator {
   private emailService: EmailService;
   private browserPool: BrowserPoolService;
   private tabManager: TabManager;
-  private prisma: PrismaClient;
   private sessionStoragePath = 'storage/sessions';
   private loginUrl =
     'https://ads.tiktok.com/business/creativecenter/inspiration/topads/pc/en';
 
   /**
    * Creates a new TikTokAuthenticator instance
-   * @param logger Logger instance
    * @param captchaSolver Captcha solver implementation
    * @param sessionManager Session manager implementation
    * @param browserPool Browser pool service
@@ -59,28 +63,24 @@ export class TikTokAuthenticator extends BaseAuthenticator {
    * @param emailService Email service implementation
    */
   constructor(
-    logger: Logger,
-    captchaSolver: ICaptchaSolver,
-    sessionManager: ISessionManager,
+    private readonly captchaSolverService: SadCaptchaSolverService,
+    private readonly sessionManagerService: FileSystemSessionManager,
     browserPool: BrowserPoolService,
     tabManager: TabManager,
     emailService: EmailService,
+    private readonly prisma: PrismaService,
   ) {
+    const logger = new Logger(TikTokAuthenticator.name);
     super(logger); // Call base constructor with logger
 
-    this.captchaSolver = captchaSolver;
-    this.sessionManager = sessionManager;
     this.browserPool = browserPool;
     this.tabManager = tabManager;
     this.emailService = emailService;
-    this.authPipeline = new AuthenticationPipeline(logger);
-
-    // Initialize browser helper service
-    this.browserHelperService = BrowserHelperService.getInstance();
+    this.captchaSolver = captchaSolverService;
+    this.sessionManager = sessionManagerService;
+    this.browserHelperService = getBrowserHelperService();
     this.browserHelperService.setLogger(logger);
-
-    // Initialize Prisma client
-    this.prisma = new PrismaClient();
+    this.authPipeline = new AuthenticationPipeline(logger);
 
     // Configure the authentication pipeline with required steps
     this.initializeAuthPipeline();

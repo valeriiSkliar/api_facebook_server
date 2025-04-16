@@ -7,8 +7,8 @@ import {
   FetchQueryObject,
   MailboxObject,
 } from 'imapflow';
-import { PrismaClient } from '@prisma/client';
-import { Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import { PrismaService } from '@src/database';
 
 import { Env } from '@src/config';
 
@@ -20,19 +20,17 @@ import { extractVerificationCode } from '@src/common';
 import { EmailConnectionDetails } from '@src/authenticators/common/models/email-account';
 import { EmailAccount } from '@src/authenticators/common/models/email-account';
 
+@Injectable()
 export class EmailService implements IEmailService {
-  private prisma: PrismaClient;
-  private logger: Logger;
+  private readonly logger = new Logger(EmailService.name);
   private imapConfig: ImapFlowOptions;
 
-  constructor(
-    prisma: PrismaClient,
-    logger: Logger,
-    emailAccount: EmailAccount,
-  ) {
-    this.prisma = prisma;
-    this.logger = logger;
-    this.logger.log('Creating email service instance', {
+  constructor(private readonly prisma: PrismaService) {
+    this.logger.log('Creating email service instance');
+  }
+
+  public configureEmail(emailAccount: EmailAccount): void {
+    this.logger.log('Configuring email service', {
       emailAccount: emailAccount,
     });
 

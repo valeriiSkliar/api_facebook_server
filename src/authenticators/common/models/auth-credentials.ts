@@ -16,6 +16,11 @@ export interface AuthCredentials {
   password: string;
 
   /**
+   * IMAP password for authentication
+   */
+  imap_password: string;
+
+  /**
    * Optional proxy configuration to use for the authentication request
    */
   proxyConfig?: ProxyConfig;

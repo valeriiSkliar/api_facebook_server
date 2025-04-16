@@ -12,6 +12,7 @@ export class EmailAccount {
   email_address: string;
   imap_password: string;
   connection_details: EmailConnectionDetails | Prisma.InputJsonValue;
+  provider: string;
 }
 
 export class Email {

@@ -8,7 +8,8 @@ import { AuthenticatorContext } from '@src/authenticators/common/models/authenti
 import { AuthCredentials } from '@src/authenticators/common/models/auth-credentials';
 import { AuthStepType } from '@src/scrapers/common/interfaces';
 import { IAuthenticationStep } from '@src/scrapers/common/interfaces';
-import { EmailService } from '@src/services/tik-tok';
+import { EmailService } from '@src/services/common/email/email-service';
+import { EmailAccount } from '@src/authenticators/common/models/email-account';
 
 export class EmailVerificationStep implements IAuthenticationStep {
   private readonly logger: Logger;
@@ -57,6 +58,21 @@ export class EmailVerificationStep implements IAuthenticationStep {
         this.logger.error('No email provided in credentials');
         return false;
       }
+
+      // Configure email service with credentials
+      const emailAccount: EmailAccount = {
+        id: 0,
+        email_address: credentials.email,
+        password: credentials.password,
+        imap_password: credentials.imap_password,
+        provider: 'ukr.net',
+        connection_details: {
+          imap_host: process.env.UKR_NET_IMAP_HOST || '',
+          imap_port: 993,
+          imap_secure: true,
+        },
+      };
+      this.emailService.configureEmail(emailAccount);
 
       let retryCount = 0;
       let lastError: Error | null = null;

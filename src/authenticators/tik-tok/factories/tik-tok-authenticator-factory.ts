@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { Logger } from '@nestjs/common';
 
 import { TikTokAuthenticator } from '@src/authenticators/tik-tok/tik-tok-authenticator';
 import { SadCaptchaSolverService } from '@src/services/common/captcha-solver/sad-captcha-solver-service';
@@ -7,72 +6,37 @@ import { FileSystemSessionManager } from '@src/services/tik-tok/session-refresh/
 import { EmailService } from '@src/services/common/email/email-service';
 import { BrowserPoolService } from '@core/browser/browser-pool/browser-pool-service';
 import { TabManager } from '@src/core/browser/tab-manager/tab-manager';
-import { PrismaService } from '@src/database';
-import { Env } from '@src/config';
 import {
   IAuthenticator,
   IAuthenticatorFactory,
 } from '@src/scrapers/common/interfaces';
 import { AuthenticatorOptions } from '@src/authenticators/common/models/authenticator-options';
 import { AuthenticatorContext } from '@src/authenticators/common/models/authenticator-context';
+import { PrismaService } from '@src/database';
 
 @Injectable()
 export class TikTokAuthenticatorFactory implements IAuthenticatorFactory {
   constructor(
     private readonly browserPoolService: BrowserPoolService,
     private readonly tabManager: TabManager,
+    private readonly emailService: EmailService,
+    private readonly captchaSolverService: SadCaptchaSolverService,
+    private readonly sessionManagerService: FileSystemSessionManager,
+    private readonly prisma: PrismaService,
   ) {}
 
   /**
    * Creates a TikTok authenticator with all required dependencies
-   * @param logger Logger instance
    * @returns TikTok authenticator instance
    */
-  createAuthenticator(logger: Logger): IAuthenticator {
-    // Create captcha solver
-    const captchaSolver = new SadCaptchaSolverService(
-      logger,
-      Env.SAD_CAPTCHA_API_KEY || '',
-      'storage/captcha-screenshots',
-    );
-
-    // Create session manager
-    const sessionManager = new FileSystemSessionManager(
-      process.env.SESSION_STORAGE_PATH || './storage/sessions',
-      logger,
-    );
-
-    // Create email service with required account details
-    const prismaService = new PrismaService();
-    const emailAccount = {
-      id: 0,
-      status: 'active',
-      created_at: new Date(),
-      updated_at: new Date(),
-      email_address: Env.UKR_NET_EMAIL || '',
-      provider: 'ukr.net',
-      imap_password: Env.UKR_NET_APP_PASSWORD || '',
-      username: Env.UKR_NET_EMAIL || '',
-      password: Env.UKR_NET_APP_PASSWORD || '',
-      last_check_timestamp: null,
-      is_associated: false,
-      connection_details: {
-        imap_host: Env.UKR_NET_IMAP_HOST || '',
-        imap_port: 993,
-        imap_secure: true,
-      },
-    };
-
-    const emailService = new EmailService(prismaService, logger, emailAccount);
-
-    // Create and return the TikTok authenticator
+  createAuthenticator(): IAuthenticator {
     return new TikTokAuthenticator(
-      logger,
-      captchaSolver,
-      sessionManager,
+      this.captchaSolverService,
+      this.sessionManagerService,
       this.browserPoolService,
       this.tabManager,
-      emailService,
+      this.emailService,
+      this.prisma,
     );
   }
 
@@ -82,8 +46,9 @@ export class TikTokAuthenticatorFactory implements IAuthenticatorFactory {
    * @returns Authenticator context
    */
   createContext(options?: Partial<AuthenticatorOptions>): AuthenticatorContext {
+    const defaultOptions = this.mergeWithDefaultOptions(options);
     return {
-      options: this.mergeWithDefaultOptions(options),
+      options: defaultOptions,
       state: {
         errors: [],
         forceStop: false,
@@ -122,9 +87,6 @@ export class TikTokAuthenticatorFactory implements IAuthenticatorFactory {
       },
     };
 
-    return {
-      ...defaultOptions,
-      ...options,
-    };
+    return { ...defaultOptions, ...options };
   }
 }

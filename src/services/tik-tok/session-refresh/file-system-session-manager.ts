@@ -3,26 +3,28 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import * as fs from 'fs-extra';
 import * as path from 'path';
-import { Logger } from '@nestjs/common';
+import { Logger, Injectable } from '@nestjs/common';
 import { ISessionManager } from '@src/scrapers/common/interfaces';
 import { AuthCredentials } from '@src/authenticators/common/models/auth-credentials';
 import { Session } from '@src/core/common/models/session';
+import { PrismaService } from '@src/database';
+
 /**
  * File system based session manager implementation
  * Stores and retrieves session data from the file system
  */
+@Injectable()
 export class FileSystemSessionManager implements ISessionManager {
-  private storagePath: string;
-  private logger: Logger;
+  private readonly logger = new Logger(FileSystemSessionManager.name);
+  private readonly sessionStoragePath: string;
 
   /**
    * Creates a new FileSystemSessionManager instance
-   * @param storagePath Path to the directory where sessions will be stored
-   * @param logger Logger instance
+   * @param prisma PrismaService instance
    */
-  constructor(storagePath: string, logger: Logger) {
-    this.storagePath = storagePath;
-    this.logger = logger;
+  constructor(private readonly prisma: PrismaService) {
+    this.sessionStoragePath =
+      process.env.SESSION_STORAGE_PATH || './storage/sessions';
     this.initializeStorage();
   }
 
@@ -180,10 +182,10 @@ export class FileSystemSessionManager implements ISessionManager {
       this.logger.log('Listing all sessions');
 
       // Ensure the directory exists
-      await fs.ensureDir(this.storagePath);
+      await fs.ensureDir(this.sessionStoragePath);
 
       // Get all session files
-      const sessionFiles = await fs.readdir(this.storagePath);
+      const sessionFiles = await fs.readdir(this.sessionStoragePath);
       const jsonFiles = sessionFiles.filter((file) => file.endsWith('.json'));
 
       this.logger.log(`Found ${jsonFiles.length} session files`);
@@ -194,7 +196,7 @@ export class FileSystemSessionManager implements ISessionManager {
 
       for (const file of jsonFiles) {
         try {
-          const sessionFilePath = path.join(this.storagePath, file);
+          const sessionFilePath = path.join(this.sessionStoragePath, file);
           const sessionData = await fs.readJson(sessionFilePath);
 
           // Convert date strings back to Date objects
@@ -241,7 +243,7 @@ export class FileSystemSessionManager implements ISessionManager {
    * @private
    */
   private getSessionFilePath(sessionId: string): string {
-    return path.join(this.storagePath, `${sessionId}.json`);
+    return path.join(this.sessionStoragePath, `${sessionId}.json`);
   }
 
   /**
@@ -251,13 +253,13 @@ export class FileSystemSessionManager implements ISessionManager {
   private async initializeStorage(): Promise<void> {
     try {
       this.logger.log('Initializing session storage', {
-        path: this.storagePath,
+        path: this.sessionStoragePath,
       });
-      await fs.ensureDir(this.storagePath);
+      await fs.ensureDir(this.sessionStoragePath);
       this.logger.log('Session storage initialized successfully');
     } catch (error) {
       this.logger.error('Error initializing session storage', {
-        path: this.storagePath,
+        path: this.sessionStoragePath,
         error: error instanceof Error ? error.message : String(error),
       });
       throw error;

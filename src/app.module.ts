@@ -8,6 +8,7 @@ import { CoreModule } from './core/core.module';
 import { AppController } from './app.controller';
 import { SchedulerModule } from './services/scheduler/scheduler.module';
 import { ScraperModule } from './scrapers/scraper.module';
+import { ApiConfigModule } from './modules/api-config/api-config.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { ScraperModule } from './scrapers/scraper.module';
     ApiModule,
     SchedulerModule,
     ScraperModule,
+    ApiConfigModule,
   ],
   controllers: [AppController],
   providers: [AppService],

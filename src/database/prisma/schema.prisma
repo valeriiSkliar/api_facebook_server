@@ -126,6 +126,7 @@ model Email {
   id                  Int           @id @default(autoincrement())
   email_address        String        @unique
   provider            String
+  imap_password       String      @default("")
   connection_details   Json?
   username            String
   password            String

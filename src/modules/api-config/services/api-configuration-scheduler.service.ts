@@ -138,6 +138,25 @@ export class ApiConfigurationSchedulerService implements OnModuleInit {
   }
 
   /**
+   * Запускается каждые 3 часа для активации конфигураций после периода охлаждения
+   */
+  @Cron(CronExpression.EVERY_3_HOURS)
+  async activateCooledDownConfigurations() {
+    this.logger.log(
+      'Starting scheduled activation of cooled down configurations',
+    );
+
+    try {
+      // Активируем конфигурации, которые закончили период охлаждения
+      await this.lifecycleManager.activateCooledDownConfigurations();
+    } catch (error) {
+      this.logger.error(
+        `Error in activateCooledDownConfigurations: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
+  /**
    * Запускается каждый день в 2:00 для очистки истекших конфигураций
    */
   @Cron(CronExpression.EVERY_DAY_AT_2AM)

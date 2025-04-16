@@ -7,6 +7,7 @@ import { ApiConfigMetricsService } from './api-config-metrics.service';
 export class ApiConfigLifecycleManager {
   private readonly logger = new Logger(ApiConfigLifecycleManager.name);
   private readonly MAX_USAGE_COUNT = 100; // Максимальное количество использований конфигурации
+  private readonly COOLING_DOWN_HOURS = 3; // Количество часов для охлаждения
 
   constructor(
     private readonly storageService: ApiConfigStorageService,
@@ -47,9 +48,10 @@ export class ApiConfigLifecycleManager {
    */
   async markAsExpired(configId: number): Promise<void> {
     try {
-      // В текущей схеме нет прямого способа пометить конфигурацию как истекшую
-      // Вместо этого мы можем обновить сессию, чтобы она не использовала эту конфигурацию
-      await this.storageService.deleteConfiguration(configId);
+      await this.storageService.updateConfigurationStatus(
+        configId,
+        ApiConfigStatus.EXPIRED,
+      );
       this.metricsService.recordExpiration(configId);
       this.logger.log(`Marked API configuration ${configId} as expired`);
     } catch (error) {
@@ -63,15 +65,36 @@ export class ApiConfigLifecycleManager {
    * Помечает конфигурацию как перегретую (использована слишком много раз)
    * @param configId ID конфигурации
    */
-  async markAsOverheated(configId: number): Promise<void> {
+  async markAsCoolingDown(configId: number): Promise<void> {
     try {
-      // В текущей схеме нет прямого способа пометить конфигурацию как перегретую
-      // Вместо этого мы можем удалить конфигурацию, чтобы создать новую
-      await this.storageService.deleteConfiguration(configId);
-      this.logger.log(`Marked API configuration ${configId} as overheated`);
+      await this.storageService.updateConfigurationStatus(
+        configId,
+        ApiConfigStatus.COOLING_DOWN,
+      );
+      this.logger.log(`Marked API configuration ${configId} as cooling down`);
     } catch (error) {
       this.logger.error(
-        `Failed to mark configuration ${configId} as overheated: ${error instanceof Error ? error.message : String(error)}`,
+        `Failed to mark configuration ${configId} as cooling down: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
+  /**
+   * Активирует конфигурацию после периода охлаждения
+   * @param configId ID конфигурации
+   */
+  async activateAfterCoolingDown(configId: number): Promise<void> {
+    try {
+      await this.storageService.updateConfigurationStatus(
+        configId,
+        ApiConfigStatus.ACTIVE,
+      );
+      this.logger.log(
+        `Activated API configuration ${configId} after cooling down`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to activate configuration ${configId} after cooling down: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
   }
@@ -84,7 +107,7 @@ export class ApiConfigLifecycleManager {
   async isConfigurationUsable(configId: number): Promise<boolean> {
     try {
       // Получаем конфигурацию
-      const config = await this.getConfigurationById(configId);
+      const config = await this.storageService.getConfigurationById(configId);
       if (!config) {
         return false;
       }
@@ -103,7 +126,7 @@ export class ApiConfigLifecycleManager {
 
       // Проверяем количество использований
       if (config.usageCount >= this.MAX_USAGE_COUNT) {
-        await this.markAsOverheated(configId);
+        await this.markAsCoolingDown(configId);
         return false;
       }
 
@@ -122,11 +145,65 @@ export class ApiConfigLifecycleManager {
    */
   async recordUsage(configId: number): Promise<void> {
     try {
+      // Увеличиваем счетчик использований
+      const usageCount =
+        await this.storageService.incrementUsageCount(configId);
+
+      // Записываем использование в метрики
       this.metricsService.recordUsage(configId);
-      this.logger.log(`Recorded usage of API configuration ${configId}`);
+
+      // Проверяем, не превышен ли лимит использований
+      if (usageCount >= this.MAX_USAGE_COUNT) {
+        await this.markAsCoolingDown(configId);
+      }
+
+      this.logger.log(
+        `Recorded usage of API configuration ${configId}, current count: ${usageCount}`,
+      );
     } catch (error) {
       this.logger.error(
         `Failed to record usage of configuration ${configId}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
+  /**
+   * Получает активную конфигурацию для аккаунта
+   * @param accountId ID аккаунта TikTok
+   * @returns Активная конфигурация или null
+   */
+  async getActiveConfigurationForAccount(
+    accountId: number,
+  ): Promise<ApiConfig | null> {
+    try {
+      return await this.storageService.getActiveConfigurationForAccount(
+        accountId,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to get active configuration for account ${accountId}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return null;
+    }
+  }
+
+  /**
+   * Активирует конфигурации, которые закончили период охлаждения
+   */
+  async activateCooledDownConfigurations(): Promise<void> {
+    try {
+      const coolingDownConfigs =
+        await this.storageService.getCoolingDownConfigurations();
+      this.logger.log(
+        `Found ${coolingDownConfigs.length} configurations ready to be activated`,
+      );
+
+      for (const config of coolingDownConfigs) {
+        await this.activateAfterCoolingDown(config.id);
+      }
+    } catch (error) {
+      this.logger.error(
+        `Failed to activate cooled down configurations: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
   }
@@ -136,11 +213,7 @@ export class ApiConfigLifecycleManager {
    * @param configId ID конфигурации
    * @returns Конфигурация или null
    */
-  private async getConfigurationById(
-    configId: number,
-  ): Promise<ApiConfig | null> {
-    // Этот метод нужно реализовать в ApiConfigStorageService
-    // Временно возвращаем null
-    return null;
+  async getConfigurationById(configId: number): Promise<ApiConfig | null> {
+    return this.storageService.getConfigurationById(configId);
   }
 }

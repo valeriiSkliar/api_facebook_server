@@ -6,25 +6,25 @@ import { ConfigService } from '@nestjs/config';
 import { Logger } from '@nestjs/common';
 import { PrismaService } from '@src/database/prisma.service';
 import { TiktokApiScraper } from './tiktok-api.scraper';
-import { InitializationStep as TiktokInitializationStep } from './steps/initialization-step';
-import { ProcessMaterialsStep as TiktokProcessMaterialsStep } from './steps/process-materials-step';
-import { FilterMaterialsStep as TiktokFilterMaterialsStep } from './steps/filter-materials.step';
-import { ApiRequestStep as TiktokApiRequestStep } from './steps/api-request-step';
-import { GetMatirialsIdStep as TiktokGetMatirialsIdStep } from './steps/get-matirials-id';
-import { GetApiConfigStep as TiktokGetApiConfigStep } from './steps/get-api-config-step';
-import { SaveCreativesStep } from './steps/save-creatives.step';
+import { InitializationStep as TiktokInitializationStep } from './steps/tik-tok-scraper/initialization-step';
+import { ProcessMaterialsStep as TiktokProcessMaterialsStep } from './steps/tik-tok-scraper/process-materials-step';
+import { FilterMaterialsStep as TiktokFilterMaterialsStep } from './steps/tik-tok-scraper/filter-materials.step';
+import { ApiRequestStep as TiktokApiRequestStep } from './steps/tik-tok-scraper/api-request-step';
+import { GetMatirialsIdStep as TiktokGetMatirialsIdStep } from './steps/tik-tok-scraper/get-matirials-id';
+import { GetApiConfigStep as TiktokGetApiConfigStep } from './steps/tik-tok-scraper/get-api-config-step';
+import { SaveCreativesStep } from './steps/tik-tok-scraper/save-creatives.step';
 import { TiktokCreativeService } from './services/tiktok-creative.service';
 import { TiktokQueryTransformer } from './transformers/tiktok-query.transformer';
-import { PaginationStep as TiktokPaginationStep } from './steps/pagination-step';
+import { PaginationStep as TiktokPaginationStep } from './steps/tik-tok-scraper/pagination-step';
 import { ReportingModule } from '@src/core/reporting/reporting.module';
 import { CoreModule } from '@src/core/core.module';
 import { ScraperStateModule } from '@src/core/storage/scraper-state/scraper-state.module';
 import { IScraperStateStorage } from '@src/core/storage/scraper-state/i-scraper-state-storage';
 import { SCRAPER_STATE_STORAGE } from '@src/core/storage/scraper-state/scraper-state-storage.token';
-import { ErrorDiagnosticStep } from './steps/error-diagnostic-step';
+import { ErrorDiagnosticStep } from './steps/tik-tok-scraper/error-diagnostic-step';
 import { ErrorReportingService } from '@src/core/reporting/services/error-reporting-service';
 import { ApiResponseAnalyzer } from '@src/core/api/analyzer/base-api-response-analyzer';
-import { ErrorAnalysisStep } from './steps/error-analysis-step';
+import { ErrorAnalysisStep } from './steps/tik-tok-scraper/error-analysis-step';
 
 @Module({
   imports: [

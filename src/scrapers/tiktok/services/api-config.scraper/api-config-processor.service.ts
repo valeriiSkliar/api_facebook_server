@@ -4,7 +4,7 @@ import { TabManager } from '@src/core';
 import { ApiConfigLifecycleManager } from './api-config-lifecycle-manager.service';
 import { ApiConfigStorageService } from './api-config-storage.service';
 import { IntegratedRequestCaptureService } from '@src/services';
-import { ApiConfigData } from '../interfaces/api-config.interface';
+import { ApiConfigData } from '../../../../modules/api-config/interfaces/api-config.interface';
 
 @Injectable()
 export class ApiConfigProcessor {

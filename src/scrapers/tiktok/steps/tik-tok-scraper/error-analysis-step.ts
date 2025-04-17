@@ -1,6 +1,6 @@
 import { ErrorReportingService } from '@src/core/reporting/services/error-reporting-service';
 import { ApiResponseAnalyzer } from '@src/core/api/analyzer/base-api-response-analyzer';
-import { TiktokScraperContext } from '../tiktok-scraper-types';
+import { TiktokScraperContext } from '../../tiktok-scraper-types';
 import { AbstractGenericScraperStep } from '@src/scrapers/common/interfaces/abstract-generic-scraper-step';
 import { Logger } from '@nestjs/common';
 import { ApiResponseAnalysis } from '@src/core/api/models/api-response-analysis';

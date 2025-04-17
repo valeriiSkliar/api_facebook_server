@@ -1,16 +1,16 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { TiktokScraperStep } from './tiktok-scraper-step';
-import { TiktokScraperContext } from '../tiktok-scraper-types';
+import { TiktokScraperContext } from '../../tiktok-scraper-types';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import {
   DetailApiResponse,
   DetailMaterial,
-} from '../models/detail-api-response';
-import { FailedMaterial } from '../tiktok-scraper-types';
+} from '../../models/detail-api-response';
+import { FailedMaterial } from '../../tiktok-scraper-types';
 import { ApiResponseAnalyzer } from '@src/core/api/analyzer/base-api-response-analyzer';
 import { ErrorStorage } from '@src/core/error-handling/storage/error-storage';
-import { RetryHandler } from '../services/retry-handler-service';
+import { RetryHandler } from '../../services/retry-handler-service';
 import { SCRAPER_STATE_STORAGE } from '@src/core/storage/scraper-state/scraper-state-storage.token';
 import { IScraperStateStorage } from '@src/core/storage/scraper-state/i-scraper-state-storage';
 import { AxiosError } from 'axios';

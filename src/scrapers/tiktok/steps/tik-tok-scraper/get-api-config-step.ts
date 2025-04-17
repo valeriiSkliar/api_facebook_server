@@ -1,8 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@src/database/prisma.service';
 import { TiktokScraperStep } from './tiktok-scraper-step';
-import { TiktokScraperContext } from '../tiktok-scraper-types';
-import { TikTokApiConfig } from '../models/api-config';
+import { TiktokScraperContext } from '../../tiktok-scraper-types';
+import { TikTokApiConfig } from '../../models/api-config';
 interface ApiConfigParameters {
   url: string;
   method: string;

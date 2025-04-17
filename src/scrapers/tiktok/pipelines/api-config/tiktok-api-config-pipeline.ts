@@ -5,7 +5,7 @@ import {
   TiktokApiConfigResult,
   TiktokApiConfigStep,
 } from './tiktok-api-config-types';
-import { ApiConfig } from '@src/modules/api-config'; // Assuming ApiConfig interface exists
+import { ApiConfig } from './api-config.interface';
 
 /**
  * Pipeline specifically designed for acquiring and managing TikTok API configurations.

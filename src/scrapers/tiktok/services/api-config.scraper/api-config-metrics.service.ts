@@ -4,7 +4,7 @@ import {
   ApiConfigMetrics,
   AccountApiConfigMetrics,
   ApiConfigStatus,
-} from '../interfaces/api-config.interface';
+} from '../../../../modules/api-config/interfaces/api-config.interface';
 
 @Injectable()
 export class ApiConfigMetricsService {

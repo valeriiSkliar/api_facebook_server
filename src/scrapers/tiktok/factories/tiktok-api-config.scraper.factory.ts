@@ -8,9 +8,9 @@ import {
   TiktokApiConfigState,
   TiktokApiConfigStep,
 } from '../pipelines/api-config/tiktok-api-config-types';
-import { ApiConfig } from '@src/modules/api-config'; // Assuming ApiConfig interface exists
 import { GenericScraperPipeline } from '@src/scrapers/common/pipeline/generic-scraper-pipeline';
 import { TiktokApiConfigStepFactory } from './tiktok-api-config-step.scraper.factory';
+import { ApiConfig } from '../pipelines/api-config/api-config.interface';
 
 @Injectable()
 export class TikTokApiConfigScraperFactory extends GenericScraperFactory<

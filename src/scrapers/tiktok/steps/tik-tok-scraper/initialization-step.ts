@@ -3,7 +3,7 @@ import { TiktokScraperStep } from './tiktok-scraper-step';
 import {
   TiktokScraperContext,
   TiktokScraperState,
-} from '../tiktok-scraper-types';
+} from '../../tiktok-scraper-types';
 import {
   IScraperStateStorage,
   ScraperState,

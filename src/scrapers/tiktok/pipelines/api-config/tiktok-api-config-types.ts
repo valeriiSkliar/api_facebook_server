@@ -7,8 +7,8 @@ import {
   IBaseScraperState,
   IGenericScraperStep,
 } from '@src/scrapers/common/interfaces';
-import { ApiConfig } from '@src/modules/api-config'; // Assuming ApiConfig interface exists
 import { Page } from 'playwright';
+import { ApiConfig } from './api-config.interface';
 
 // --- Query ---
 // Define what input the pipeline needs

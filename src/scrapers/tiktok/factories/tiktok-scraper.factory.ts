@@ -12,7 +12,7 @@ import { TiktokScraperOptions } from '../tiktok-scraper-types';
 import { TiktokScraperResult } from '../tiktok-scraper-types';
 import { TiktokScraperState } from '../tiktok-scraper-types';
 import { GenericScraperFactory } from '@src/scrapers/common/factories/generic-scraper-factory';
-import { TiktokScraperStep } from '../steps/tiktok-scraper-step';
+import { TiktokScraperStep } from '../steps/tik-tok-scraper/tiktok-scraper-step';
 import { TikTokAdData } from '../models/tiktok-ad-data';
 
 @Injectable()

@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { TiktokScraperStep } from './tiktok-scraper-step';
-import { TiktokScraperContext } from '../tiktok-scraper-types';
-import { TiktokCreativeService } from '../services/tiktok-creative.service';
+import { TiktokScraperContext } from '../../tiktok-scraper-types';
+import { TiktokCreativeService } from '../../services/tiktok-creative.service';
 
 @Injectable()
 export class SaveCreativesStep extends TiktokScraperStep {

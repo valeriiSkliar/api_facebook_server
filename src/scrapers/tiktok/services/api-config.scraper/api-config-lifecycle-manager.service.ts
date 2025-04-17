@@ -1,6 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ApiConfigStorageService } from './api-config-storage.service';
-import { ApiConfig, ApiConfigStatus } from '../interfaces/api-config.interface';
+import {
+  ApiConfig,
+  ApiConfigStatus,
+} from '../../../../modules/api-config/interfaces/api-config.interface';
 import { ApiConfigMetricsService } from './api-config-metrics.service';
 
 @Injectable()

@@ -1,6 +1,6 @@
 import { Logger } from '@nestjs/common';
 import { PrismaService } from '@src/database/prisma.service';
-import { TiktokApiConfigContext } from '../tiktok-api-config-types';
+import { TiktokApiConfigContext } from '../../pipelines/api-config/tiktok-api-config-types';
 import { TiktokApiConfigStep } from './tiktok-api-config-step';
 
 /**

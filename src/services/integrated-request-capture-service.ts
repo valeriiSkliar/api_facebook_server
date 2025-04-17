@@ -44,11 +44,11 @@ export class IntegratedRequestCaptureService {
 
   // Default API endpoints to intercept
   private static DEFAULT_ENDPOINTS = [
-    '**/creative_radar_api/v1/top_ads/v2/list**',
-    '**/creative_radar_api/v1/**',
-    '**/business/creativecenter/api/**',
-    '**/business/creativecenter/inspiration/**',
-    '**/business/api/creative_radar/**',
+    '**/creative_radar_api/v1/top_ads/v2/list?**',
+    // '**/creative_radar_api/v1/**',
+    // '**/business/creativecenter/api/**',
+    // '**/business/creativecenter/inspiration/**',
+    // '**/business/api/creative_radar/**',
   ];
 
   constructor(

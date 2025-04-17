@@ -979,8 +979,13 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
    * Cleans up (closes) the browser context associated with a specific session ID.
    * @param sessionId - The ID of the session whose context needs cleaning.
    * @param browserId - The ID of the browser supposedly hosting the context (optional, for verification).
+   * @param beforeClearCallback - An optional async function to execute within the context before closing it.
    */
-  async clearContext(sessionId: string, browserId?: string): Promise<void> {
+  async clearContext(
+    sessionId: string,
+    browserId?: string,
+    beforeClearCallback?: (context: BrowserContext) => Promise<void>,
+  ): Promise<void> {
     this.logger.log(
       `Clearing context for session ${sessionId} (browser hint: ${browserId || 'N/A'})`,
     );
@@ -1008,6 +1013,25 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
     }
 
     try {
+      // Execute callback before closing the context, if provided
+      if (beforeClearCallback) {
+        this.logger.log(
+          `Executing beforeClearCallback for session ${sessionId}`,
+        );
+        try {
+          await beforeClearCallback(contextInfo.context);
+          this.logger.log(
+            `Successfully executed beforeClearCallback for session ${sessionId}`,
+          );
+        } catch (callbackError) {
+          this.logger.error(
+            `Error executing beforeClearCallback for session ${sessionId}: ${callbackError instanceof Error ? callbackError.message : String(callbackError)}`,
+          );
+          // Decide if error in callback should prevent context closure. Currently, it does not.
+          this.metricsService.recordError(); // Record callback error
+        }
+      }
+
       await contextInfo.context.close();
       this.logger.log(
         `Successfully closed context for session ${sessionId} in browser ${contextInfo.browserId}`,

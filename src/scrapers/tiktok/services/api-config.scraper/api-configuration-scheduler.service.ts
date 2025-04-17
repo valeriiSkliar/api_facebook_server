@@ -11,6 +11,7 @@ import { TikTokApiConfigScraperFactory } from '../../factories/tiktok-api-config
 export class ApiConfigurationSchedulerService implements OnModuleInit {
   private readonly logger = new Logger(ApiConfigurationSchedulerService.name);
   private processingAccounts: Set<number> = new Set();
+  private isProcessing = false;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -30,6 +31,16 @@ export class ApiConfigurationSchedulerService implements OnModuleInit {
       'Starting scheduled processing of accounts for API configuration',
     );
 
+    // Prevent concurrent execution of the same job
+    if (this.isProcessing) {
+      this.logger.log(
+        'Previous job is still running. Skipping this execution.',
+      );
+      return;
+    }
+
+    this.isProcessing = true;
+
     try {
       await this.processAccountsApiConfig();
     } catch (error) {
@@ -37,6 +48,8 @@ export class ApiConfigurationSchedulerService implements OnModuleInit {
         'Error during scheduled processing of accounts for API configuration',
         error instanceof Error ? error.stack : String(error),
       );
+    } finally {
+      this.isProcessing = false;
     }
   }
 

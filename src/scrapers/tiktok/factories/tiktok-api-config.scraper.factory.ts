@@ -70,8 +70,6 @@ export class TikTokApiConfigScraperFactory extends GenericScraperFactory<
   getSteps(): TiktokApiConfigStep[] {
     return [
       this.stepFactory.createInitAccountsStep(),
-      this.stepFactory.createOpenTabsStep(),
-      this.stepFactory.createNavigationAndRestoreStep(),
       this.stepFactory.createSessionRestoreStep(),
       this.stepFactory.createCleanupStep(),
       // this.stepFactory.createApiConfigCollectionStep(),

@@ -16,7 +16,7 @@ import {
   SessionOrigin,
   SessionLocalStorage,
 } from '@prisma/client';
-import { Page } from 'playwright';
+import { Page, BrowserContext } from 'playwright';
 
 // --- Query ---
 // Define what input the pipeline needs
@@ -37,6 +37,11 @@ export interface TiktokApiConfigState extends IBaseScraperState {
   browserContexts?: BrowserSessionContext[];
   currentAccountIndex?: number;
   processingAccounts: Set<number>;
+  restoredSessionContexts?: {
+    sessionId: string;
+    email: string;
+    context: BrowserContext;
+  }[];
 }
 
 // --- Context ---

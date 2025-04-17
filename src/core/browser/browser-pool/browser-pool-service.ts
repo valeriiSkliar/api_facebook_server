@@ -5,7 +5,7 @@ import {
   OnModuleInit,
   OnModuleDestroy,
 } from '@nestjs/common';
-import { Page } from 'playwright';
+import { Page, Browser, BrowserContext } from 'playwright';
 import {
   BrowserState,
   BrowserInstance,
@@ -24,6 +24,11 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
 
   // In-memory storage for active browser instances
   private readonly activeBrowsers: Map<string, BrowserInstance> = new Map();
+  // Map to store session contexts { sessionId: { browserId: string, context: BrowserContext } }
+  private readonly sessionContexts: Map<
+    string,
+    { browserId: string; context: BrowserContext }
+  > = new Map();
 
   // Pool configuration
   private readonly config: BrowserPoolConfig;
@@ -88,6 +93,14 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
   async onModuleDestroy() {
     // Stop periodic tasks
     this.stopPeriodicTasks();
+
+    // Clean up all session contexts first
+    this.logger.log('Closing all managed session contexts...');
+    const contextClearPromises = Array.from(this.sessionContexts.keys()).map(
+      (sessionId) => this.clearContext(sessionId),
+    );
+    await Promise.allSettled(contextClearPromises);
+    this.logger.log('Finished closing session contexts.');
 
     // Close all active browsers
     await this.closeAllBrowsers();
@@ -792,6 +805,7 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
     if (this.cleanupTimer) {
       clearInterval(this.cleanupTimer);
       this.cleanupTimer = null;
+      this.logger.log('Stopped cleanup timer.');
     }
 
     if (this.healthCheckTimer) {
@@ -809,24 +823,17 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
    * Close all active browsers
    */
   private async closeAllBrowsers() {
-    const browsers = Array.from(this.activeBrowsers.values());
-
-    this.logger.log(`Closing ${browsers.length} active browsers`);
-
-    const promises = browsers.map((browser) => {
-      browser.state = BrowserState.CLOSING;
-      return this.lifecycleManager
-        .closeBrowser(browser)
-        .catch((err) =>
-          this.logger.error(`Error closing browser ${browser.id}:`, err),
-        );
-    });
-
-    await Promise.all(promises);
-
-    // Clear the active browsers map
-    this.activeBrowsers.clear();
+    this.logger.log(
+      `Closing all ${this.activeBrowsers.size} active browsers...`,
+    );
+    const closePromises = Array.from(this.activeBrowsers.keys()).map((id) =>
+      this.releaseBrowser(id),
+    );
+    await Promise.allSettled(closePromises); // Use allSettled to ensure all attempts are made
+    this.activeBrowsers.clear(); // Clear the local map after attempting closure
+    this.logger.log('Finished closing all browsers.');
   }
+
   async makeAvailable(browserId: string): Promise<boolean> {
     try {
       const browserInstance = this.activeBrowsers.get(browserId);
@@ -860,6 +867,162 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
       this.logger.error(`Error updating browser ${browserId} state:`, error);
       this.metricsService.recordError();
       return false;
+    }
+  }
+
+  /**
+   * Get or create a browser and a dedicated context for session restoration.
+   * Associates the context with the given sessionId.
+   * @param sessionId - The ID of the session to restore.
+   * @returns An object containing the browser instance and the new browser context, or null if failed.
+   */
+  async getBrowserForSessionRestore(
+    sessionId: string,
+  ): Promise<{ browser: Browser; context: BrowserContext } | null> {
+    this.logger.log(
+      `Requesting browser and context for session restore: ${sessionId}`,
+    );
+    try {
+      // Reuse existing context if already created for this session
+      if (this.sessionContexts.has(sessionId)) {
+        const existing = this.sessionContexts.get(sessionId)!;
+        const browserInstance = this.activeBrowsers.get(existing.browserId);
+        if (browserInstance && browserInstance.browser) {
+          this.logger.log(
+            `Reusing existing context for session ${sessionId} in browser ${existing.browserId}`,
+          );
+          // Ensure context is still valid? Playwright might handle this.
+          return {
+            browser: browserInstance.browser,
+            context: existing.context,
+          };
+        } else {
+          this.logger.warn(
+            `Browser for existing context of session ${sessionId} not found or invalid. Clearing old entry.`,
+          );
+          await this.clearContext(sessionId, existing.browserId); // Clear stale entry
+        }
+      }
+
+      // Find a browser with capacity or create a new one
+      let browserInstance = await this.getBrowserWithCapacity();
+
+      if (!browserInstance) {
+        if (this.activeBrowsers.size >= this.config.maxPoolSize!) {
+          this.logger.warn(
+            `Cannot create browser for session ${sessionId}: max pool size ${this.config.maxPoolSize} reached.`,
+          );
+          return null;
+        }
+
+        this.logger.log(
+          `No browser with capacity found for session ${sessionId}, creating a new one.`,
+        );
+        const result = await this.lifecycleManager.createBrowser({
+          headless: Boolean(Env.IS_PRODUCTION),
+          slowMo: 50, // Consider making this configurable
+        });
+
+        if (!result.success || !result.data) {
+          this.logger.error(
+            `Failed to create browser for session ${sessionId}: ${result.error}`,
+          );
+          return null;
+        }
+        browserInstance = result.data;
+        this.activeBrowsers.set(browserInstance.id, browserInstance);
+        await this.storageService.saveBrowser(
+          browserInstance,
+          this.config.browserTTL,
+        ); // Persist new browser state
+        this.logger.log(
+          `Created new browser ${browserInstance.id} for session ${sessionId}`,
+        );
+      } else {
+        this.logger.log(
+          `Using existing browser ${browserInstance.id} for session ${sessionId}`,
+        );
+      }
+
+      if (!browserInstance || !browserInstance.browser) {
+        this.logger.error(
+          `Failed to obtain a valid browser instance for session ${sessionId}.`,
+        );
+        return null;
+      }
+
+      // Create a new isolated BrowserContext for the session
+      // TODO: Add specific context options if needed (e.g., proxy, viewport)
+      const context = await browserInstance.browser.newContext();
+      this.logger.log(
+        `Created new browser context for session ${sessionId} in browser ${browserInstance.id}`,
+      );
+
+      // Store the context associated with the sessionId
+      this.sessionContexts.set(sessionId, {
+        browserId: browserInstance.id,
+        context: context,
+      });
+
+      return { browser: browserInstance.browser, context };
+    } catch (error) {
+      this.logger.error(
+        `Error getting browser/context for session restore ${sessionId}:`,
+        error,
+      );
+      this.metricsService.recordError();
+      return null;
+    }
+  }
+
+  /**
+   * Cleans up (closes) the browser context associated with a specific session ID.
+   * @param sessionId - The ID of the session whose context needs cleaning.
+   * @param browserId - The ID of the browser supposedly hosting the context (optional, for verification).
+   */
+  async clearContext(sessionId: string, browserId?: string): Promise<void> {
+    this.logger.log(
+      `Clearing context for session ${sessionId} (browser hint: ${browserId || 'N/A'})`,
+    );
+    const contextInfo = this.sessionContexts.get(sessionId);
+
+    if (!contextInfo) {
+      this.logger.warn(`No context found for session ${sessionId} to clear.`);
+      return;
+    }
+
+    if (browserId && contextInfo.browserId !== browserId) {
+      this.logger.warn(
+        `Context for session ${sessionId} is in browser ${contextInfo.browserId}, not the provided ${browserId}. Proceeding with closure.`,
+      );
+    }
+
+    const browserInstance = this.activeBrowsers.get(contextInfo.browserId);
+
+    if (!browserInstance) {
+      this.logger.warn(
+        `Browser ${contextInfo.browserId} for session ${sessionId} context not found in active pool. Removing context entry.`,
+      );
+      this.sessionContexts.delete(sessionId);
+      return;
+    }
+
+    try {
+      await contextInfo.context.close();
+      this.logger.log(
+        `Successfully closed context for session ${sessionId} in browser ${contextInfo.browserId}`,
+      );
+    } catch (error) {
+      // Log error but continue cleanup, context might already be closed or invalid
+      this.logger.error(
+        `Error closing context for session ${sessionId} in browser ${contextInfo.browserId}:`,
+        error,
+      );
+      this.metricsService.recordError();
+    } finally {
+      // Always remove the entry from the map
+      this.sessionContexts.delete(sessionId);
+      this.logger.log(`Removed context entry for session ${sessionId}`);
     }
   }
 }

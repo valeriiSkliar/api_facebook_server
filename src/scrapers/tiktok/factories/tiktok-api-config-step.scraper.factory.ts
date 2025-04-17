@@ -53,6 +53,7 @@ export class TiktokApiConfigStepFactory {
       this.logger,
       this.prisma,
       this.sessionStorageService,
+      this.browserPoolService,
     );
   }
 

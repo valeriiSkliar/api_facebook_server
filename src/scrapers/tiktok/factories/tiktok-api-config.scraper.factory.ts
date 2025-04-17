@@ -51,11 +51,9 @@ export class TikTokApiConfigScraperFactory extends GenericScraperFactory<
     options?: Partial<TiktokApiConfigOptions>,
   ): TiktokApiConfigContext {
     return {
-      someProperty: '',
       query,
-      options: this.mergeWithDefaultOptions(options),
+      options: options || {},
       state: {
-        accountId: query.accountId,
         adsCollected: [],
         configsCollected: [],
         errors: [],
@@ -65,12 +63,12 @@ export class TikTokApiConfigScraperFactory extends GenericScraperFactory<
       },
     };
   }
+
   getSteps(): TiktokApiConfigStep[] {
     return [
-      //   this.stepFactory.createInitializationStep(),
-      //   this.stepFactory.createGetApiConfigStep(),
-      //   this.stepFactory.createApiRequestStep(),
-      //   this.stepFactory.createPaginationStep(),
+      this.stepFactory.createInitAccountsStep(),
+      this.stepFactory.createOpenTabsStep(),
+      // this.stepFactory.createApiConfigCollectionStep(),
     ];
   }
   constructor(

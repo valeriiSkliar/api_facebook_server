@@ -12,10 +12,7 @@ import { ApiConfig } from './api-config.interface';
 
 // --- Query ---
 // Define what input the pipeline needs
-export interface TiktokApiConfigQuery extends IBaseScraperQuery {
-  accountId: number;
-  // Add other relevant query parameters if needed
-}
+export type TiktokApiConfigQuery = IBaseScraperQuery;
 
 // --- Options ---
 // Define configuration options for the pipeline
@@ -27,7 +24,6 @@ export interface TiktokApiConfigOptions extends IBaseScraperOptions {
 // --- State ---
 // Define the state managed during pipeline execution
 export interface TiktokApiConfigState extends IBaseScraperState {
-  accountId: number;
   retrievedConfig?: ApiConfig | null; // To store the result
   sessionData?: any; // If session data is needed
   // Use 'configsCollected' instead of 'adsCollected' for clarity
@@ -47,21 +43,15 @@ export interface TiktokApiConfigState extends IBaseScraperState {
 
 // --- Context ---
 // Combine Query, Options, and State into the context
-export interface TiktokApiConfigContext
-  extends IBaseScraperContext<
-    TiktokApiConfigQuery,
-    TiktokApiConfigOptions,
-    TiktokApiConfigState
-  > {
-  someProperty: string;
-}
+export type TiktokApiConfigContext = IBaseScraperContext<
+  TiktokApiConfigQuery,
+  TiktokApiConfigOptions,
+  TiktokApiConfigState
+>;
 
 // --- Step ---
 // Define the interface for steps in this specific pipeline
-export interface TiktokApiConfigStep
-  extends IGenericScraperStep<TiktokApiConfigContext> {
-  someProperty: string;
-}
+export type TiktokApiConfigStep = IGenericScraperStep<TiktokApiConfigContext>;
 
 export interface TiktokApiConfigBase {
   id: string;

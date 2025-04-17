@@ -1,7 +1,7 @@
 import { Logger } from '@nestjs/common';
 import { BrowserPoolService } from '@src/core';
 import { TiktokApiConfigContext } from '../../pipelines/api-config/tiktok-api-config-types';
-import { TiktokApiConfigStep } from './tiktok-api-config-step';
+import { TiktokApiConfigStep } from './api-config-step';
 import { Page } from 'playwright';
 
 /**
@@ -13,10 +13,11 @@ export class OpenTabsStep extends TiktokApiConfigStep {
   private readonly concurrency = 5;
 
   constructor(
+    name: string,
+    protected readonly logger: Logger,
     private readonly browserPoolService: BrowserPoolService,
-    logger: Logger,
   ) {
-    super('OpenTabsStep', logger);
+    super(name, logger);
   }
 
   override shouldExecute(context: TiktokApiConfigContext): boolean {

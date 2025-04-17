@@ -1,7 +1,7 @@
 import { Logger } from '@nestjs/common';
 import { PrismaService } from '@src/database/prisma.service';
 import { TiktokApiConfigContext } from '../../pipelines/api-config/tiktok-api-config-types';
-import { TiktokApiConfigStep } from './tiktok-api-config-step';
+import { TiktokApiConfigStep } from './api-config-step';
 
 /**
  * Initialization step for TikTok API Config pipeline.
@@ -9,10 +9,11 @@ import { TiktokApiConfigStep } from './tiktok-api-config-step';
  */
 export class InitAccountsStep extends TiktokApiConfigStep {
   constructor(
+    name: string,
+    protected readonly logger: Logger,
     private readonly prismaService: PrismaService,
-    logger: Logger,
   ) {
-    super('InitAccountsStep', logger);
+    super(name, logger);
   }
 
   override shouldExecute(context: TiktokApiConfigContext): boolean {

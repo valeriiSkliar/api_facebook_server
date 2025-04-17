@@ -37,9 +37,6 @@ export class TiktokApiConfigPipeline extends GenericScraperPipeline<
     context: TiktokApiConfigContext,
   ): Promise<TiktokApiConfigResult> {
     const startTime = Date.now();
-    this.logger.log(
-      `[TiktokApiConfigPipeline] Executing TiktokApiConfigPipeline for accountId: ${context.state.accountId}`,
-    );
 
     // Initialize error tracking if not already present
     if (!context.state.errors) {
@@ -85,9 +82,6 @@ export class TiktokApiConfigPipeline extends GenericScraperPipeline<
       }
       // --- End Standard Step Execution ---
 
-      this.logger.log(
-        `[TiktokApiConfigPipeline] execution finished for accountId: ${context.state.accountId}`,
-      );
       // Format and return the result based on the final context state
       return this.formatResult(
         context,
@@ -95,11 +89,6 @@ export class TiktokApiConfigPipeline extends GenericScraperPipeline<
         context.state.errors.length === 0,
       );
     } catch (error) {
-      this.logger.error(
-        `[TiktokApiConfigPipeline] Pipeline execution failed for accountId: ${context.state.accountId}`,
-        error instanceof Error ? error.stack : String(error),
-      );
-
       // Add the error to the context
       if (error instanceof Error) {
         context.state.errors.push(error);
@@ -110,9 +99,6 @@ export class TiktokApiConfigPipeline extends GenericScraperPipeline<
       return this.formatResult(context, startTime, false);
     } finally {
       // Ensure cleanup runs for all steps added to the pipeline
-      this.logger.log(
-        `[TiktokApiConfigPipeline] Running cleanup for TiktokApiConfigPipeline (accountId: ${context.state.accountId})`,
-      );
       for (const step of this.steps) {
         try {
           await step.cleanup(context);

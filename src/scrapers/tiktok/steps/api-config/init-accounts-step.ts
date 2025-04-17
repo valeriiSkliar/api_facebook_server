@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@src/database/prisma.service';
 import {
@@ -76,42 +75,20 @@ export class InitAccountsStep extends TiktokApiConfigStep {
         `Found ${activeSessions.length} active sessions for accounts`,
       );
 
-      // Create a mapping of email to session
-      const emailToSessionMap = new Map();
+      // Set accounts in context
+      const uniqueSessions = new Map<string, SessionWithRelations>();
       for (const session of activeSessions) {
-        emailToSessionMap.set(session.email, session);
+        if (!uniqueSessions.has(session.email)) {
+          uniqueSessions.set(session.email, session);
+        }
       }
 
-      // Prepare accounts with session info
-      const accountsWithSessions = activeAccounts.map((account) => {
-        const email = account.email_account.email_address;
-        const session = emailToSessionMap.get(email);
-
-        return {
-          id: account.id,
-          username: account.username,
-          email: email,
-          emailId: account.email_id,
-          password: account.password,
-          emailPassword: account.email_account.password,
-          imapPassword: account.email_account.imap_password || '',
-          lastLogin: account.last_login_timestamp || undefined,
-          session: session || undefined,
-          connectionDetails: account.email_account.connection_details,
-        };
-      });
-
-      // Filter to accounts with valid sessions
-      const accountsWithValidSessions = accountsWithSessions.filter(
-        (account) => account.session !== null && account.session !== undefined,
+      context.state.accountsWithValidSessions = Array.from(
+        uniqueSessions.values(),
       );
 
-      // Set accounts in context
-      context.state.activeAccounts = accountsWithSessions;
-      context.state.accountsWithValidSessions = accountsWithValidSessions;
-
       this.logger.log(
-        `Initialized ${accountsWithValidSessions.length} accounts with valid sessions out of ${accountsWithSessions.length} total accounts`,
+        `Set ${context.state.accountsWithValidSessions.length} accounts in context`,
       );
 
       return true;

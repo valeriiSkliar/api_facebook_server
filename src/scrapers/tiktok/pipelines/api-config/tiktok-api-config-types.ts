@@ -16,6 +16,7 @@ import {
   SessionOrigin,
   SessionLocalStorage,
 } from '@prisma/client';
+import { Page } from 'playwright';
 
 // --- Query ---
 // Define what input the pipeline needs
@@ -32,8 +33,7 @@ export interface TiktokApiConfigOptions extends IBaseScraperOptions {
 // Define the state managed during pipeline execution
 export interface TiktokApiConfigState extends IBaseScraperState {
   // New properties for account session management
-  activeAccounts?: TikTokAccountWithSession[];
-  accountsWithValidSessions?: TikTokAccountWithSession[];
+  accountsWithValidSessions?: SessionWithRelations[];
   browserContexts?: BrowserSessionContext[];
   currentAccountIndex?: number;
   processingAccounts: Set<number>;
@@ -74,27 +74,13 @@ export interface TiktokApiConfigResult extends IBaseScraperResult<ApiConfig> {
  * Interfaces for TikTok account session management
  */
 
-export interface TikTokAccountWithSession {
-  id: number;
-  username: string;
-  email: string;
-  emailId: number;
-  password: string;
-  emailPassword: string;
-  imapPassword: string;
-  lastLogin?: Date;
-  session: any;
-  connectionDetails?: any;
-}
-
 export interface BrowserSessionContext {
   accountId: number;
   username: string;
   email: string;
   browserId: string;
   tabId: string;
-  sessionPath: string;
-  page: any;
+  page: Page;
   ready: boolean;
 }
 

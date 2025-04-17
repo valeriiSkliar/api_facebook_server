@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
 import { Page } from 'playwright';
 import * as fs from 'fs-extra';
@@ -59,7 +58,8 @@ export class SessionRestoreService {
     } catch (err: unknown) {
       this.logger.error(
         '[SessionRestoreService] Error restoring session state from file:',
-        { error: (err as Error).message },
+        err instanceof Error ? err.message : String(err),
+        err instanceof Error ? err.stack : undefined,
       );
       this.logger.log(
         '[SessionRestoreService] No saved session found or error restoring session, proceeding with normal login',
@@ -189,7 +189,8 @@ export class SessionRestoreService {
       } catch (error) {
         this.logger.error(
           '[SessionRestoreService] Failed to restore session state:',
-          { error: (error as Error).message },
+          error instanceof Error ? error.message : String(error),
+          error instanceof Error ? error.stack : undefined,
         );
         // Clear everything on failure
         await page.context().clearCookies();
@@ -202,7 +203,8 @@ export class SessionRestoreService {
     } catch (err: unknown) {
       this.logger.error(
         '[SessionRestoreService] Error during session state restoration:',
-        { error: (err as Error).message },
+        err instanceof Error ? err.message : String(err),
+        err instanceof Error ? err.stack : undefined,
       );
       return false;
     }

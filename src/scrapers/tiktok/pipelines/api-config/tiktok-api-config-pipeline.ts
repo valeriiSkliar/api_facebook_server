@@ -42,9 +42,6 @@ export class TiktokApiConfigPipeline extends GenericScraperPipeline<
     if (!context.state.errors) {
       context.state.errors = [];
     }
-    if (!context.state.configsCollected) {
-      context.state.configsCollected = []; // Initialize if needed
-    }
 
     try {
       // --- Standard Step Execution (from BasePipeline) ---
@@ -130,9 +127,6 @@ export class TiktokApiConfigPipeline extends GenericScraperPipeline<
     const result: TiktokApiConfigResult = {
       success: success && context.state.errors.length === 0,
       // Use 'configs' key if returning multiple configs, or 'finalConfig' for a single one
-      configs: context.state.configsCollected, // Renamed from 'ads'
-      finalConfig: context.state.retrievedConfig, // Add the specific config retrieved
-      totalCount: context.state.configsCollected.length, // Count of configs
       executionTime: Date.now() - startTime,
       errors: context.state.errors,
       // 'outputPath' might not be relevant here unless configs are saved to files
@@ -143,6 +137,7 @@ export class TiktokApiConfigPipeline extends GenericScraperPipeline<
       hasMoreResults: context.state.hasMoreResults ?? false,
       currentPage: context.state.currentPage ?? 0,
       ads: [],
+      totalCount: 0,
     };
     return result;
   }

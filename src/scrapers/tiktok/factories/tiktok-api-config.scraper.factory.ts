@@ -57,7 +57,6 @@ export class TikTokApiConfigScraperFactory extends GenericScraperFactory<
         adsCollected: [],
         errors: [],
         forceStop: false,
-        activeAccounts: [],
         accountsWithValidSessions: [],
         browserContexts: [],
         currentAccountIndex: 0,
@@ -72,6 +71,9 @@ export class TikTokApiConfigScraperFactory extends GenericScraperFactory<
     return [
       this.stepFactory.createInitAccountsStep(),
       this.stepFactory.createOpenTabsStep(),
+      this.stepFactory.createNavigationAndRestoreStep(),
+      this.stepFactory.createSessionRestoreStep(),
+      this.stepFactory.createCleanupStep(),
       // this.stepFactory.createApiConfigCollectionStep(),
     ];
   }

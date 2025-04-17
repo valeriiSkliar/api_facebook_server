@@ -6,7 +6,10 @@ import { InitAccountsStep } from '../steps/api-config/init-accounts-step';
 import { OpenTabsStep } from '../steps/api-config/open-tabs-step';
 import { TiktokApiConfigStep } from '../steps/api-config/api-config-step';
 import { ApiConfigCollectionStep } from '../steps/api-config/api-config-collection-step copy';
-
+import { CleanupStep } from '../steps/api-config/cleane-up-step';
+import { NavigationAndRestoreStep } from '../steps/api-config/navigation-and-restore-step';
+import { SessionRestoreStep } from '../steps/api-config/session-restore-step';
+import { SessionStorageService } from '@src/services/session-manager';
 @Injectable()
 export class TiktokApiConfigStepFactory {
   constructor(
@@ -14,6 +17,7 @@ export class TiktokApiConfigStepFactory {
     private readonly prisma: PrismaService,
     private readonly httpService: HttpService,
     private readonly browserPoolService: BrowserPoolService,
+    private readonly sessionStorageService: SessionStorageService,
   ) {}
 
   createInitAccountsStep(): TiktokApiConfigStep {
@@ -34,5 +38,25 @@ export class TiktokApiConfigStepFactory {
       this.logger,
       this.prisma,
     );
+  }
+
+  createNavigationAndRestoreStep(): TiktokApiConfigStep {
+    return new NavigationAndRestoreStep(
+      'NavigationAndRestoreStep',
+      this.logger,
+    );
+  }
+
+  createSessionRestoreStep(): TiktokApiConfigStep {
+    return new SessionRestoreStep(
+      'SessionRestoreStep',
+      this.logger,
+      this.prisma,
+      this.sessionStorageService,
+    );
+  }
+
+  createCleanupStep(): TiktokApiConfigStep {
+    return new CleanupStep('CleanupStep', this.logger);
   }
 }

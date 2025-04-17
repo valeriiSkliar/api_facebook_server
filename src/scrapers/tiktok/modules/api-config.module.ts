@@ -6,6 +6,7 @@ import { BrowserPoolModule } from '@src/core/browser/browser-pool';
 import { TikTokApiConfigScraperFactory } from '../factories/tiktok-api-config.scraper.factory';
 import { TiktokApiConfigStepFactory } from '../factories/tiktok-api-config-step.scraper.factory';
 import { ScheduleModule } from '@nestjs/schedule';
+import { SessionManagerModule } from '@src/services/session-manager/session-manager.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     PrismaModule,
     BrowserPoolModule,
     ScheduleModule.forRoot(),
+    SessionManagerModule,
   ],
   providers: [
     Logger,

@@ -26,14 +26,14 @@ export class ApiConfigCollectionStep extends TiktokApiConfigStep {
 
   override shouldExecute(context: TiktokApiConfigContext): boolean {
     return (
-      Array.isArray(context.state.sessionTabs) &&
-      context.state.sessionTabs.length > 0
+      Array.isArray(context.state.browserContexts) &&
+      context.state.browserContexts.length > 0
     );
   }
 
   async execute(context: TiktokApiConfigContext): Promise<boolean> {
     this.logger.log(
-      `[${this.getName()}] Executing API config collection for ${context.state.sessionTabs?.length} tabs`,
+      `[${this.getName()}] Executing API config collection for ${context.state.browserContexts?.length} tabs`,
     );
 
     return false;

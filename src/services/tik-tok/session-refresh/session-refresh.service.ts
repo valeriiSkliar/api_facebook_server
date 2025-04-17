@@ -91,8 +91,7 @@ export class SessionRefreshService {
       const credentials: AuthCredentials = {
         email: activeSession.email,
         password: Env.TIKTOK_PASSWORD,
-        imap_password:
-          (activeSession.emailAccount?.imap_password as string) || '',
+        imap_password: activeSession.emailAccount?.imap_password || '',
         sessionPath: activeSession.storage_path,
         sessionId: sessionId, // Передаем ID сессии в учетные данные
       };
@@ -164,7 +163,7 @@ export class SessionRefreshService {
       const credentials: AuthCredentials = {
         email: emailAccount.email_address,
         password: emailAccount.password,
-        imap_password: (emailAccount.imap_password as string) || '',
+        imap_password: emailAccount.imap_password || '',
         sessionPath: sessionPath,
       };
 

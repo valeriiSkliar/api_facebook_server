@@ -47,14 +47,19 @@ export class ApiResponseAnalyzer extends AbstractApiResponseAnalyzer {
           msg?: string;
         };
         errorMessage = responseData?.msg || error.message;
-        if (statusCode === 429 || responseData?.code === 429 || 
-            (typeof errorMessage === 'string' && errorMessage.toLowerCase().includes('too many requests'))) {
+        if (
+          statusCode === 429 ||
+          responseData?.code === 429 ||
+          (typeof errorMessage === 'string' &&
+            errorMessage.toLowerCase().includes('too many requests'))
+        ) {
           errorType = ApiErrorType.RATE_LIMIT;
         } else if (
           statusCode === 403 ||
           statusCode === 401 ||
           responseData?.code === 40101 ||
-          (typeof errorMessage === 'string' && errorMessage.toLowerCase().includes('no permission'))
+          (typeof errorMessage === 'string' &&
+            errorMessage.toLowerCase().includes('no permission'))
         ) {
           errorType = ApiErrorType.ACCESS_DENIED;
         } else if (statusCode === 404) {
@@ -270,13 +275,13 @@ export class ApiResponseAnalyzer extends AbstractApiResponseAnalyzer {
   calculateBackoffTime(analysis: ApiResponseAnalysis, attempt: number): number {
     const baseDelay = 2000; // Increased base delay to 2 sec (was 0.5)
     const maxDelay = 60000; // Increased maximum delay to 60 sec (was 30)
-    
+
     // More aggressive exponential growth: 2s, 4s, 8s, 16s, 32s, 60s, 60s...
     const exponentialDelay = Math.min(
       maxDelay,
       baseDelay * Math.pow(2, attempt - 1),
     );
-    
+
     // Add larger jitter (random delay up to 2000ms) to prevent "thundering herd"
     const jitter = Math.random() * 2000;
     let calculatedDelay = Math.round(exponentialDelay + jitter);
@@ -287,7 +292,7 @@ export class ApiResponseAnalyzer extends AbstractApiResponseAnalyzer {
       const rateLimitBaseDelay = 5000; // 5 seconds base
       const rateLimitDelay = Math.min(
         maxDelay,
-        rateLimitBaseDelay * Math.pow(2, attempt)
+        rateLimitBaseDelay * Math.pow(2, attempt),
       );
       calculatedDelay = Math.max(calculatedDelay, rateLimitDelay); // Minimum 5s, 10s, 20s, 40s, 60s for Rate Limit
     } else if (analysis.errorType === ApiErrorType.TIMEOUT) {

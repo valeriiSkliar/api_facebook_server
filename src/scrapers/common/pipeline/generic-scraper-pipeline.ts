@@ -303,7 +303,7 @@ export class GenericScraperPipeline<
    * @param startTime The start time of the execution
    * @param success Whether the execution was successful
    */
-  private formatResult(
+  protected formatResult(
     context: TContext,
     startTime: number,
     success: boolean,

@@ -1,6 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@src/database/prisma.service';
-import { ApiConfig, ApiConfigData, ApiConfigStatus } from '../interfaces/api-config.interface';
+import {
+  ApiConfig,
+  ApiConfigData,
+  ApiConfigStatus,
+} from '../interfaces/api-config.interface';
 
 @Injectable()
 export class ApiConfigStorageService {
@@ -127,9 +131,7 @@ export class ApiConfigStorageService {
         },
       });
 
-      this.logger.log(
-        `Updated configuration ${configId} status to ${status}`,
-      );
+      this.logger.log(`Updated configuration ${configId} status to ${status}`);
       return true;
     } catch (error) {
       this.logger.error(

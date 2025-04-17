@@ -13,6 +13,7 @@ import { EmailModule } from '@src/services/common/email/email.module';
 import { TabManagerModule } from '@src/core/browser/tab-manager/tab-manager.module';
 import { CaptchaSolverModule } from '@src/services/common/captcha-solver/captcha-solver.module';
 import { SessionManagerModule } from '@src/services/tik-tok/session-refresh/session-manager.module';
+import { SessionManagerModule as SessionStorageManagerModule } from '@src/services/session-manager/session-manager.module';
 // import { SessionModule } from '@src/modules/session.module';
 
 @Module({
@@ -24,6 +25,7 @@ import { SessionManagerModule } from '@src/services/tik-tok/session-refresh/sess
     TabManagerModule,
     CaptchaSolverModule,
     SessionManagerModule,
+    SessionStorageManagerModule,
   ],
   providers: [
     SessionScheduleService,

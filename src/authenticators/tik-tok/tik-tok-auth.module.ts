@@ -8,6 +8,7 @@ import { EmailModule } from '@src/services/common/email/email.module';
 import { CaptchaSolverModule } from '@src/services/common/captcha-solver/captcha-solver.module';
 import { SessionManagerModule } from '@src/services/tik-tok/session-refresh/session-manager.module';
 import { TikTokAuthenticatorFactory } from './factories/tik-tok-authenticator-factory';
+import { SessionManagerModule as SessionStorageManagerModule } from '@src/services/session-manager/session-manager.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { TikTokAuthenticatorFactory } from './factories/tik-tok-authenticator-fa
     EmailModule,
     CaptchaSolverModule,
     SessionManagerModule,
+    SessionStorageManagerModule,
   ],
   providers: [
     TikTokAuthenticator,

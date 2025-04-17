@@ -13,6 +13,7 @@ import {
 import { AuthenticatorOptions } from '@src/authenticators/common/models/authenticator-options';
 import { AuthenticatorContext } from '@src/authenticators/common/models/authenticator-context';
 import { PrismaService } from '@src/database';
+import { SessionStorageService } from '@src/services/session-manager';
 
 @Injectable()
 export class TikTokAuthenticatorFactory implements IAuthenticatorFactory {
@@ -23,6 +24,7 @@ export class TikTokAuthenticatorFactory implements IAuthenticatorFactory {
     private readonly captchaSolverService: SadCaptchaSolverService,
     private readonly sessionManagerService: FileSystemSessionManager,
     private readonly prisma: PrismaService,
+    private readonly sessionStorageService: SessionStorageService,
   ) {}
 
   /**
@@ -37,6 +39,7 @@ export class TikTokAuthenticatorFactory implements IAuthenticatorFactory {
       this.tabManager,
       this.emailService,
       this.prisma,
+      this.sessionStorageService,
     );
   }
 

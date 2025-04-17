@@ -227,10 +227,10 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
     userEmail?: string,
   ): Promise<{ browserId: string; tabId: string; page: Page } | null> {
     try {
-      // Получаем или создаем браузер
+      // Get or create a browser
       let browser = await this.getBrowserWithCapacity();
 
-      // Если нет браузера с достаточной емкостью, создаем новый
+      // If no browser with capacity, create a new one
       if (!browser) {
         if (this.activeBrowsers.size >= this.config.maxPoolSize!) {
           this.logger.warn(
@@ -239,7 +239,7 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
           return null;
         }
 
-        // Создаем новый браузер
+        // Create a new browser
         const result = await this.lifecycleManager.createBrowser({
           headless: Boolean(Env.IS_PRODUCTION),
           slowMo: 50,
@@ -253,16 +253,16 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
         browser = result.data;
         this.activeBrowsers.set(browser.id, browser);
 
-        // Записываем метрики
+        // Record metrics
         this.metricsService.recordBrowserCreation(
           browser.metrics?.creationTime || 0,
         );
 
-        // Сохраняем в Redis
+        // Save in Redis
         await this.storageService.saveBrowser(browser, this.config.browserTTL);
       }
 
-      // Создаем системную вкладку в браузере
+      // Create a system tab in the browser
       const systemId = sessionId || `system_${Date.now()}`;
       const tabResult = await this.lifecycleManager.createSystemTab(
         browser,
@@ -279,7 +279,7 @@ export class BrowserPoolService implements OnModuleInit, OnModuleDestroy {
 
       const { tab, page } = tabResult;
 
-      // Обновляем браузер в Redis
+      // Update browser in Redis
       await this.storageService.saveBrowser(browser, this.config.browserTTL);
 
       this.logger.log(

@@ -22,7 +22,7 @@ model Session {
   proxy_id               Int?
   api_config_id          Int?
   storage_path           String
-  session_data           Json
+  session_data           Json          @default("{}")
   created_at             DateTime      @default(now())
   expires_at             DateTime
   last_activity_timestamp DateTime?
@@ -33,7 +33,11 @@ model Session {
   emailAccount          Email @relation("has", fields: [email], references: [email_address])
   proxy                 Proxy?         @relation("used_by", fields: [proxy_id], references: [id])
   apiConfig             ApiConfiguration? @relation("applies_to", fields: [api_config_id], references: [id])
-  // requests              Request[]      @relation("processes")
+  requests              Request[]      @relation("processes")
+  
+  // Storage state relations
+  cookies               SessionCookie[] @relation("session_has_cookies")
+  origins               SessionOrigin[] @relation("session_has_origins")
 
   @@index([is_valid])
   @@index([status])
@@ -41,6 +45,64 @@ model Session {
   @@index([email])
   @@index([proxy_id])
   @@index([api_config_id])
+}
+
+// Модель для хранения cookies сессии
+model SessionCookie {
+  id                     Int           @id @default(autoincrement())
+  session_id             Int
+  name                   String
+  value                  String        @db.Text
+  domain                 String
+  path                   String
+  expires                Float
+  http_only              Boolean
+  secure                 Boolean
+  same_site              String?
+  created_at             DateTime      @default(now())
+  updated_at             DateTime      @updatedAt
+
+  // Relations
+  session               Session        @relation("session_has_cookies", fields: [session_id], references: [id], onDelete: Cascade)
+
+  @@index([session_id])
+  @@index([domain])
+  @@index([name])
+  @@unique([session_id, name, domain, path])
+}
+
+// Модель для хранения localStorage origins сессии
+model SessionOrigin {
+  id                     Int           @id @default(autoincrement())
+  session_id             Int
+  origin                 String
+  created_at             DateTime      @default(now())
+  updated_at             DateTime      @updatedAt
+
+  // Relations
+  session               Session        @relation("session_has_origins", fields: [session_id], references: [id], onDelete: Cascade)
+  localStorage          SessionLocalStorage[] @relation("origin_has_localStorage")
+
+  @@index([session_id])
+  @@index([origin])
+  @@unique([session_id, origin])
+}
+
+// Модель для хранения localStorage items
+model SessionLocalStorage {
+  id                     Int           @id @default(autoincrement())
+  origin_id              Int
+  name                   String
+  value                  String        @db.Text
+  created_at             DateTime      @default(now())
+  updated_at             DateTime      @updatedAt
+
+  // Relations
+  origin                SessionOrigin  @relation("origin_has_localStorage", fields: [origin_id], references: [id], onDelete: Cascade)
+
+  @@index([origin_id])
+  @@index([name])
+  @@unique([origin_id, name])
 }
 
 model Cache {
@@ -80,7 +142,7 @@ model Request {
   updated_at           DateTime      @updatedAt
 
   // Relations
-  // session              Session        @relation("processes", fields: [session_id], references: [id])
+  session              Session        @relation("processes", fields: [session_id], references: [id])
   cache                Cache?         @relation("stores_result_of")
   activities           ActivityLog[]  @relation("generates")
 

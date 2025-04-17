@@ -28,95 +28,167 @@ export class SessionStorageService {
     this.logger.log(`Сохранение данных сессии с ID: ${sessionId}`);
 
     try {
+      // Debug logging before transaction
+      this.logger.debug(
+        `Starting transaction to save session state for sessionId: ${sessionId}`,
+      );
+      this.logger.debug(
+        `Storage state contains ${storageState.cookies?.length ?? 0} cookies and ${storageState.origins?.length ?? 0} origins`,
+      );
+
       // Транзакция для атомарного обновления всех связанных данных
       return await this.prisma.$transaction(async (tx) => {
-        // 1. Обновляем основную запись сессии
-        const updatedSession = await tx.session.update({
-          where: { id: sessionId },
-          data: {
-            session_data: JSON.parse(
-              JSON.stringify(storageState),
-            ) as unknown as Prisma.JsonObject,
-            last_activity_timestamp: new Date(),
-          },
-        });
+        try {
+          // 1. Обновляем основную запись сессии
+          this.logger.debug(
+            `Updating session record for sessionId: ${sessionId}`,
+          );
+          const updatedSession = await tx.session.update({
+            where: { id: sessionId },
+            data: {
+              session_data: JSON.parse(
+                JSON.stringify(storageState),
+              ) as unknown as Prisma.JsonObject,
+              last_activity_timestamp: new Date(),
+            },
+          });
+          this.logger.debug(
+            `Session record updated successfully for sessionId: ${sessionId}`,
+          );
 
-        // 2. Удаляем существующие cookies для этой сессии
-        await tx.sessionCookie.deleteMany({
-          where: { session_id: sessionId },
-        });
+          // 2. Удаляем существующие cookies для этой сессии
+          this.logger.debug(
+            `Deleting existing cookies for sessionId: ${sessionId}`,
+          );
+          const deleteResult = await tx.sessionCookie.deleteMany({
+            where: { session_id: sessionId },
+          });
+          this.logger.debug(`Deleted ${deleteResult.count} existing cookies`);
 
-        // 3. Создаем записи для cookies
-        if (storageState.cookies && storageState.cookies.length > 0) {
-          for (const cookie of storageState.cookies) {
-            await tx.sessionCookie.create({
-              data: {
-                session_id: sessionId,
-                name: cookie.name,
-                value: cookie.value,
-                domain: cookie.domain,
-                path: cookie.path,
-                expires: cookie.expires,
-                http_only: cookie.httpOnly,
-                secure: cookie.secure,
-                same_site: cookie.sameSite,
-              },
-            });
-          }
-        }
-
-        // 4. Обрабатываем localStorage
-        if (storageState.origins && storageState.origins.length > 0) {
-          // Для каждого origin
-          for (const origin of storageState.origins) {
-            // Удаляем существующий origin и связанные localStorage items
-            const existingOrigin = await tx.sessionOrigin.findFirst({
-              where: {
-                session_id: sessionId,
-                origin: origin.origin,
-              },
-            });
-
-            if (existingOrigin) {
-              // Удаляем связанные localStorage items
-              await tx.sessionLocalStorage.deleteMany({
-                where: {
-                  origin_id: existingOrigin.id,
-                },
-              });
-
-              // Удаляем origin
-              await tx.sessionOrigin.delete({
-                where: {
-                  id: existingOrigin.id,
-                },
-              });
-            }
-
-            // Создаем новый origin
-            if (origin.localStorage && origin.localStorage.length > 0) {
-              const newOrigin = await tx.sessionOrigin.create({
-                data: {
-                  session_id: sessionId,
-                  origin: origin.origin,
-                },
-              });
-
-              // Создаем localStorage items
-              for (const item of origin.localStorage) {
-                await tx.sessionLocalStorage.create({
+          // 3. Создаем записи для cookies
+          if (storageState.cookies && storageState.cookies.length > 0) {
+            this.logger.debug(
+              `Creating ${storageState.cookies.length} cookie records`,
+            );
+            for (const cookie of storageState.cookies) {
+              try {
+                await tx.sessionCookie.create({
                   data: {
-                    origin_id: newOrigin.id,
-                    name: item.name,
-                    value: item.value,
+                    session_id: sessionId,
+                    name: cookie.name || '',
+                    value: cookie.value || '',
+                    domain: cookie.domain || '',
+                    path: cookie.path || '',
+                    expires: cookie.expires || 0,
+                    http_only: cookie.httpOnly || false,
+                    secure: cookie.secure || false,
+                    same_site: cookie.sameSite,
                   },
                 });
+              } catch (cookieError) {
+                this.logger.error(
+                  `Error creating cookie record: ${cookieError instanceof Error ? cookieError.message : String(cookieError)}`,
+                );
+                this.logger.debug(
+                  `Problematic cookie: ${JSON.stringify(cookie)}`,
+                );
               }
             }
           }
-        }
 
-        return updatedSession;
+          // 4. Обрабатываем localStorage
+          if (storageState.origins && storageState.origins.length > 0) {
+            this.logger.debug(
+              `Processing ${storageState.origins.length} origins`,
+            );
+            // Для каждого origin
+            for (const origin of storageState.origins) {
+              try {
+                // Удаляем существующий origin и связанные localStorage items
+                const existingOrigin = await tx.sessionOrigin.findFirst({
+                  where: {
+                    session_id: sessionId,
+                    origin: origin.origin,
+                  },
+                });
+
+                if (existingOrigin) {
+                  this.logger.debug(
+                    `Found existing origin: ${origin.origin}, id: ${existingOrigin.id}`,
+                  );
+                  // Удаляем связанные localStorage items
+                  const deleteLocalStorageResult =
+                    await tx.sessionLocalStorage.deleteMany({
+                      where: {
+                        origin_id: existingOrigin.id,
+                      },
+                    });
+                  this.logger.debug(
+                    `Deleted ${deleteLocalStorageResult.count} localStorage items for origin: ${origin.origin}`,
+                  );
+
+                  // Удаляем origin
+                  await tx.sessionOrigin.delete({
+                    where: {
+                      id: existingOrigin.id,
+                    },
+                  });
+                  this.logger.debug(`Deleted origin record: ${origin.origin}`);
+                }
+
+                // Создаем новый origin
+                if (origin.localStorage && origin.localStorage.length > 0) {
+                  this.logger.debug(
+                    `Creating new origin record for: ${origin.origin} with ${origin.localStorage.length} localStorage items`,
+                  );
+                  const newOrigin = await tx.sessionOrigin.create({
+                    data: {
+                      session_id: sessionId,
+                      origin: origin.origin || '',
+                    },
+                  });
+                  this.logger.debug(
+                    `Created new origin with id: ${newOrigin.id}`,
+                  );
+
+                  // Создаем localStorage items
+                  for (const item of origin.localStorage) {
+                    try {
+                      await tx.sessionLocalStorage.create({
+                        data: {
+                          origin_id: newOrigin.id,
+                          name: item.name || '',
+                          value: item.value || '',
+                        },
+                      });
+                    } catch (localStorageError) {
+                      this.logger.error(
+                        `Error creating localStorage record: ${localStorageError instanceof Error ? localStorageError.message : String(localStorageError)}`,
+                      );
+                      this.logger.debug(
+                        `Problematic localStorage item: ${JSON.stringify(item)}`,
+                      );
+                    }
+                  }
+                }
+              } catch (originError) {
+                this.logger.error(
+                  `Error processing origin ${origin.origin}: ${originError instanceof Error ? originError.message : String(originError)}`,
+                );
+              }
+            }
+          }
+
+          this.logger.debug(
+            `Transaction completed successfully for sessionId: ${sessionId}`,
+          );
+          return updatedSession;
+        } catch (txError) {
+          this.logger.error(
+            `Transaction error: ${txError instanceof Error ? txError.message : String(txError)}`,
+          );
+          throw txError;
+        }
       });
     } catch (error) {
       const errorMessage =

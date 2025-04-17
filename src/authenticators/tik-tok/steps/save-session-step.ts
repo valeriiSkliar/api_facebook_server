@@ -100,12 +100,32 @@ export class SaveSessionStep implements IAuthenticationStep {
       this.logger.log(
         `Saving session state to database for session ID: ${session.id}`,
       );
-      await this.sessionStorageService.saveSessionState(
-        session.id,
-        storageState,
+
+      // Log storageState structure for debugging
+      this.logger.debug(
+        `StorageState structure: cookies: ${storageState.cookies?.length ?? 0}, origins: ${storageState.origins?.length ?? 0}`,
       );
 
-      this.logger.log('Session state saved successfully');
+      if (!storageState.cookies || storageState.cookies.length === 0) {
+        this.logger.warn('No cookies found in storage state');
+      }
+
+      if (!storageState.origins || storageState.origins.length === 0) {
+        this.logger.warn('No localStorage origins found in storage state');
+      }
+
+      try {
+        await this.sessionStorageService.saveSessionState(
+          session.id,
+          storageState,
+        );
+        this.logger.log('Session state saved successfully');
+      } catch (error) {
+        this.logger.error(
+          `Error saving session state details: ${error instanceof Error ? error.message : String(error)}`,
+        );
+        // Continue execution even if saving related models fails
+      }
       return true;
     } catch (error: unknown) {
       const errorMessage =

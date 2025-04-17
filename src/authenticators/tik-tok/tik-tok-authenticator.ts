@@ -105,7 +105,13 @@ export class TikTokAuthenticator extends BaseAuthenticator {
     // Add authentication steps to the pipeline
     this.authPipeline.addStep(new InitializationStep(this.logger));
     this.authPipeline.addStep(new NavigationStep(this.logger));
-    this.authPipeline.addStep(new SessionRestoreStep(this.logger));
+    this.authPipeline.addStep(
+      new SessionRestoreStep(
+        this.logger,
+        this.prisma,
+        this.sessionStorageService,
+      ),
+    );
     this.authPipeline.addStep(new CookieConsentStep(this.logger));
     this.authPipeline.addStep(new LoginButtonStep(this.logger));
     this.authPipeline.addStep(new SelectPhoneEmailLoginStep(this.logger));

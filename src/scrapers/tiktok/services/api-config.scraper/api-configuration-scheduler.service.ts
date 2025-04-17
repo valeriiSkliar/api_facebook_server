@@ -6,12 +6,14 @@ import {
   TiktokApiConfigQuery,
 } from '../../pipelines/api-config/tiktok-api-config-types';
 import { TikTokApiConfigScraperFactory } from '../../factories/tiktok-api-config.scraper.factory';
+import { ApiConfigStatus } from '@src/modules/api-config/interfaces/api-config.interface';
 
 @Injectable()
 export class ApiConfigurationSchedulerService implements OnModuleInit {
   private readonly logger = new Logger(ApiConfigurationSchedulerService.name);
   private processingAccounts: Set<number> = new Set();
   private isProcessing = false;
+  private isDeletingExpired = false;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -155,34 +157,58 @@ export class ApiConfigurationSchedulerService implements OnModuleInit {
   //   }
   // }
 
-  // /**
-  //  * Marks expired configurations
-  //  */
-  // @Cron(CronExpression.EVERY_HOUR)
-  // async markExpiredConfigurations() {
-  //   this.logger.log('Starting scheduled marking of expired configurations');
+  /**
+   * Marks expired configurations and deletes them after one hour
+   */
+  @Cron(CronExpression.EVERY_10_MINUTES)
+  async markAndDeleteExpiredConfigurations(): Promise<void> {
+    this.logger.log(
+      'Starting scheduled marking and deletion of expired configurations',
+    );
 
-  //   try {
-  //     // Find and mark all expired configurations
-  //     const now = new Date();
-  //     const result = await this.prisma.apiConfig.updateMany({
-  //       where: {
-  //         status: ApiConfigStatus.ACTIVE,
-  //         expiresAt: { lt: now },
-  //       },
-  //       data: {
-  //         status: ApiConfigStatus.EXPIRED,
-  //       },
-  //     });
+    // Prevent concurrent execution
+    if (this.isDeletingExpired) {
+      this.logger.log(
+        'Previous expiration job is still running. Skipping this execution.',
+      );
+      return;
+    }
 
-  //     this.logger.log(`Marked ${result.count} expired API configurations`);
-  //   } catch (error) {
-  //     this.logger.error(
-  //       'Error during marking expired configurations',
-  //       error instanceof Error ? error.stack : String(error),
-  //     );
-  //   }
-  // }
+    this.isDeletingExpired = true;
+
+    try {
+      // Step 1: Mark configurations as expired if they're older than 1 hour
+      const oneHourAgo = new Date();
+      oneHourAgo.setHours(oneHourAgo.getHours() - 1);
+
+      // Mark configs as expired after 1 hour
+      const markResult = await this.prisma.$executeRaw`
+        UPDATE "ApiConfig"
+        SET "status" = ${ApiConfigStatus.EXPIRED}
+        WHERE "status" = ${ApiConfigStatus.ACTIVE} 
+        AND "createdAt" < ${oneHourAgo}
+      `;
+
+      this.logger.log(
+        `Marked ${markResult} configurations as expired (older than 1 hour)`,
+      );
+
+      // Step 2: Delete all expired configurations
+      const deleteResult = await this.prisma.$executeRaw`
+        DELETE FROM "ApiConfig"
+        WHERE "status" = ${ApiConfigStatus.EXPIRED}
+      `;
+
+      this.logger.log(`Deleted ${deleteResult} expired API configurations`);
+    } catch (error) {
+      this.logger.error(
+        'Error during marking and deletion of expired configurations',
+        error instanceof Error ? error.stack : String(error),
+      );
+    } finally {
+      this.isDeletingExpired = false;
+    }
+  }
 
   // /**
   //  * Activates cooled down configurations

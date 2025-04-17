@@ -55,9 +55,13 @@ export class TikTokApiConfigScraperFactory extends GenericScraperFactory<
       options: options || {},
       state: {
         adsCollected: [],
-        configsCollected: [],
         errors: [],
         forceStop: false,
+        activeAccounts: [],
+        accountsWithValidSessions: [],
+        browserContexts: [],
+        currentAccountIndex: 0,
+        processingAccounts: new Set(),
         hasMoreResults: true,
         currentPage: 0,
       },
@@ -70,6 +74,29 @@ export class TikTokApiConfigScraperFactory extends GenericScraperFactory<
       this.stepFactory.createOpenTabsStep(),
       // this.stepFactory.createApiConfigCollectionStep(),
     ];
+  }
+
+  /**
+   * Merges the provided options with the default options.
+   * @param options The options to merge with the default options.
+   * @returns The merged options.
+   */
+  protected mergeWithDefaultOptions(
+    options?: Partial<TiktokApiConfigOptions>,
+  ): TiktokApiConfigOptions {
+    const defaultOptions: TiktokApiConfigOptions = {
+      behavior: {
+        applyFilters: false,
+        maxPages: 10,
+        waitForResults: true,
+        waitTimeout: 30000,
+      },
+    };
+
+    return {
+      ...defaultOptions,
+      ...options,
+    };
   }
   constructor(
     protected readonly logger: Logger,

@@ -7,8 +7,15 @@ import {
   IBaseScraperState,
   IGenericScraperStep,
 } from '@src/scrapers/common/interfaces';
-import { Page } from 'playwright';
 import { ApiConfig } from './api-config.interface';
+import {
+  Session,
+  Email,
+  Proxy,
+  SessionCookie,
+  SessionOrigin,
+  SessionLocalStorage,
+} from '@prisma/client';
 
 // --- Query ---
 // Define what input the pipeline needs
@@ -24,21 +31,12 @@ export interface TiktokApiConfigOptions extends IBaseScraperOptions {
 // --- State ---
 // Define the state managed during pipeline execution
 export interface TiktokApiConfigState extends IBaseScraperState {
-  retrievedConfig?: ApiConfig | null; // To store the result
-  sessionData?: any; // If session data is needed
-  // Use 'configsCollected' instead of 'adsCollected' for clarity
-  configsCollected: ApiConfig[];
-  /** List of accounts and their session data to process */
-  accountsToProcess?: Array<{ accountId: number; sessionData: any }>;
-  /**
-   * Prepared browser tabs for accounts, created in OpenTabsStep
-   */
-  sessionTabs?: Array<{
-    accountId: number;
-    browserId: string;
-    tabId: string;
-    page?: Page; // Playwright Page instance
-  }>;
+  // New properties for account session management
+  activeAccounts?: TikTokAccountWithSession[];
+  accountsWithValidSessions?: TikTokAccountWithSession[];
+  browserContexts?: BrowserSessionContext[];
+  currentAccountIndex?: number;
+  processingAccounts: Set<number>;
 }
 
 // --- Context ---
@@ -71,3 +69,40 @@ export interface TiktokApiConfigResult extends IBaseScraperResult<ApiConfig> {
   configs?: ApiConfig[]; // Optional: might return collected configs
   finalConfig?: ApiConfig | null; // Optional: the primary config retrieved
 }
+
+/**
+ * Interfaces for TikTok account session management
+ */
+
+export interface TikTokAccountWithSession {
+  id: number;
+  username: string;
+  email: string;
+  emailId: number;
+  password: string;
+  emailPassword: string;
+  imapPassword: string;
+  lastLogin?: Date;
+  session: any;
+  connectionDetails?: any;
+}
+
+export interface BrowserSessionContext {
+  accountId: number;
+  username: string;
+  email: string;
+  browserId: string;
+  tabId: string;
+  sessionPath: string;
+  page: any;
+  ready: boolean;
+}
+
+export type SessionWithRelations = Session & {
+  emailAccount: Email;
+  proxy: Proxy | null;
+  cookies: SessionCookie[];
+  origins: (SessionOrigin & {
+    localStorage: SessionLocalStorage[];
+  })[];
+};

@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { TiktokScraperStep } from './tiktok-scraper-step';
-import { TiktokScraperContext } from '../tiktok-scraper-types';
+import { TiktokScraperContext } from '../../tiktok-scraper-types';
 
 @Injectable()
 export class GetMatirialsIdStep extends TiktokScraperStep {

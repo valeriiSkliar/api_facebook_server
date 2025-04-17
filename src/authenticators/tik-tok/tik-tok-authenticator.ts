@@ -34,6 +34,7 @@ import { AuthCredentials } from '@src/authenticators/common/models/auth-credenti
 import { AuthenticationPipeline } from '../common/pipelines/authentication-pipeline';
 import { SadCaptchaSolverService } from '@src/services/common/captcha-solver/sad-captcha-solver-service';
 import { FileSystemSessionManager } from '@src/services/tik-tok/session-refresh/file-system-session-manager';
+import { SessionStorageService } from '@src/services/session-manager';
 // import { NaturalScrollingStep } from './steps/natural-scrolling-step';
 // import { IntegratedRequestCaptureService } from '@src/services/integrated-request-capture-service';
 /**
@@ -69,6 +70,7 @@ export class TikTokAuthenticator extends BaseAuthenticator {
     tabManager: TabManager,
     emailService: EmailService,
     private readonly prisma: PrismaService,
+    private readonly sessionStorageService: SessionStorageService,
   ) {
     const logger = new Logger(TikTokAuthenticator.name);
     super(logger); // Call base constructor with logger
@@ -103,7 +105,13 @@ export class TikTokAuthenticator extends BaseAuthenticator {
     // Add authentication steps to the pipeline
     this.authPipeline.addStep(new InitializationStep(this.logger));
     this.authPipeline.addStep(new NavigationStep(this.logger));
-    this.authPipeline.addStep(new SessionRestoreStep(this.logger));
+    this.authPipeline.addStep(
+      new SessionRestoreStep(
+        this.logger,
+        this.prisma,
+        this.sessionStorageService,
+      ),
+    );
     this.authPipeline.addStep(new CookieConsentStep(this.logger));
     this.authPipeline.addStep(new LoginButtonStep(this.logger));
     this.authPipeline.addStep(new SelectPhoneEmailLoginStep(this.logger));
@@ -117,7 +125,9 @@ export class TikTokAuthenticator extends BaseAuthenticator {
     );
     // this.authPipeline.addStep(requestInterceptionStep);
     // this.authPipeline.addStep(naturalScrollingStep);
-    this.authPipeline.addStep(new SaveSessionStep(this.logger));
+    this.authPipeline.addStep(
+      new SaveSessionStep(this.logger, this.sessionStorageService, this.prisma),
+    );
 
     this.logger.log('Authentication pipeline initialized');
   }

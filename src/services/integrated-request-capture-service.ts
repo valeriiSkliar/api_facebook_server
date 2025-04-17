@@ -113,15 +113,19 @@ export class IntegratedRequestCaptureService {
     const apiConfig = await this.prisma.apiConfiguration.create({
       data: {
         api_version: apiVersion,
+        accountId: this.sessionId ? this.sessionId : 0, // Используем sessionId как accountId или 0 если нет
+        endpoint: capturedRequest.url,
+        method: capturedRequest.method,
+        headers: capturedRequest.headers,
         parameters: {
           url: capturedRequest.url,
           method: capturedRequest.method,
-          headers: capturedRequest.headers,
           postData: capturedRequest.postData,
           timestamp: capturedRequest.timestamp,
         },
         is_active: true,
         update_frequency: 3600,
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // Срок действия 24 часа
         sessions: this.sessionId
           ? {
               connect: {

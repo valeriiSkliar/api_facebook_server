@@ -1,14 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
-import axios, { AxiosError, AxiosResponse } from 'axios';
+import axios, { AxiosError } from 'axios';
 import { v4 as uuidv4 } from 'uuid';
-import { TiktokScraperStep } from './tiktok-scraper-step';
 import {
   TiktokScraperContext,
   TikTokApiResponse,
-} from '../tiktok-scraper-types';
+} from '../../tiktok-scraper-types';
 import { HttpService } from '@nestjs/axios';
 import { ApiResponseAnalyzer } from '@src/core/api/analyzer/base-api-response-analyzer';
 import { ErrorStorage } from '@src/core/error-handling/storage/error-storage';
+import { TiktokScraperStep } from './tiktok-scraper-step';
 
 @Injectable()
 export class ApiRequestStep extends TiktokScraperStep {

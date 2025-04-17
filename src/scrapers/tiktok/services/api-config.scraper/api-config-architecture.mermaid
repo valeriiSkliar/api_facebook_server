@@ -1,0 +1,48 @@
+flowchart TB
+    subgraph "API Configuration Module"
+        Scheduler[ApiConfigurationSchedulerService]
+        Processor[ApiConfigProcessor]
+        Lifecycle[ApiConfigLifecycleManager]
+        Storage[ApiConfigStorageService]
+        Metrics[ApiConfigMetricsService]
+    end
+
+    subgraph "External Dependencies"
+        Browser[BrowserPoolService]
+        Tab[TabManager]
+        Prisma[PrismaService]
+        TikTok[TikTok API Endpoints]
+    end
+
+    %% Scheduler relationships
+    Scheduler -->|schedules| Processor
+    Scheduler -->|marks expired| Lifecycle
+    Scheduler -->|cleans up| Storage
+
+    %% Processor relationships
+    Processor -->|captures configs from| TikTok
+    Processor -->|uses| Browser
+    Processor -->|manages tabs| Tab
+    Processor -->|stores configs via| Lifecycle
+
+    %% Lifecycle relationships
+    Lifecycle -->|saves configs via| Storage
+    Lifecycle -->|tracks usage via| Metrics
+
+    %% Storage relationships
+    Storage -->|database operations| Prisma
+
+    %% Metrics relationships
+    Metrics -->|fetches stats via| Prisma
+
+    %% External system interactions
+    Browser -->|renders| TikTok
+    Tab -->|part of| Browser
+
+    classDef primary fill:#f9f,stroke:#333,stroke-width:2px;
+    classDef secondary fill:#bbf,stroke:#333,stroke-width:1px;
+    classDef external fill:#ddd,stroke:#333,stroke-width:1px;
+
+    class Scheduler,Processor,Lifecycle,Storage,Metrics primary;
+    class Browser,Tab secondary;
+    class Prisma,TikTok external;

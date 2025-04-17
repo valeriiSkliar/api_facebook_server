@@ -146,7 +146,7 @@ export class TikTokAuthService {
       const credentials: AuthCredentials = {
         email: emailAccount.email_address,
         password: emailAccount.password || Env.TIKTOK_PASSWORD,
-        imap_password: (emailAccount.imap_password as string) || '',
+        imap_password: emailAccount.imap_password || '',
         sessionPath,
       };
 
@@ -309,7 +309,7 @@ export class TikTokAuthService {
       const credentials: AuthCredentials = {
         email: emailAccount.email_address,
         password: emailAccount.password || Env.TIKTOK_PASSWORD,
-        imap_password: (emailAccount.imap_password as string) || '',
+        imap_password: emailAccount.imap_password || '',
         sessionPath,
       };
 
@@ -565,7 +565,7 @@ export class TikTokAuthService {
       const credentials: AuthCredentials = {
         email: session.email,
         password: session.emailAccount?.password || Env.TIKTOK_PASSWORD,
-        imap_password: (session.emailAccount?.imap_password as string) || '',
+        imap_password: session.emailAccount?.imap_password || '',
         sessionPath: session.storage_path,
       };
 

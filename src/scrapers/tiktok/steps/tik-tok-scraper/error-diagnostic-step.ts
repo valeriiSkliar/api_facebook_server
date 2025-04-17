@@ -1,5 +1,5 @@
 import { Logger } from '@nestjs/common';
-import { TiktokScraperContext } from '../tiktok-scraper-types';
+import { TiktokScraperContext } from '../../tiktok-scraper-types';
 import { TiktokScraperStep } from './tiktok-scraper-step';
 import { PrismaService } from '@src/database';
 // import { Prisma } from '@prisma/client';

@@ -14,6 +14,7 @@ import { RetryHandler } from '../../services/retry-handler-service';
 import { SCRAPER_STATE_STORAGE } from '@src/core/storage/scraper-state/scraper-state-storage.token';
 import { IScraperStateStorage } from '@src/core/storage/scraper-state/i-scraper-state-storage';
 import { AxiosError } from 'axios';
+import { TikTokApiConfigAdapter } from '../../services/api-config.scraper/tiktok-api-config-adapter';
 
 @Injectable()
 export class ProcessMaterialsStep extends TiktokScraperStep {
@@ -27,6 +28,7 @@ export class ProcessMaterialsStep extends TiktokScraperStep {
     private readonly httpService: HttpService,
     @Inject(SCRAPER_STATE_STORAGE)
     private readonly stateStorage: IScraperStateStorage,
+    private readonly apiConfigAdapter: TikTokApiConfigAdapter,
   ) {
     super(name, logger);
     this.errorStorage = ErrorStorage.getInstance();
@@ -54,6 +56,7 @@ export class ProcessMaterialsStep extends TiktokScraperStep {
       this.logger,
       this.apiAnalyzer,
       context,
+      this.apiConfigAdapter,
     );
 
     if (
@@ -65,14 +68,26 @@ export class ProcessMaterialsStep extends TiktokScraperStep {
     }
 
     try {
-      // Use the API config from previous step
-      if (!context.state.apiConfig) {
-        throw new Error('API configuration is missing');
+      // Instead of using the API config from previous step, get a detail API config specifically
+      const detailApiConfig = await this.apiConfigAdapter.getDetailApiConfig();
+
+      if (!detailApiConfig) {
+        this.logger.error(
+          'Failed to get valid API configuration for detail API',
+        );
+        context.state.errors.push(
+          new Error('No valid detail API configuration available'),
+        );
+        return false;
       }
 
-      const { headers } = context.state.apiConfig;
-      const baseDetailUrl =
-        'https://ads.tiktok.com/creative_radar_api/v1/top_ads/v2/detail';
+      this.logger.log(
+        `Using detail API configuration (ID: ${detailApiConfig.id})`,
+      );
+
+      // Store this configuration for detail requests
+      const detailApiHeaders = detailApiConfig.headers;
+      const baseDetailUrl = detailApiConfig.url;
 
       // Initialize tracking arrays if they don't exist
       if (!context.state.processedMaterialIds) {
@@ -167,7 +182,7 @@ export class ProcessMaterialsStep extends TiktokScraperStep {
           this.processMaterial(
             materialId,
             baseDetailUrl,
-            headers,
+            detailApiHeaders as Record<string, string>,
             currentPage,
             context,
           ),

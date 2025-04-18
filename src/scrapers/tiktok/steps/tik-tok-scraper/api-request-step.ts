@@ -9,6 +9,7 @@ import { HttpService } from '@nestjs/axios';
 import { ApiResponseAnalyzer } from '@src/core/api/analyzer/base-api-response-analyzer';
 import { ErrorStorage } from '@src/core/error-handling/storage/error-storage';
 import { TiktokScraperStep } from './tiktok-scraper-step';
+import { TikTokApiConfigAdapter } from '../../services/api-config.scraper/tiktok-api-config-adapter';
 
 @Injectable()
 export class ApiRequestStep extends TiktokScraperStep {
@@ -19,6 +20,7 @@ export class ApiRequestStep extends TiktokScraperStep {
     protected readonly name: string,
     protected readonly logger: Logger,
     private readonly httpService: HttpService,
+    private readonly apiConfigAdapter: TikTokApiConfigAdapter,
   ) {
     super(name, logger);
     // Use singleton instance for error storage
@@ -94,8 +96,8 @@ export class ApiRequestStep extends TiktokScraperStep {
     this.logger.log(`Making API request to: ${apiEndpoint.toString()}`);
 
     // Set up headers from API config
-    const headersWithAuth = {
-      ...headers,
+    const headersWithAuth: Record<string, string> = {
+      ...(headers as Record<string, string>),
       'Content-Type': 'application/json',
       'User-Agent':
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.99 Safari/537.36',
@@ -178,6 +180,15 @@ export class ApiRequestStep extends TiktokScraperStep {
         requestTimestamp,
       );
 
+      // Report the error to the API config manager
+      if (context.state.apiConfig) {
+        await this.apiConfigAdapter.reportError(
+          context.state.apiConfig,
+          error instanceof Error ? error : new Error(String(error)),
+          apiEndpoint.toString(),
+        );
+      }
+
       // Generate recommendation for action based on error analysis
       const recommendation = this.apiAnalyzer.generateActionRecommendation(
         analysis,
@@ -197,6 +208,28 @@ export class ApiRequestStep extends TiktokScraperStep {
             `API permission error (40101): ${axiosError.response.data.msg}. Setting permissionError flag.`,
           );
           context.state.permissionError = true; // Set flag for the calling service
+        }
+        if (
+          axiosError.response?.status === 401 ||
+          axiosError.response?.status === 403 ||
+          axiosError.response?.status === 429 ||
+          axiosError.response?.status === 500 ||
+          axiosError.response?.status === 400 ||
+          axiosError.response?.status === 200
+        ) {
+          this.logger.log('Attempting to get fallback API configuration...');
+          const fallbackConfig =
+            await this.apiConfigAdapter.getFallbackConfig(url);
+
+          if (fallbackConfig) {
+            this.logger.log(
+              `Found fallback configuration (ID: ${fallbackConfig.id}). Updating context.`,
+            );
+            context.state.apiConfig = fallbackConfig;
+
+            // Signal that this step should be retried with the new configuration
+            return false;
+          }
         }
       }
 

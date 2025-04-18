@@ -17,7 +17,7 @@ import { ErrorReportingService } from '@src/core/reporting/services/error-report
 import { ApiResponseAnalyzer } from '@src/core/api/analyzer/base-api-response-analyzer';
 import { SCRAPER_STATE_STORAGE } from '@src/core/storage/scraper-state/scraper-state-storage.token';
 import { IScraperStateStorage } from '@src/core/storage/scraper-state/i-scraper-state-storage';
-
+import { TikTokApiConfigAdapter } from '../services/api-config.scraper/tiktok-api-config-adapter';
 @Injectable()
 export class TiktokStepFactory {
   constructor(
@@ -29,6 +29,7 @@ export class TiktokStepFactory {
     private readonly apiResponseAnalyzer: ApiResponseAnalyzer,
     @Inject(SCRAPER_STATE_STORAGE)
     private readonly stateStorage: IScraperStateStorage,
+    private readonly apiConfigAdapter: TikTokApiConfigAdapter,
   ) {}
 
   createInitializationStep(): TiktokScraperStep {
@@ -40,7 +41,11 @@ export class TiktokStepFactory {
   }
 
   createGetApiConfigStep(): TiktokScraperStep {
-    return new GetApiConfigStep('GetApiConfigStep', this.logger, this.prisma);
+    return new GetApiConfigStep(
+      'GetApiConfigStep',
+      this.logger,
+      this.apiConfigAdapter,
+    );
   }
 
   createPaginationStep(): TiktokScraperStep {
@@ -48,7 +53,12 @@ export class TiktokStepFactory {
   }
 
   createApiRequestStep(): TiktokScraperStep {
-    return new ApiRequestStep('ApiRequestStep', this.logger, this.httpService);
+    return new ApiRequestStep(
+      'ApiRequestStep',
+      this.logger,
+      this.httpService,
+      this.apiConfigAdapter,
+    );
   }
 
   createGetMatirialsIdStep(): TiktokScraperStep {
@@ -86,6 +96,7 @@ export class TiktokStepFactory {
       this.logger,
       this.httpService,
       this.stateStorage,
+      this.apiConfigAdapter,
     );
   }
 

@@ -8,6 +8,7 @@ import { AxiosError } from 'axios';
 import { ApiErrorType } from '@src/core/api/models/api-error-type';
 import { ErrorStorage } from '@src/core/error-handling/storage/error-storage';
 import { TiktokScraperContext } from '../tiktok-scraper-types';
+import { TikTokApiConfigAdapter } from './api-config.scraper/tiktok-api-config-adapter';
 
 // Queue class to manage request distribution and rate limiting
 class RequestQueue {
@@ -209,16 +210,20 @@ export class RetryHandler {
   private readonly apiAnalyzer: ApiResponseAnalyzer;
   private readonly context: TiktokScraperContext | undefined;
   private requestQueue: RequestQueue;
+  private readonly apiConfigAdapter: TikTokApiConfigAdapter | undefined;
+
   private static queueInitialized = false;
 
   constructor(
     logger: Logger,
     apiAnalyzer: ApiResponseAnalyzer,
     context?: TiktokScraperContext,
+    apiConfigAdapter?: TikTokApiConfigAdapter,
   ) {
     this.logger = logger;
     this.apiAnalyzer = apiAnalyzer;
     this.context = context;
+    this.apiConfigAdapter = apiConfigAdapter;
 
     // Initialize or reuse the global request queue
     if (!globalRequestQueue) {
@@ -288,6 +293,29 @@ export class RetryHandler {
                 `Rate limit detected for ${materialId}. Using aggressive backoff: ${delay}ms`,
               );
             }
+            // Try to get a fallback configuration if available
+            if (this.apiConfigAdapter && this.context?.state.apiConfig) {
+              try {
+                const fallbackConfig =
+                  await this.apiConfigAdapter.getFallbackConfig(
+                    this.context.state.apiConfig.url,
+                  );
+
+                if (
+                  fallbackConfig &&
+                  fallbackConfig.id !== this.context.state.apiConfig.id
+                ) {
+                  this.logger.log(
+                    `Switching to fallback configuration (ID: ${fallbackConfig.id}) for material ${materialId}`,
+                  );
+                  this.context.state.apiConfig = fallbackConfig;
+                }
+              } catch (configError) {
+                this.logger.warn(
+                  `Failed to get fallback configuration: ${configError instanceof Error ? configError.message : String(configError)}`,
+                );
+              }
+            }
 
             this.logger.debug(
               `Retry attempt ${attempt}/${this.maxRetries} for material ${materialId}. Waiting ${delay}ms before retry based on error analysis.`,
@@ -335,6 +363,15 @@ export class RetryHandler {
             attempt,
             this.maxRetries,
           );
+
+          // Report error to ApiConfigManager if available
+          if (this.apiConfigAdapter && this.context?.state.apiConfig) {
+            await this.apiConfigAdapter.reportError(
+              this.context.state.apiConfig,
+              error,
+              endpoint,
+            );
+          }
 
           // Ensure error is tracked in context when this handler is used
           if (

@@ -183,10 +183,10 @@ export class ApiConfigurationSchedulerService implements OnModuleInit {
 
       // Mark configs as expired after 1 hour
       const markResult = await this.prisma.$executeRaw`
-        UPDATE "ApiConfig"
-        SET "status" = ${ApiConfigStatus.EXPIRED}
-        WHERE "status" = ${ApiConfigStatus.ACTIVE} 
-        AND "createdAt" < ${oneHourAgo}
+        UPDATE \`ApiConfig\`
+        SET \`status\` = ${ApiConfigStatus.EXPIRED}
+        WHERE \`status\` = ${ApiConfigStatus.ACTIVE} 
+        AND \`createdAt\` < ${oneHourAgo}
       `;
 
       this.logger.log(
@@ -195,8 +195,8 @@ export class ApiConfigurationSchedulerService implements OnModuleInit {
 
       // Step 2: Delete all expired configurations
       const deleteResult = await this.prisma.$executeRaw`
-        DELETE FROM "ApiConfig"
-        WHERE "status" = ${ApiConfigStatus.EXPIRED}
+        DELETE FROM \`ApiConfig\`
+        WHERE \`status\` = ${ApiConfigStatus.EXPIRED}
       `;
 
       this.logger.log(`Deleted ${deleteResult} expired API configurations`);

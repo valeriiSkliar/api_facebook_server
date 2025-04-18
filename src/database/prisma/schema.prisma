@@ -254,8 +254,9 @@ model ApiConfiguration {
   usageCount        Int       @default(0)
   update_frequency       Int
 
-  @@index([accountId, status])
+  @@index([accountId, status, expiresAt])
   @@index([status, expiresAt])
+  @@index([status, lastUsedAt])
 
   // Relations
   sessions             Session[]     @relation("applies_to")

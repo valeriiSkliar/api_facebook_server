@@ -25,7 +25,8 @@ import { ErrorDiagnosticStep } from './steps/tik-tok-scraper/error-diagnostic-st
 import { ErrorReportingService } from '@src/core/reporting/services/error-reporting-service';
 import { ApiResponseAnalyzer } from '@src/core/api/analyzer/base-api-response-analyzer';
 import { ErrorAnalysisStep } from './steps/tik-tok-scraper/error-analysis-step';
-
+import { TikTokApiConfigAdapter } from './services/api-config.scraper/tiktok-api-config-adapter';
+import { ApiConfigManager } from './services/api-config.scraper/api-config-manager';
 @Module({
   imports: [
     HttpModule.registerAsync({
@@ -47,7 +48,9 @@ import { ErrorAnalysisStep } from './steps/tik-tok-scraper/error-analysis-step';
     TiktokApiScraper,
     TiktokCreativeService,
     TiktokQueryTransformer,
+    ApiConfigManager,
 
+    TikTokApiConfigAdapter,
     {
       provide: TiktokInitializationStep,
       useFactory: (logger: Logger, stateStorage: IScraperStateStorage) => {
@@ -65,12 +68,14 @@ import { ErrorAnalysisStep } from './steps/tik-tok-scraper/error-analysis-step';
         logger: Logger,
         httpService: HttpService,
         stateStorage: IScraperStateStorage,
+        apiConfigAdapter: TikTokApiConfigAdapter,
       ) => {
         return new TiktokProcessMaterialsStep(
           'ProcessMaterialsStep',
           logger,
           httpService,
           stateStorage,
+          apiConfigAdapter,
         );
       },
       inject: [Logger, HttpService, SCRAPER_STATE_STORAGE],
@@ -88,10 +93,18 @@ import { ErrorAnalysisStep } from './steps/tik-tok-scraper/error-analysis-step';
     },
     {
       provide: TiktokApiRequestStep,
-      useFactory: (logger: Logger, httpService: HttpService) => {
-        return new TiktokApiRequestStep('ApiRequestStep', logger, httpService);
+      useFactory: (
+        logger: Logger,
+        httpService: HttpService,
+        apiConfigAdapter: TikTokApiConfigAdapter,
+      ) => {
+        return new TiktokApiRequestStep(
+          'ApiRequestStep',
+          logger,
+          httpService,
+          apiConfigAdapter,
+        );
       },
-      inject: [Logger, HttpService],
     },
     {
       provide: TiktokPaginationStep,
@@ -109,8 +122,15 @@ import { ErrorAnalysisStep } from './steps/tik-tok-scraper/error-analysis-step';
     },
     {
       provide: TiktokGetApiConfigStep,
-      useFactory: (logger: Logger, prisma: PrismaService) => {
-        return new TiktokGetApiConfigStep('GetApiConfigStep', logger, prisma);
+      useFactory: (
+        logger: Logger,
+        apiConfigAdapter: TikTokApiConfigAdapter,
+      ) => {
+        return new TiktokGetApiConfigStep(
+          'GetApiConfigStep',
+          logger,
+          apiConfigAdapter,
+        );
       },
       inject: [Logger, PrismaService],
     },

@@ -1,3 +1,5 @@
+import { ApiConfiguration, Prisma } from '@prisma/client';
+
 export interface TikTokApiHeaders {
   lang: string;
   accept: string;
@@ -12,14 +14,11 @@ export interface TikTokApiHeaders {
   'sec-ch-ua-platform': string;
 }
 
-import { ApiConfiguration } from '@prisma/client';
-
-export type TikTokApiConfig = ApiConfiguration & {
-  // parameters: {
-  //   url: string;
-  //   method: string;
-  //   headers: Partial<TikTokApiHeaders>;
-  //   postData?: string;
-  //   timestamp: string;
-  // };
-};
+export interface TikTokApiConfig extends ApiConfiguration {
+  url: string;
+  method: string;
+  parameters: ApiConfiguration['parameters'];
+  headers: Prisma.JsonValue;
+  postData?: string;
+  timestamp: string;
+}

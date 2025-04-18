@@ -137,7 +137,6 @@ export class RequestManagerService {
           ) as Prisma.InputJsonValue,
           created_at: now,
           status: RequestStatus.PENDING,
-          session_id: 0, // Will be updated when a session is assigned
           priority: priority,
           retry_count: 0,
           webhook_url: webhookUrl,

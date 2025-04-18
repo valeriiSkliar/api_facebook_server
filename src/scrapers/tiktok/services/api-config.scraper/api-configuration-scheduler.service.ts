@@ -27,7 +27,7 @@ export class ApiConfigurationSchedulerService implements OnModuleInit {
   /**
    * Запускается каждые 30 минут для обработки аккаунтов
    */
-  @Cron(CronExpression.EVERY_5_MINUTES)
+  @Cron(CronExpression.EVERY_30_SECONDS)
   async processAccountsForApiConfig() {
     this.logger.log(
       'Starting scheduled processing of accounts for API configuration',

@@ -290,7 +290,7 @@ export class SessionRestoreStep extends TiktokApiConfigStep {
                     this.logger.log(
                       `First request captured for session ${account.id}, stopping scroll.`,
                     );
-                    this.interruptionRequested = true;
+                    // this.interruptionRequested = true;
                   },
                 },
               );

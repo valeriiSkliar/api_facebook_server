@@ -220,11 +220,14 @@ export class GenericScraperPipeline<
         const success = await step.execute(context);
         executedSteps.push(stepName);
 
-        // If a step fails, log it but continue the pipeline
+        // If a step fails, log it and STOP the pipeline execution for this sequence
         if (!success) {
-          this.logger.warn(
-            `Step ${stepName} failed but pipeline will continue`,
+          this.logger.error(
+            `Step ${stepName} failed. Halting pipeline execution for this sequence.`,
           );
+          // Optionally, add the error to context if step didn't already
+          // context.state.errors.push(new Error(`Step ${stepName} failed.`));
+          break; // Stop processing further steps in this sequence
         }
       } else {
         this.logStepSkip(stepName);

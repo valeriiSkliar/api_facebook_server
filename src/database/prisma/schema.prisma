@@ -133,7 +133,7 @@ model Request {
   created_at           DateTime      @default(now())
   processed_at         DateTime?
   status               String
-  session_id           Int
+  session_id           Int?
   response_data        Json?
   error_details        String?
   priority             Int
@@ -142,7 +142,7 @@ model Request {
   updated_at           DateTime      @updatedAt
 
   // Relations
-  session              Session        @relation("processes", fields: [session_id], references: [id])
+  session              Session?       @relation("processes", fields: [session_id], references: [id])
   cache                Cache?         @relation("stores_result_of")
   activities           ActivityLog[]  @relation("generates")
 

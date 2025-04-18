@@ -3,6 +3,8 @@ import { PrismaService } from '@src/database/prisma.service';
 import { TiktokScraperStep } from './tiktok-scraper-step';
 import { TiktokScraperContext } from '../../tiktok-scraper-types';
 import { TikTokApiConfig } from '../../models/api-config';
+import { PrismaClient } from '@prisma/client';
+
 interface ApiConfigParameters {
   url: string;
   method: string;
@@ -24,38 +26,40 @@ export class GetApiConfigStep extends TiktokScraperStep {
   async execute(context: TiktokScraperContext): Promise<boolean> {
     this.logger.log(`Executing ${this.name}`);
 
-    const dbApiConfig = await this.prisma.apiConfiguration.findFirst({
-      where: {
-        OR: [
-          { is_active: true },
-          {
-            updated_at: {
-              gte: new Date(Date.now() - 60 * 60 * 1000), // last 1 hour
-            },
-          },
-        ],
-      },
-      orderBy: {
-        updated_at: 'desc',
-      },
-    });
+    const prisma = new PrismaClient();
 
-    if (!dbApiConfig) {
-      throw new Error('Failed to get valid API configuration');
+    try {
+      const configurations = await prisma.apiConfiguration.findMany({
+        include: {
+          errorRecords: true,
+        },
+      });
+      console.log('Найденные конфигурации:', configurations);
+
+      if (configurations.length === 0) {
+        throw new Error('Failed to get valid API configuration');
+      }
+
+      const dbApiConfig = configurations[0];
+      const parameters =
+        dbApiConfig.parameters as unknown as ApiConfigParameters;
+      const apiConfig: TikTokApiConfig = {
+        url: parameters.url,
+        method: parameters.method,
+        headers: parameters.headers,
+        postData: parameters.postData,
+        timestamp: parameters.timestamp,
+      };
+
+      context.state.apiConfig = apiConfig;
+
+      return true;
+    } catch (error) {
+      console.error('Ошибка при получении конфигураций API:', error);
+      throw error;
+    } finally {
+      await prisma.$disconnect();
     }
-
-    const parameters = dbApiConfig.parameters as unknown as ApiConfigParameters;
-    const apiConfig: TikTokApiConfig = {
-      url: parameters.url,
-      method: parameters.method,
-      headers: parameters.headers,
-      postData: parameters.postData,
-      timestamp: parameters.timestamp,
-    };
-
-    context.state.apiConfig = apiConfig;
-
-    return true;
   }
 
   async shouldExecute(context: TiktokScraperContext): Promise<boolean> {
